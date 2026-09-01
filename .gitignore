@@ -1,0 +1,31 @@
+# Deploy and generated artifacts
+*.zip
+*.log
+*.tmp
+outputs/
+work/
+backups/
+
+# Temporary source material
+*.pdf
+*.csv
+
+# Local tools and editors
+.codex/
+.agents/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+__pycache__/
+*.py[cod]
+node_modules/
+scripts/refactor-routepilot.mjs
+scripts/validate-routepilot-refactored.mjs
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key

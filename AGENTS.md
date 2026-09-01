@@ -1,0 +1,31 @@
+# RoutePilot Permanent Rules
+
+- RoutePilot is a static PWA published manually to Netlify.
+- Current use prioritizes desktop and notebook computers.
+- Use Leaflet with OpenStreetMap tiles.
+- Keep Leaflet stored locally in `vendor/`.
+- Do not require a backend or database.
+- Do not require paid APIs.
+- Keep Street View free through a Google Maps URL.
+- Do not use the paid Google Maps JavaScript API.
+- Keep JavaScript modular.
+- Do not introduce React, Vue, or Angular.
+- Do not concentrate the application back into `index.html`.
+- Use unique IDs as internal identifiers.
+- Never identify a place internally only by its display name.
+- Never invent geographic data.
+- Preserve the visual identity.
+- Preserve fuzzy search.
+- Preserve comparison features.
+- Preserve nearby-region behavior.
+- Preserve Street View.
+- Preserve A4 printing.
+- Preserve the PWA.
+- Sanitize displayed content and untrusted URL data.
+- Do not store customers' personal data.
+- Store operational notes against locations or coordinates, never against customers.
+- Keep local operational notes behind an isolated IndexedDB abstraction.
+- New operational notes start pending; validation must never mutate structural map data automatically.
+- Update the service worker when application files change.
+- Do not mass-cache OpenStreetMap tiles.
+- Update `docs/ROUTEPILOT_STATE.md` after meaningful project changes.

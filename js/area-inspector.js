@@ -1,0 +1,111 @@
+let identifyPointMode=false;
+let identifiedArea=null;
+let identifiedMarker=null;
+
+const areaTypeLabels={bairro:'Área urbana',distrito:'Distrito',localidade:'Localidade rural',centro:'Área central',estrada:'Eixo rodoviário',referencia:'Referência',boundary:'Bairro'};
+
+function parseCoordinateQuery(value) {
+  const text=String(value||'').trim();
+  const match=text.match(/^([+-]?\d+(?:\.\d+)?)\s*(?:,\s*|\s+)([+-]?\d+(?:\.\d+)?)$/);
+  if(!match)return {matched:false,valid:false};
+  const lat=Number(match[1]),lng=Number(match[2]);
+  return {matched:true,valid:Number.isFinite(lat)&&Number.isFinite(lng)&&lat>=-90&&lat<=90&&lng>=-180&&lng<=180,lat,lng};
+}
+
+function regionAtCoordinates(lat,lng) {
+  const matches=regions.filter(region=>regionContainsPoint(region,lat,lng));
+  return matches.sort((a,b)=>distanceKm([lat,lng],a.center)-distanceKm([lat,lng],b.center))[0]||null;
+}
+
+function nearestItem(items,lat,lng,coordinates=item=>[item.lat,item.lon]) {
+  return items.reduce((best,item)=>{
+    const km=distanceKm([lat,lng],coordinates(item));
+    return !best||km<best.km?{item,km}:best;
+  },null);
+}
+
+function analyzeCoordinates(lat,lng) {
+  const region=regionAtCoordinates(lat,lng);
+  const scopedPoints=region?points.filter(point=>point.region===region.id&&point.kind!=='referencia'):[];
+  const scopedReferences=region?(mapDetails.pois||[]).filter(reference=>regionContainsPoint(region,reference.lat,reference.lon)):[];
+  const nearestPoint=nearestItem(scopedPoints,lat,lng);
+  const nearestReference=nearestItem(scopedReferences,lat,lng);
+  return {
+    lat,lng,insideCoverage:Boolean(region),region,city:region?.city||null,
+    nearestPoint,nearestReference,
+    areaType:nearestPoint?areaTypeLabels[nearestPoint.item.kind]||null:null,
+    source:'coordinate'
+  };
+}
+
+function distanceLabel(km) {
+  if(!Number.isFinite(km))return 'Não informado';
+  return km<1?`${Math.round(km*1000)} m`:`${km.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})} km`;
+}
+
+function coordinateSearchHtml(parsed) {
+  if(!parsed.matched)return null;
+  if(!parsed.valid)return '<section class="coordinate-result is-invalid"><h2>Coordenadas inválidas</h2><p>Use latitude entre -90 e 90 e longitude entre -180 e 180.</p></section>';
+  return `<section class="coordinate-result"><div class="section-title">Coordenadas reconhecidas</div><button type="button" class="nav-row" data-action="identifyCoordinates" data-lat="${parsed.lat}" data-lng="${parsed.lng}"><span class="coordinate-icon">${iconSvg('pin')}</span><span class="nav-copy"><b>${parsed.lat.toFixed(6)}, ${parsed.lng.toFixed(6)}</b><small>Identificar este ponto no mapa</small></span><span class="chevron">›</span></button></section>`;
+}
+
+function setIdentifyPointMode(active) {
+  if(active&&(!state.city&&!state.region&&!state.overview))generalMap();
+  identifyPointMode=Boolean(active&&map);
+  if(identifyPointMode&&streetViewMode)setStreetViewMode(false);
+  $('identifyPointButton').setAttribute('aria-pressed',String(identifyPointMode));
+  $('identifyPointHint').hidden=!identifyPointMode;
+  document.querySelector('.map-canvas').classList.toggle('identify-point-active',identifyPointMode);
+}
+
+function clearIdentifiedArea(renderNow=true) {
+  identifiedArea=null;
+  areaPanelMode='identify';areaUnderstandingContext=null;
+  if(typeof clearRadiusSearch==='function')clearRadiusSearch();
+  if(identifiedMarker&&map){map.removeLayer(identifiedMarker);identifiedMarker=null;}
+  if(renderNow)renderAreaInspector();
+}
+
+function identifiedMarkerIcon() {
+  return L.divIcon({className:'',html:'<span class="identified-pin"><span></span></span>',iconSize:[30,38],iconAnchor:[15,36]});
+}
+
+function identifyCoordinates(lat,lng,{source='search'}={}) {
+  if(!Number.isFinite(lat)||!Number.isFinite(lng)||lat<-90||lat>90||lng<-180||lng>180)return;
+  const openNoteForm=typeof annotatePointMode!=='undefined'&&annotatePointMode;
+  if(!state.city&&!state.region&&!state.overview)generalMap();
+  mapHidden=false;
+  setIdentifyPointMode(false);
+  identifiedArea={...analyzeCoordinates(lat,lng),source};
+  state.searchOpen=false;state.query='';$('q').value='';
+  if(identifiedMarker&&map)map.removeLayer(identifiedMarker);
+  if(map)identifiedMarker=L.marker([lat,lng],{zIndexOffset:900,title:'Ponto identificado',icon:identifiedMarkerIcon()}).addTo(map);
+  render();
+  if(openNoteForm){cancelAnnotatePoint();showAddNoteForm();}
+  if(map){map.flyTo([lat,lng],15,{duration:.4});identifiedMarker.bindTooltip('Ponto identificado',{direction:'top'}).openTooltip();}
+}
+
+function renderAreaInspector() {
+  const panel=$('areaInspector');
+  if(typeof renderRadiusPanel==='function'&&renderRadiusPanel(panel))return;
+  if(typeof renderAreaIntelligencePanel==='function'&&renderAreaIntelligencePanel(panel))return;
+  panel.hidden=!identifiedArea;
+  if(!identifiedArea){panel.innerHTML='';return;}
+  const item=identifiedArea,region=item.region,nearest=item.nearestPoint,reference=item.nearestReference;
+  const mapsUrl=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${item.lat},${item.lng}`)}`;
+  const rows=item.insideCoverage?`
+    <dl class="inspection-grid">
+      <div><dt>Latitude</dt><dd>${item.lat.toFixed(6)}</dd></div><div><dt>Longitude</dt><dd>${item.lng.toFixed(6)}</dd></div>
+      <div><dt>Cidade</dt><dd>${esc(cityName(item.city))}</dd></div><div><dt>Região operacional</dt><dd>${esc(region.name)}</dd></div>
+      <div><dt>Localidade mais próxima</dt><dd>${nearest?`${esc(nearest.item.name)} · ${distanceLabel(nearest.km)}`:'Não informado'}</dd></div>
+      <div><dt>Referência mais próxima</dt><dd>${reference?`${esc(reference.item.name)} · ${distanceLabel(reference.km)}`:'Não informado'}</dd></div>
+      <div><dt>Tipo de área</dt><dd>${esc(item.areaType||'Não informado')}</dd></div>
+    </dl>`:`<div class="coverage-warning"><b>Fora da cobertura</b><p>Este ponto está fora da cobertura cadastrada do RoutePilot.</p></div><dl class="inspection-grid"><div><dt>Latitude</dt><dd>${item.lat.toFixed(6)}</dd></div><div><dt>Longitude</dt><dd>${item.lng.toFixed(6)}</dd></div></dl>`;
+  panel.innerHTML=`<div class="inspector-heading"><div><small>PONTO IDENTIFICADO</small><h2>${item.insideCoverage?esc(region.name):'Coordenadas consultadas'}</h2></div><button type="button" data-action="clearIdentifiedArea" aria-label="Fechar identificação">&times;</button></div>${rows}<div class="inspector-actions"><button type="button" data-action="understandArea">Entender esta área</button><button type="button" data-action="aroundArea">Ver ao redor</button><button type="button" data-action="streetViewCoordinates">Street View</button><a href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Google Maps</a>${item.insideCoverage?'<button type="button" data-action="compareCoordinates">Comparar</button>':''}<button type="button" data-action="shareArea">Compartilhar</button></div>${addNoteSection(item.lat,item.lng)}`;
+  renderNearbyOperationalNotes(item.lat,item.lng);
+}
+
+function compareIdentifiedCoordinates() {
+  if(!identifiedArea?.insideCoverage)return;
+  registerCoordinateComparison(identifiedArea);
+}

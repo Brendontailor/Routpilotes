@@ -1,0 +1,97 @@
+document.addEventListener('click',event=>{
+  const button=event.target.closest('[data-action]'); if(!button) return;
+  const {action,value,point,region}=button.dataset;
+  if(action==='city') selectCity(value);
+  if(action==='region') selectRegion(value);
+  if(action==='point') selectPoint(value);
+  if(action==='road') selectRoad(value,point,region);
+  if(action==='result') openResult(Number(value));
+  if(action==='back') goBack();
+  if(action==='general') generalMap();
+  if(action==='home') goHome();
+  if(action==='boundary') selectBoundary(value);
+  if(action==='detailPoi') openDetailPoi(value);
+  if(action==='compareRegion')toggleCompareRegion(value);
+  if(action==='compareClear')clearComparison();
+  if(action==='compareMode')switchCompareMode(value);
+  if(action==='comparePlace')chooseComparePlace(Number(button.dataset.slot),value);
+  if(action==='compareCalculate')calculatePlaceComparison();
+  if(action==='identifyCoordinates')identifyCoordinates(Number(button.dataset.lat),Number(button.dataset.lng));
+  if(action==='clearIdentifiedArea')clearIdentifiedArea();
+  if(action==='streetViewCoordinates'&&identifiedArea)openStreetViewAt(L.latLng(identifiedArea.lat,identifiedArea.lng));
+  if(action==='compareCoordinates')compareIdentifiedCoordinates();
+  if(action==='understandArea')openUnderstandArea();
+  if(action==='aroundArea')openAroundArea();
+  if(action==='closeAreaTool')closeAreaTool();
+  if(action==='setRadius')setRadius(value);
+  if(action==='customRadius')applyCustomRadius();
+  if(action==='clearRadius')clearRadiusSearch();
+  if(action==='clearRadiusClose')clearRadiusSearch({close:true});
+  if(action==='radiusResult')openRadiusResult(button.dataset.kind,value);
+  if(action==='shareArea')shareArea();
+  if(action==='streetViewContext')streetViewContext();
+  if(action==='showAddNote')showAddNoteForm();
+  if(action==='cancelAddNote')cancelAddNote();
+  if(action==='closeTools')closeTools();
+  if(action==='activateIdentify'){closeTools();if(!state.city&&!state.region&&!state.overview)generalMap();setIdentifyPointMode(true);}
+  if(action==='annotatePoint')startAnnotatePoint();
+  if(action==='reviewNotes')renderNotesReview();
+  if(action==='reviewData')openDataReview();
+  if(action==='validateOperationalNote')validateOperationalNote(button.dataset.id);
+  if(action==='rejectOperationalNote')rejectOperationalNote(button.dataset.id);
+  if(action==='editOperationalNote')editOperationalNote(button.dataset.id);
+  if(action==='openNoteMap'){closeTools();identifyCoordinates(Number(button.dataset.lat),Number(button.dataset.lng),{source:'note'});}
+  if(action==='noteStreetView')openStreetViewAt(L.latLng(Number(button.dataset.lat),Number(button.dataset.lng)));
+  if(action==='cancelCity'){pendingCityChoice=null;renderSearch();}
+  if(action==='chooseCity'){
+    const matches=(pendingCityChoice||[]).filter(e=>e.city===value);
+    if(matches.length===1)openEntry(matches[0]);
+    else if(matches.length){pendingCityChoice=null;state.query+=' '+cityName(value);$('q').value=state.query;doSearch();}
+  }
+});
+document.addEventListener('submit',event=>{
+  if(event.target.id==='operationalNoteForm'){event.preventDefault();saveOperationalNote(event.target);}
+  if(event.target.matches('.note-edit-form')){event.preventDefault();saveOperationalNoteEdit(event.target);}
+});
+$('q').addEventListener('input',()=>{ clearTimeout(searchTimer); doSearch(); searchTimer=setTimeout(()=>doSearch(true),350); });
+$('searchForm').addEventListener('submit',event=>{event.preventDefault();clearTimeout(searchTimer);doSearch();const coordinate=parseCoordinateQuery(state.query);if(coordinate.matched&&coordinate.valid)identifyCoordinates(coordinate.lat,coordinate.lng);else if(searchAll(state.query).length)openResult(0);});
+$('clearSearch').addEventListener('click',()=>{clearTimeout(searchTimer);$('q').value='';doSearch();$('q').focus();});
+$('reset').addEventListener('click',generalMap);
+$('toggleMap').addEventListener('click',toggleMapVisibility);
+$('compareButton').addEventListener('click',()=>comparisonActive()?goBack():startCompare());
+$('identifyPointButton').addEventListener('click',()=>{const active=!identifyPointMode;if(!active)cancelAnnotatePoint();setIdentifyPointMode(active);});
+document.addEventListener('change',event=>{if(event.target.id==='compareRadius')updateCompareRadius(event.target.value);});
+document.addEventListener('input',event=>{
+  const slot=event.target.dataset?.compareSlot;
+  if(slot!==undefined)updateCompareDraft(Number(slot),event.target.value);
+});
+document.addEventListener('focusin',event=>{
+  const slot=event.target.dataset?.compareSlot;
+  if(slot!==undefined){compareActiveSlot=Number(slot);if(!state.compareStops[compareActiveSlot])renderCompareSuggestions(compareActiveSlot);}
+});
+['toggleRegions','toggleNeighborhoods','toggleLabels','toggleRefs','toggleRoads'].forEach(id=>$(id).addEventListener('change',updateLayers));
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&identifyPointMode&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){
+    event.preventDefault();cancelAnnotatePoint();setIdentifyPointMode(false);return;
+  }
+  if(event.key==='Escape'&&streetViewMode&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){
+    event.preventDefault();setStreetViewMode(false);return;
+  }
+  if(event.key==='Escape'&&areaPanelMode==='radius'&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){event.preventDefault();clearRadiusSearch({close:true});return;}
+  if(event.key==='Escape'&&areaPanelMode==='understand'&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){event.preventDefault();closeAreaTool();return;}
+  if(event.key==='Escape'&&toolsOpen&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){event.preventDefault();closeTools();return;}
+  if(event.key==='Escape'&&identifiedArea&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){event.preventDefault();clearIdentifiedArea();return;}
+  if(event.key==='Enter'&&placeComparison()&&event.target?.dataset?.compareSlot!==undefined){
+    event.preventDefault();const slot=Number(event.target.dataset.compareSlot),matches=comparePlaceMatches(compareDrafts[slot]);
+    if(!state.compareStops[slot]&&matches.length===1)chooseComparePlace(slot,matches[0].key);
+    else if(!state.compareStops[slot])renderCompareSuggestions(slot);
+    else calculatePlaceComparison();
+    return;
+  }
+  if(event.key!=='Escape'||event.ctrlKey||event.altKey||event.metaKey||event.repeat||event.isComposing) return;
+  event.preventDefault(); goBack();
+});
+initToolsButton();initMap(); initStreetViewLauncher(); render();applyDeepLink();
+if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')) {
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
+}

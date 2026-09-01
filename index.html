@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RoutePilot | Planejamento de visitas tecnicas</title>
+<meta name="author" content="Brendon Cavalheiro">
+<meta name="application-name" content="RoutePilot">
+<meta name="theme-color" content="#102033">
+<meta name="description" content="Planejamento de rotas, regiões e visitas técnicas.">
+<!-- Lucide 1.8.0 | ISC License
+
+Copyright (c) 2026 Lucide Icons and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+- --
+
+The following Lucide icons are derived from the Feather project:
+
+airplay, alert-circle, alert-octagon, alert-triangle, aperture, arrow-down-circle, arrow-down-left, arrow-down-right, arrow-down, arrow-left-circle, arrow-left, arrow-right-circle, arrow-right, arrow-up-circle, arrow-up-left, arrow-up-right, arrow-up, at-sign, calendar, cast, check, chevron-down, chevron-left, chevron-right, chevron-up, chevrons-down, chevrons-left, chevrons-right, chevrons-up, circle, clipboard, clock, code, columns, command, compass, corner-down-left, corner-down-right, corner-left-down, corner-left-up, corner-right-down, corner-right-up, corner-up-left, corner-up-right, crosshair, database, divide-circle, divide-square, dollar-sign, download, external-link, feather, frown, hash, headphones, help-circle, info, italic, key, layout, life-buoy, link-2, link, loader, lock, log-in, log-out, maximize, meh, minimize, minimize-2, minus-circle, minus-square, minus, monitor, moon, more-horizontal, more-vertical, move, music, navigation-2, navigation, octagon, pause-circle, percent, plus-circle, plus-square, plus, power, radio, rss, search, server, share, shopping-bag, sidebar, smartphone, smile, square, table-2, tablet, target, terminal, trash-2, trash, triangle, tv, type, upload, x-circle, x-octagon, x-square, x, zoom-in, zoom-out
+
+The MIT License (MIT) (for the icons listed above)
+
+Copyright (c) 2013-present Cole Bemis
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+ -->
+<link rel="icon" type="image/svg+xml" href="routepilot-icon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="routepilot-icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="vendor/leaflet.css">
+<link rel="stylesheet" href="css/routepilot.css">
+</head>
+<body>
+<header><div class="brand-logo" role="img" aria-label="RoutePilot"></div><div class="header-copy"><h1>Mapa de atendimento</h1><p>Planejamento de visitas técnicas</p></div><div class="header-actions"><button type="button" id="homeButton" class="home-button" data-action="home" title="Voltar à tela principal"><svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>Início</button><button type="button" id="compareButton" class="compare-button" aria-pressed="false"><svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg>Comparar regiões</button><button type="button" id="toggleMap" class="map-visibility-button" aria-controls="mapStage" aria-expanded="false"><svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>Mostrar mapa</button></div></header>
+<main class="app is-start" id="app"><aside>
+<div class="start-heading"><p class="start-eyebrow">ATENDIMENTO TÉCNICO</p><h2>Onde será a próxima visita?</h2><p class="start-subtitle">Escolha uma cidade ou pesquise uma região para começar.</p></div>
+<form id="searchForm" role="search"><label for="q">Buscar em todas as cidades</label><div class="search-field"><span class="search-leading" aria-hidden="true"><svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span><input id="q" placeholder="Buscar bairro, rua, referência ou coordenadas..." autocomplete="off"><button type="button" id="clearSearch" aria-label="Limpar busca" title="Limpar busca">&times;</button></div></form>
+<div id="startStats" class="start-stats" aria-label="Resumo da cobertura"></div>
+<div id="results" aria-live="polite"></div>
+<section id="areaInspector" class="area-inspector" aria-label="Identificação do ponto" hidden></section>
+<section id="toolsPanel" class="tools-panel" aria-label="Ferramentas do RoutePilot" hidden></section>
+<nav id="navigation" aria-label="Navegar por cidades e regiões"></nav>
+<section id="details" hidden></section>
+<section id="comparison" aria-label="Comparar regiões" hidden></section>
+<div class="toggles" id="mapToggles"><label><input type="checkbox" id="toggleRegions" checked> Regiões</label><label><input type="checkbox" id="toggleNeighborhoods" checked> Bairros e distritos</label><label><input type="checkbox" id="toggleLabels" checked> Nomes</label><label><input type="checkbox" id="toggleRefs" checked> Referências</label><label><input type="checkbox" id="toggleRoads" checked> Vias principais</label></div>
+<button id="reset" class="reset-button">Ver mapa geral</button>
+</aside><section class="map-stage" id="mapStage" aria-label="Mapa de atendimento" hidden><div id="mapContext" class="map-context"></div><div class="map-canvas"><div id="map"></div><button type="button" id="identifyPointButton" class="identify-point-tool" aria-pressed="false" title="Clique e depois selecione um ponto no mapa"><svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="9"/></svg><span>Identificar ponto</span></button><div id="identifyPointHint" class="identify-point-hint" hidden>Selecione um ponto no mapa <kbd>Esc</kbd></div><div class="street-view-tool"><button type="button" id="streetViewButton" class="technician-button" draggable="true" aria-pressed="false" aria-label="Selecionar local para abrir no Street View" title="Clique ou arraste o técnico até uma rua"><svg viewBox="0 0 48 48" role="img" aria-label="Técnico RoutePilot"><path d="M13 16c0-7 4.5-11 11-11s11 4 11 11" fill="#f97316"/><path d="M10 16h28v5H10z" rx="2" fill="#ff9b45"/><circle cx="24" cy="20" r="8" fill="#f2c6a0"/><path d="M13 45v-9c0-7 4-11 11-11s11 4 11 11v9" fill="#1aa3b8"/><path d="M18 45v-9m12 9v-9" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M13 35h22" stroke="#102033" stroke-width="3"/><circle cx="24" cy="33" r="4" fill="#f97316" stroke="#fff" stroke-width="2"/><circle cx="21" cy="19" r="1" fill="#102033"/><circle cx="27" cy="19" r="1" fill="#102033"/><path d="M21 23c2 1 4 1 6 0" fill="none" stroke="#8c4b32" stroke-width="1.5" stroke-linecap="round"/></svg></button><div class="street-view-copy"><strong>Street View gratuito</strong><span id="streetViewStatus">Clique ou arraste o técnico</span></div></div><div id="streetViewHint" class="street-view-hint" hidden><span>Clique no ponto que deseja visualizar</span><button type="button" id="streetViewCancel">Cancelar <kbd>Esc</kbd></button></div><details id="mapGuide" class="map-guide" hidden><summary>Ruas e referências</summary><div class="guide-scroll"><div id="guideContent"></div><div id="visibleMapDetails"></div></div></details></div><div class="map-note">Zonas operacionais baseadas no mapa municipal de Morro Redondo · Localidades oficiais: Prefeitura de Morro Redondo · Bairros: IBGE 2022 · Vias e referências: OpenStreetMap. Confirme a situação atual.</div></section></main>
+<footer class="system-footer"><span>RoutePilot &middot; Rotas e regi&otilde;es t&eacute;cnicas</span><span>Criador: <strong>Brendon Cavalheiro</strong></span></footer>
+<div id="appToast" class="app-toast" role="status" aria-live="polite" hidden></div>
+<script src="vendor/leaflet.js"></script>
+<script src="data/regions.js"></script>
+<script src="data/locations.js"></script>
+<script src="data/routes.js"></script>
+<script src="data/boundaries.js"></script>
+<script src="data/map-details.js"></script>
+<script src="data/v2-metadata.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/data-validation.js"></script>
+<script src="js/app.js"></script>
+<script src="js/search.js"></script>
+<script src="js/navigation.js"></script>
+<script src="js/references.js"></script>
+<script src="js/comparison.js"></script>
+<script src="js/notes-storage.js"></script>
+<script src="js/area-inspector.js"></script>
+<script src="js/area-intelligence.js"></script>
+<script src="js/radius-search.js"></script>
+<script src="js/sharing.js"></script>
+<script src="js/notes-ui.js"></script>
+<script src="js/data-review.js"></script>
+<script src="js/map.js"></script>
+<script src="js/streetview.js"></script>
+<script src="js/events.js"></script>
+</body>
+</html>
