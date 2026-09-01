@@ -34,6 +34,7 @@ Ultima atualizacao: 2026-09-01
 - README profissional e `.gitignore` adicionados.
 - Ferramentas agora oferece `Anotar ponto`, abrindo o formulario apos selecionar uma coordenada.
 - Git local inicializado na branch `main`.
+- Repositorio remoto oficial publicado em `https://github.com/Brendontailor/Routpilotes`.
 
 ## Em desenvolvimento
 
@@ -43,7 +44,6 @@ Ultima atualizacao: 2026-09-01
 
 - Revisar futuramente os dados ainda desconhecidos apenas com fontes confirmadas.
 - Considerar sincronizacao de anotacoes somente quando houver backend aprovado.
-- Adicionar um remote GitHub quando a URL oficial estiver disponivel.
 
 ## Problemas conhecidos
 
@@ -89,9 +89,11 @@ Ultima atualizacao: 2026-09-01
 
 ## Git
 
-- Repositorio local inicializado.
+- Repositorio local conectado ao GitHub.
 - Branch: `main`.
-- Remote: ainda nao configurado.
+- Conta: `Brendontailor`.
+- Repositorio: `Brendontailor/Routpilotes`.
+- Origin: `https://github.com/Brendontailor/Routpilotes.git`.
 - ZIPs, `outputs/`, `work/` e arquivos temporarios permanecem fora do versionamento.
 - Commit inicial criado: `Prepare RoutePilot V2 with validated map annotations`.
-- Push pendente ate existir uma URL remota oficial.
+- Branch local `main` acompanha `origin/main`.
