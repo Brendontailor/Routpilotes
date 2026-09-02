@@ -1,4 +1,4 @@
-const CACHE_NAME='routepilot-shell-v6';
+const CACHE_NAME='routepilot-shell-v7';
 const CACHE_PREFIX='routepilot-shell-';
 const APP_SHELL=[
   './',
@@ -31,6 +31,7 @@ const APP_SHELL=[
   './js/data-review.js',
   './js/map.js',
   './js/streetview.js',
+  './js/ui-shell.js',
   './js/events.js',
   './routepilot-logo.svg',
   './routepilot-icon.svg',

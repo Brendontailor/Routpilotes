@@ -5,21 +5,22 @@ let radiusSearchToken=0;
 
 function openAroundArea(context=areaUnderstandingContext||currentAreaContext()) {
   if(!context)return;
+  cancelMapInteraction('around');
   areaPanelMode='radius';radiusSearchContext=context;
   mapHidden=false;renderLayout();renderAreaInspector();calculateAroundArea(radiusSearchKm);
+  renderDesktopShell();
 }
 
 function clearRadiusSearch({close=false}={}) {
   radiusSearchToken++;
   if(radiusSearchLayer&&map){map.removeLayer(radiusSearchLayer);radiusSearchLayer=null;}
-  if(close){radiusSearchContext=null;areaPanelMode=identifiedArea?'identify':'none';renderAreaInspector();}
+  if(close){radiusSearchContext=null;areaPanelMode=identifiedArea?'identify':'none';renderAreaInspector();if(typeof renderDesktopShell==='function')renderDesktopShell();}
 }
 
 function renderRadiusPanel(panel) {
   if(areaPanelMode!=='radius'||!radiusSearchContext)return false;
   panel.hidden=false;
-  panel.innerHTML=`<div class="inspector-heading"><div><small>VER AO REDOR</small><h2>${esc(radiusSearchContext.name)}</h2></div><button type="button" data-action="clearRadiusClose" aria-label="Fechar raio">&times;</button></div>
-    <div class="radius-options" role="group" aria-label="Raio da consulta">${[2,5,10,20].map(km=>`<button type="button" data-action="setRadius" data-value="${km}" aria-pressed="${radiusSearchKm===km}">${km} km</button>`).join('')}<label>Personalizado <input id="customRadius" type="number" min="1" max="100" step="1" value="${radiusSearchKm}"> km</label><button type="button" data-action="customRadius">Aplicar</button></div>
+  panel.innerHTML=`<p class="panel-intro">Consulte locais e referências a partir do ponto selecionado.</p><div class="radius-options" role="group" aria-label="Raio da consulta">${[2,5,10,20].map(km=>`<button type="button" data-action="setRadius" data-value="${km}" aria-pressed="${radiusSearchKm===km}">${km} km</button>`).join('')}<label>Personalizado <input id="customRadius" type="number" min="1" max="100" step="1" value="${radiusSearchKm}"> km</label><button type="button" data-action="customRadius">Aplicar</button></div>
     <p class="straight-line-note">Distâncias em linha reta, calculadas localmente.</p>
     <div id="radiusResults" class="radius-results" aria-live="polite"><p class="empty">Calculando...</p></div>
     <div class="inspector-actions"><button type="button" data-action="clearRadius">Limpar raio</button><button type="button" data-action="shareArea">Compartilhar</button></div>`;

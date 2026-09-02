@@ -1,8 +1,8 @@
 # RoutePilot State
 
-Versao atual: V2 oficial - repositorio de desenvolvimento
+Versao atual: V2 oficial - navegacao desktop e painel contextual
 
-Ultima atualizacao: 2026-09-01
+Ultima atualizacao: 2026-09-02
 
 ## Concluido
 
@@ -35,10 +35,13 @@ Ultima atualizacao: 2026-09-01
 - Ferramentas agora oferece `Anotar ponto`, abrindo o formulario apos selecionar uma coordenada.
 - Git local inicializado na branch `main`.
 - Repositorio remoto oficial publicado em `https://github.com/Brendontailor/Routpilotes`.
+- Shell desktop reorganizado com barra de ferramentas compacta, breadcrumb e painel contextual unificado.
+- Camadas movidas para popover da barra de ferramentas; estados ativos e Escape centralizados no shell.
+- Acoes de regiao e localidade posicionadas antes de listas extensas de bairros e referencias.
 
 ## Em desenvolvimento
 
-- Nenhuma etapa ativa.
+- Fechamento da fase de navegacao desktop em `feat/desktop-navigation-ui`.
 
 ## Proximas etapas
 
@@ -75,10 +78,12 @@ Ultima atualizacao: 2026-09-01
 - Estrutura oficial na raiz validada com zero falhas e sem padroes de segredo encontrados.
 - Fluxo Ferramentas -> Anotar ponto -> clique no mapa -> formulario pendente validado no navegador.
 - Cascata Pelotas, Cascata Morro Redondo e deep link por coordenada revalidados; console sem erros.
+- Desktop validado em 1366x768 e 1600x1000; busca, cidade, regiao, localidade, breadcrumb, painel contextual, barra, Camadas, ferramentas e Escape verificados.
+- Identificar ponto, coordenadas, anotacoes pending/validated/rejected, Entender esta area, Ver ao redor, Comparar, Street View e Google Maps validados no navegador.
 
 ## Cache/service worker atual
 
-- `routepilot-shell-v6`
+- `routepilot-shell-v7`
 - Network-first para HTML e arquivos da mesma origem.
 - Caches antigos removidos no evento `activate`.
 
@@ -97,3 +102,4 @@ Ultima atualizacao: 2026-09-01
 - ZIPs, `outputs/`, `work/` e arquivos temporarios permanecem fora do versionamento.
 - Commit inicial criado: `Prepare RoutePilot V2 with validated map annotations`.
 - Branch local `main` acompanha `origin/main`.
+- Fase atual em `feat/desktop-navigation-ui`; sem merge para `main` nesta etapa.

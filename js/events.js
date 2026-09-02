@@ -1,5 +1,6 @@
 document.addEventListener('click',event=>{
-  const button=event.target.closest('[data-action]'); if(!button) return;
+  const button=event.target.closest('[data-action]');
+  if(!button){if(layersOpen&&!event.target.closest('#mapToggles')&&!event.target.closest('#layersButton'))closeLayers();return;}
   const {action,value,point,region}=button.dataset;
   if(action==='city') selectCity(value);
   if(action==='region') selectRegion(value);
@@ -33,14 +34,18 @@ document.addEventListener('click',event=>{
   if(action==='showAddNote')showAddNoteForm();
   if(action==='cancelAddNote')cancelAddNote();
   if(action==='closeTools')closeTools();
-  if(action==='activateIdentify'){closeTools();if(!state.city&&!state.region&&!state.overview)generalMap();setIdentifyPointMode(true);}
+  if(action==='focusSearch')focusGlobalSearch();
+  if(action==='toggleLayers')toggleLayers();
+  if(action==='closeLayers')closeLayers();
+  if(action==='compareCurrent'){cancelMapInteraction('compare');startCompare();}
+  if(action==='activateIdentify'){closeTools(false);if(comparisonActive())goBack();cancelMapInteraction('identify');if(!state.city&&!state.region&&!state.overview)generalMap();setIdentifyPointMode(true);}
   if(action==='annotatePoint')startAnnotatePoint();
   if(action==='reviewNotes')renderNotesReview();
   if(action==='reviewData')openDataReview();
   if(action==='validateOperationalNote')validateOperationalNote(button.dataset.id);
   if(action==='rejectOperationalNote')rejectOperationalNote(button.dataset.id);
   if(action==='editOperationalNote')editOperationalNote(button.dataset.id);
-  if(action==='openNoteMap'){closeTools();identifyCoordinates(Number(button.dataset.lat),Number(button.dataset.lng),{source:'note'});}
+  if(action==='openNoteMap')openOperationalNote(button.dataset.id,Number(button.dataset.lat),Number(button.dataset.lng));
   if(action==='noteStreetView')openStreetViewAt(L.latLng(Number(button.dataset.lat),Number(button.dataset.lng)));
   if(action==='cancelCity'){pendingCityChoice=null;renderSearch();}
   if(action==='chooseCity'){
@@ -48,6 +53,7 @@ document.addEventListener('click',event=>{
     if(matches.length===1)openEntry(matches[0]);
     else if(matches.length){pendingCityChoice=null;state.query+=' '+cityName(value);$('q').value=state.query;doSearch();}
   }
+  if(layersOpen&&!event.target.closest('#mapToggles')&&!event.target.closest('#layersButton'))closeLayers();
 });
 document.addEventListener('submit',event=>{
   if(event.target.id==='operationalNoteForm'){event.preventDefault();saveOperationalNote(event.target);}
@@ -58,8 +64,8 @@ $('searchForm').addEventListener('submit',event=>{event.preventDefault();clearTi
 $('clearSearch').addEventListener('click',()=>{clearTimeout(searchTimer);$('q').value='';doSearch();$('q').focus();});
 $('reset').addEventListener('click',generalMap);
 $('toggleMap').addEventListener('click',toggleMapVisibility);
-$('compareButton').addEventListener('click',()=>comparisonActive()?goBack():startCompare());
-$('identifyPointButton').addEventListener('click',()=>{const active=!identifyPointMode;if(!active)cancelAnnotatePoint();setIdentifyPointMode(active);});
+$('compareButton').addEventListener('click',()=>{if(comparisonActive()){goBack();return;}cancelMapInteraction('compare');startCompare();});
+$('identifyPointButton').addEventListener('click',()=>{const active=!identifyPointMode||annotatePointMode;if(annotatePointMode)cancelAnnotatePoint(false);if(active){if(comparisonActive())goBack();cancelMapInteraction('identify');}setIdentifyPointMode(active);});
 document.addEventListener('change',event=>{if(event.target.id==='compareRadius')updateCompareRadius(event.target.value);});
 document.addEventListener('input',event=>{
   const slot=event.target.dataset?.compareSlot;
@@ -71,12 +77,16 @@ document.addEventListener('focusin',event=>{
 });
 ['toggleRegions','toggleNeighborhoods','toggleLabels','toggleRefs','toggleRoads'].forEach(id=>$(id).addEventListener('change',updateLayers));
 document.addEventListener('keydown',event=>{
+  const plainEscape=event.key==='Escape'&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing;
+  if(plainEscape&&$('operationalNoteForm')){event.preventDefault();cancelAddNote();return;}
+  if(plainEscape&&document.querySelector('.note-edit-form')){event.preventDefault();document.querySelector('.note-edit-form').remove();return;}
   if(event.key==='Escape'&&identifyPointMode&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){
     event.preventDefault();cancelAnnotatePoint();setIdentifyPointMode(false);return;
   }
   if(event.key==='Escape'&&streetViewMode&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){
     event.preventDefault();setStreetViewMode(false);return;
   }
+  if(plainEscape&&layersOpen){event.preventDefault();closeLayers();return;}
   if(event.key==='Escape'&&areaPanelMode==='radius'&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){event.preventDefault();clearRadiusSearch({close:true});return;}
   if(event.key==='Escape'&&areaPanelMode==='understand'&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){event.preventDefault();closeAreaTool();return;}
   if(event.key==='Escape'&&toolsOpen&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){event.preventDefault();closeTools();return;}
@@ -91,7 +101,7 @@ document.addEventListener('keydown',event=>{
   if(event.key!=='Escape'||event.ctrlKey||event.altKey||event.metaKey||event.repeat||event.isComposing) return;
   event.preventDefault(); goBack();
 });
-initToolsButton();initMap(); initStreetViewLauncher(); render();applyDeepLink();
+initDesktopShell();initToolsButton();initMap();initStreetViewLauncher();render();applyDeepLink();
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')) {
   window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
 }

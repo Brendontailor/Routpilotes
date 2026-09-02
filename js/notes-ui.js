@@ -3,22 +3,27 @@ let nearbyNotesToken=0;
 let annotatePointMode=false;
 
 function initToolsButton() {
-  if($('toolsButton'))return;
-  const button=document.createElement('button');
-  button.type='button';button.id='toolsButton';button.className='tools-button';button.setAttribute('aria-pressed','false');
-  button.innerHTML=`${iconSvg('settings')}Ferramentas`;
+  let button=$('toolsButton');
+  if(!button){
+    button=document.createElement('button');
+    button.type='button';button.id='toolsButton';button.className='tools-button';button.setAttribute('aria-pressed','false');
+    button.innerHTML=`${iconSvg('settings')}Ferramentas`;
+    document.querySelector('.header-actions').insertBefore(button,$('toggleMap'));
+  }
+  if(button.dataset.ready)return;
+  button.dataset.ready='true';
   button.addEventListener('click',toggleTools);
-  document.querySelector('.header-actions').insertBefore(button,$('toggleMap'));
 }
 
 function toggleTools() {
-  toolsOpen=!toolsOpen;
-  $('toolsButton').setAttribute('aria-pressed',String(toolsOpen));
-  if(toolsOpen)renderToolsMenu();else $('toolsPanel').hidden=true;
+  if(toolsOpen){closeTools();return;}
+  cancelMapInteraction('tools');toolsOpen=true;
+  renderToolsMenu();renderDesktopShell();
 }
 
-function closeTools() {
+function closeTools(renderNow=true) {
   toolsOpen=false;$('toolsButton').setAttribute('aria-pressed','false');$('toolsPanel').hidden=true;
+  if(renderNow)renderDesktopShell();
 }
 
 function renderToolsMenu() {
@@ -29,16 +34,20 @@ function renderToolsMenu() {
 }
 
 function startAnnotatePoint() {
-  closeTools();
+  if(annotatePointMode){cancelAnnotatePoint(false);setIdentifyPointMode(false);return;}
+  if(comparisonActive())goBack();
+  cancelMapInteraction('identify');closeTools(false);
   if(!state.city&&!state.region&&!state.overview)generalMap();
   annotatePointMode=true;
   setIdentifyPointMode(true);
   $('identifyPointHint').firstChild.textContent='Clique no ponto que deseja anotar ';
+  renderDesktopShell();
 }
 
-function cancelAnnotatePoint() {
+function cancelAnnotatePoint(renderNow=true) {
   annotatePointMode=false;
   $('identifyPointHint').firstChild.textContent='Selecione um ponto no mapa ';
+  if(renderNow)renderDesktopShell();
 }
 
 function noteStatusLabel(status) {
@@ -49,8 +58,8 @@ function noteTypeLabel(type) {
   return {general:'Geral',reference:'Referência',access:'Acesso',warning:'Alerta'}[type]||'Geral';
 }
 
-function addNoteSection(lat,lng) {
-  return `<div class="add-note-area"><button type="button" data-action="showAddNote" class="add-note-button">+ Adicionar anotação</button><div id="addNoteFormHost"></div><div id="nearbyOperationalNotes" class="nearby-notes"></div><p class="local-storage-note">Anotações armazenadas neste computador.</p></div>`;
+function addNoteSection(lat,lng,showButton=true) {
+  return `<div class="add-note-area">${showButton?'<button type="button" data-action="showAddNote" class="add-note-button">+ Adicionar anotação</button>':''}<div id="addNoteFormHost"></div><div id="nearbyOperationalNotes" class="nearby-notes"></div><p class="local-storage-note">Anotações armazenadas neste computador.</p></div>`;
 }
 
 function showAddNoteForm() {
@@ -90,7 +99,7 @@ function nearestKnownLocations(note) {
 }
 
 async function renderNotesReview() {
-  toolsOpen=true;$('toolsButton').setAttribute('aria-pressed','true');
+  toolsOpen=true;$('toolsButton').setAttribute('aria-pressed','true');renderDesktopShell();
   const panel=$('toolsPanel');panel.hidden=false;
   panel.innerHTML='<div class="inspector-heading"><div><small>CONHECIMENTO OPERACIONAL</small><h2>Validar anotações</h2></div><button data-action="closeTools" aria-label="Fechar">&times;</button></div><p class="local-storage-note">Anotações armazenadas neste computador.</p><div id="pendingNotesList"><p class="empty">Carregando...</p></div>';
   try {
@@ -103,8 +112,15 @@ async function renderNotesReview() {
   } catch(error) { $('pendingNotesList').innerHTML='<p class="empty">Não foi possível acessar as anotações deste computador.</p>'; }
 }
 
-async function validateOperationalNote(id) { try{await validateNote(id);showToast('Informação operacional validada');renderNotesReview();refreshOperationalKnowledge();}catch(error){showToast(error.message);} }
-async function rejectOperationalNote(id) { try{await rejectNote(id);showToast('Anotação rejeitada');renderNotesReview();refreshOperationalKnowledge();}catch(error){showToast(error.message);} }
+async function openOperationalNote(id,lat,lng) {
+  let note=null;
+  try { note=(await RoutePilotNotes.getAllNotes()).find(item=>item.id===id)||null; } catch(error) {}
+  closeTools(false);
+  identifyCoordinates(lat,lng,{source:'note',note});
+}
+
+async function validateOperationalNote(id) { try{const note=await validateNote(id);showToast('Informação operacional validada');if(identifiedArea?.note?.id===id){identifiedArea.note=note;renderAreaInspector();renderDesktopShell();}else renderNotesReview();refreshOperationalKnowledge();}catch(error){showToast(error.message);} }
+async function rejectOperationalNote(id) { try{const note=await rejectNote(id);showToast('Anotação rejeitada');if(identifiedArea?.note?.id===id){identifiedArea.note=note;renderAreaInspector();renderDesktopShell();}else renderNotesReview();refreshOperationalKnowledge();}catch(error){showToast(error.message);} }
 
 function editOperationalNote(id) {
   const article=document.querySelector(`[data-note-id="${CSS.escape(id)}"]`),host=article?.querySelector('.note-edit-host');if(!host)return;
@@ -114,7 +130,7 @@ function editOperationalNote(id) {
 
 async function saveOperationalNoteEdit(form) {
   const data=new FormData(form);
-  try { await updateNote(form.dataset.noteId,{text:data.get('text'),type:data.get('type')});showToast('Anotação atualizada');renderNotesReview(); } catch(error) { showToast(error.message); }
+  try { const note=await updateNote(form.dataset.noteId,{text:data.get('text'),type:data.get('type')});showToast('Anotação atualizada');if(identifiedArea?.note?.id===note.id){identifiedArea.note=note;renderAreaInspector();renderDesktopShell();}else renderNotesReview(); } catch(error) { showToast(error.message); }
 }
 
 function refreshOperationalKnowledge() {
