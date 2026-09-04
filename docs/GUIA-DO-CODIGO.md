@@ -56,6 +56,16 @@ Nunca criar número, bloco ou coordenada por suposição. Tags externas como `ad
 
 Cada lugar deve manter um ID interno único. O nome mostrado ao usuário não pode ser usado como única identificação.
 
+## Comparação e rotas locais
+
+- `js/comparison.js` controla os campos de origem/destino, o resultado e o traçado exibido no mapa.
+- `js/local-routing.js` procura rua e número na base local, carrega a malha somente no primeiro cálculo e executa o menor caminho no navegador.
+- `data/routing/road-network.json` contém nós e conexões dirigidas; `address-streets.json` e os fragmentos `addresses-*.json` resolvem endereços sem geocodificação externa.
+- `data/routing-index.js` registra versão, origem e contagens da base.
+- `scripts/generate-local-routing-data.mjs` regenera esses arquivos a partir de um recorte GeoJSONSeq do tema `transportation` da Overture.
+
+O RoutePilot não envia endereços para serviços de rota. O Service Worker guarda a malha depois do primeiro uso, sem incluí-la no app shell inicial.
+
 ## Pesquisa e navegação
 
 - `js/search.js` cria `INDICE_PESQUISA` e calcula a correspondência exata, parcial e aproximada.
@@ -84,7 +94,8 @@ Cada lugar deve manter um ID interno único. O nome mostrado ao usuário não po
 | Foco em um raio | `js/address-radius.js` |
 | Regiões e localidades | `data/regions.js`, `data/locations.js` |
 | Contornos | `data/boundaries.js` |
-| Comparação | `js/comparison.js` |
+| Comparação e cálculo por estradas | `js/comparison.js`, `js/local-routing.js` |
+| Gerar malha e índice local | `scripts/generate-local-routing-data.mjs` |
 | Street View | `js/streetview.js` |
 | Anotações | `js/notes-storage.js`, `js/notes-ui.js` |
 | PWA/offline | `manifest.webmanifest`, `service-worker.js` |

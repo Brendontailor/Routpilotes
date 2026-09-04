@@ -7,12 +7,12 @@ const failures=[];
 const context={console:{groupCollapsed(){},groupEnd(){},info(){},warn(){},error(){}}};
 vm.createContext(context);
 
-for(const file of ['regions.js','locations.js','routes.js','boundaries.js','map-details.js','v2-metadata.js','priority-areas.js','coab-duque-addresses.js','osm-address-snapshot.js','open-address-tiles-index.js']){
+for(const file of ['regions.js','locations.js','routes.js','boundaries.js','map-details.js','v2-metadata.js','priority-areas.js','coab-duque-addresses.js','osm-address-snapshot.js','open-address-tiles-index.js','routing-index.js']){
   const source=fs.readFileSync(path.join(root,'data',file),'utf8').replace(/^const /gm,'var ');
   vm.runInContext(source,context,{filename:file});
 }
 
-const {regions,points,boundaries,mapDetails,priorityMapAreas,verifiedAddressPoints,osmAddressSnapshot,openAddressTileIndex}=context;
+const {regions,points,boundaries,mapDetails,priorityMapAreas,verifiedAddressPoints,osmAddressSnapshot,openAddressTileIndex,localRoutingIndex}=context;
 const duplicate=values=>[...new Set(values.filter((value,index)=>values.indexOf(value)!==index))];
 const regionIds=new Set(regions.map(item=>item.id));
 const pointIds=new Set(points.map(item=>item.id));
@@ -68,6 +68,31 @@ for(const [key,expectedCount] of Object.entries(openAddressTileIndex.tiles||{}))
 }
 if(openAddressCount!==openAddressTileIndex.total)failures.push(`open address total mismatch: ${openAddressCount}/${openAddressTileIndex.total}`);
 
+let routingAddressCount=0;
+const roadNetworkFile=path.join(root,localRoutingIndex.roadNetworkFile);
+const streetCatalogFile=path.join(root,localRoutingIndex.streetCatalogFile);
+if(!fs.existsSync(roadNetworkFile))failures.push('missing local road network');
+if(!fs.existsSync(streetCatalogFile))failures.push('missing local street catalog');
+if(fs.existsSync(roadNetworkFile)){
+  const network=JSON.parse(fs.readFileSync(roadNetworkFile,'utf8'));
+  if(network.nodes.length!==localRoutingIndex.nodes)failures.push(`routing node count mismatch: ${network.nodes.length}/${localRoutingIndex.nodes}`);
+  if(network.edges.length!==localRoutingIndex.edges)failures.push(`routing edge count mismatch: ${network.edges.length}/${localRoutingIndex.edges}`);
+  for(const [from,to,meters,flags] of network.edges){
+    if(!network.nodes[from]||!network.nodes[to]){failures.push(`routing edge with invalid node: ${from}/${to}`);break;}
+    if(!Number.isFinite(meters)||meters<=0||![1,2,3].includes(flags)){failures.push(`invalid routing edge: ${from}/${to}`);break;}
+  }
+}
+for(let index=0;index<localRoutingIndex.addressShards;index++){
+  const shardName=index.toString(16).padStart(2,'0'),shardFile=path.join(root,'data','routing',`addresses-${shardName}.json`);
+  if(!fs.existsSync(shardFile)){failures.push(`missing local address shard: ${shardName}`);continue;}
+  const shard=JSON.parse(fs.readFileSync(shardFile,'utf8'));
+  for(const [,addresses] of Object.values(shard.streets||{}))for(const address of addresses){
+    routingAddressCount++;
+    if(!regionIds.has(address[3])){failures.push(`routing address with invalid region: ${address[3]}`);break;}
+  }
+}
+if(routingAddressCount!==localRoutingIndex.addresses)failures.push(`routing address count mismatch: ${routingAddressCount}/${localRoutingIndex.addresses}`);
+
 const cascatas=points.filter(point=>point.name==='Cascata');
 if(cascatas.length!==2)failures.push(`expected 2 Cascata points, found ${cascatas.length}`);
 if(!pointIds.has('pelotas_cascata'))failures.push('pelotas_cascata is missing');
@@ -97,15 +122,15 @@ if(manifest?.start_url!=='./')failures.push(`unexpected manifest start_url: ${ma
 const serviceWorker=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
 const shellAssets=[...serviceWorker.matchAll(/\s+'\.\/([^']+)'/g)].map(match=>match[1]);
 for(const asset of shellAssets)if(!fs.existsSync(path.resolve(root,asset)))failures.push(`missing service worker asset: ${asset}`);
-if(!serviceWorker.includes("routepilot-shell-v16"))failures.push('service worker cache is not v16');
+if(!serviceWorker.includes("routepilot-shell-v17"))failures.push('service worker cache is not v17');
 if(/tile\.openstreetmap\.org/.test(serviceWorker))failures.push('service worker must not mass-cache OSM tiles');
 
-const requiredV2=['config.js','notes-storage.js','area-inspector.js','area-intelligence.js','radius-search.js','address-radius.js','sharing.js','map-point-actions.js','notes-ui.js','data-review.js','open-address-tiles.js'];
+const requiredV2=['config.js','notes-storage.js','area-inspector.js','area-intelligence.js','radius-search.js','address-radius.js','sharing.js','map-point-actions.js','notes-ui.js','data-review.js','open-address-tiles.js','local-routing.js'];
 for(const file of requiredV2)if(!index.includes(`js/${file}`))failures.push(`V2 script not loaded: ${file}`);
 
 const report={
   root,
-  counts:{cities:new Set(regions.map(item=>item.city)).size,regions:regions.length,points:points.length,boundaries:boundaries.features.length,references:mapDetails.pois.length,priorityAreas:priorityMapAreas.length,verifiedAddresses:verifiedAddressPoints.length,snapshotAddresses:osmAddressSnapshot.points.length,openAddresses:openAddressCount,openAddressTiles:Object.keys(openAddressTileIndex.tiles||{}).length},
+  counts:{cities:new Set(regions.map(item=>item.city)).size,regions:regions.length,points:points.length,boundaries:boundaries.features.length,references:mapDetails.pois.length,priorityAreas:priorityMapAreas.length,verifiedAddresses:verifiedAddressPoints.length,snapshotAddresses:osmAddressSnapshot.points.length,openAddresses:openAddressCount,openAddressTiles:Object.keys(openAddressTileIndex.tiles||{}).length,routingNodes:localRoutingIndex.nodes,routingEdges:localRoutingIndex.edges,routingAddresses:routingAddressCount},
   cascatas:cascatas.map(point=>({id:point.id,city:point.city,region:point.region})),
   informativeNearby:unresolved.length,
   checked:{htmlAssets:htmlAssets.length,cssAssets:cssAssets.length,serviceWorkerAssets:shellAssets.length,htmlIds:htmlIds.length},

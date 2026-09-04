@@ -11,7 +11,7 @@ O sistema ajuda a localizar um atendimento e compreender rapidamente:
 - bairro ou localidade;
 - regiões próximas;
 - referências e acessos conhecidos;
-- distâncias aproximadas em linha reta.
+- distâncias por estradas calculadas localmente, com linha reta como contingência.
 
 ## Cobertura atual
 
@@ -32,7 +32,8 @@ O RoutePilot atende Pelotas, Capão do Leão, Morro Redondo, Canguçu e Cerrito.
 - busca e identificação por coordenadas;
 - identificação de região com point-in-polygon;
 - consulta de regiões e localidades próximas;
-- comparação entre dois locais e comparação múltipla de regiões;
+- comparação entre endereços ou locais com trajeto pela malha viária local;
+- comparação múltipla de regiões em linha reta;
 - painel **Entender esta área**;
 - consulta **Ver ao redor** com Haversine e raios configuráveis;
 - Street View gratuito por URL do Google Maps;
@@ -100,6 +101,8 @@ RoutePilot/
 - `data/osm-address-snapshot.js`: cópia local dos números OSM disponíveis nas regiões operacionais;
 - `data/open-address-tiles-index.js`: índice leve das células de endereços abertos;
 - `data/open-address-tiles/`: arquivos compactos carregados conforme o mapa visível;
+- `js/local-routing.js`: busca de endereços e cálculo de menor caminho sem serviço externo;
+- `data/routing/`: malha viária e índice fragmentado de ruas e números, carregados sob demanda;
 - `data/`: regiões, localidades, contornos, vias e referências;
 - `service-worker.js`: arquivos disponíveis no modo PWA/offline;
 - `docs/GUIA-DO-CODIGO.md`: guia simples para manutenção do projeto.
@@ -110,7 +113,8 @@ RoutePilot/
 - as células de endereços IBGE/Overture são carregadas sob demanda e ficam disponíveis no cache após o primeiro acesso;
 - Google Maps e Street View exigem internet;
 - alguns limites rurais são contornos operacionais aproximados;
-- distâncias calculadas internamente são em linha reta, não rotas rodoviárias;
+- a comparação de dois locais usa a malha viária local; se ela não puder calcular um caminho, o sistema identifica claramente o fallback em linha reta;
+- a malha considera sentidos de circulação disponíveis na fonte, mas não substitui a conferência de bloqueios, obras ou condições atuais;
 - informações operacionais cadastradas precisam ser revisadas antes de serem tratadas como validadas;
 - as anotações ficam no IndexedDB do navegador e do computador atual enquanto não houver sincronização em nuvem;
 - dados de acesso, fonte ou confiança desconhecidos permanecem como não informados.

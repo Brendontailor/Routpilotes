@@ -5,8 +5,14 @@ let compareDrafts=['',''],compareActiveSlot=0;
 let compareCatalogCache;
 let compareOverlayKey='',compareOverlay=[];
 let transientComparePlaces=[];
+let compareRequestToken=0;
+let compareRoadStatus={state:'idle',key:'',route:null,error:''};
+
+function resetCompareRoadStatus(){compareRequestToken++;compareRoadStatus={state:'idle',key:'',route:null,error:''};}
+function comparisonRouteKey(stops=comparisonStops()){return stops.every(Boolean)?stops.map(item=>item.key).join('|'):'';}
 
 function startCompare(mode='places') {
+  resetCompareRoadStatus();
   const selected=state.region?[state.region]:[];
   const origin=state.point?'point:'+state.point:state.boundary?'boundary:'+state.boundary:state.region?'region:'+state.region:null;
   compareDrafts=[comparePlace(origin)?.name||'',''];compareActiveSlot=origin?1:0;
@@ -42,17 +48,20 @@ function comparePlaceMatches(query) {
 }
 function switchCompareMode(mode) {
   if(!['places','regions'].includes(mode))return;
+  resetCompareRoadStatus();
   const selected=comparisonRegionIds();
   navigate({compare:selected,compareMode:mode,compareReady:false},false);
 }
 function chooseComparePlace(slot,key) {
   if(!placeComparison()||![0,1].includes(slot)||!comparePlace(key))return;
+  resetCompareRoadStatus();
   const stops=[...state.compareStops];stops[slot]=key;
   compareDrafts[slot]=comparePlace(key).name;compareActiveSlot=slot===0?1:0;
   navigate({compare:state.compare,compareStops:stops,compareReady:false},false);
 }
 function updateCompareDraft(slot,value) {
   if(!placeComparison()||![0,1].includes(slot))return;
+  resetCompareRoadStatus();
   compareActiveSlot=slot;compareDrafts[slot]=value;
   const stops=[...state.compareStops];stops[slot]=null;
   Object.assign(state,{compareStops:stops,compareReady:false});
@@ -63,29 +72,58 @@ function renderCompareSuggestions(slot) {
   const matches=comparePlaceMatches(compareDrafts[slot]);
   const exact=matches.filter(e=>(e.aliases||[e.name]).some(n=>clean(n)===clean(compareDrafts[slot])));
   const ambiguous=new Set(exact.map(e=>e.city)).size>1;
+  const addressDraft=/\d/.test(compareDrafts[slot]);
   const panel=$('compareSuggestions'+slot);
   panel.hidden=!clean(compareDrafts[slot])||Boolean(state.compareStops[slot]);
   $('compareInput'+slot).setAttribute('aria-expanded',String(!panel.hidden));
-  panel.innerHTML=(ambiguous?'<p class="compare-ambiguity">Em qual cidade fica esse local?</p>':'')+(matches.length?matches.map(e=>`<button type="button" class="compare-suggestion" data-action="comparePlace" data-slot="${slot}" data-value="${esc(e.key)}"><strong>${esc(e.name)}</strong><small>${esc(cityName(e.city))} · ${esc(byRegion[e.region].name)}</small></button>`).join(''):'<p class="empty">Nenhum bairro ou região encontrado.</p>');
+  panel.innerHTML=(ambiguous?'<p class="compare-ambiguity">Em qual cidade fica esse local?</p>':'')+(matches.length?matches.map(e=>`<button type="button" class="compare-suggestion" data-action="comparePlace" data-slot="${slot}" data-value="${esc(e.key)}"><strong>${esc(e.name)}</strong><small>${esc(cityName(e.city))} · ${esc(byRegion[e.region].name)}</small></button>`).join(''):addressDraft?'<p class="empty">Endereço exato: informe também a cidade e use “Calcular por estradas”.</p>':'<p class="empty">Nenhum bairro ou região encontrado.</p>');
 }
 function updateCompareButton() {
   const [a,b]=comparisonStops();
-  $('compareCalculate').disabled=!a||!b||a.key===b.key;
+  const hasA=Boolean(a||clean(compareDrafts[0])),hasB=Boolean(b||clean(compareDrafts[1]));
+  $('compareCalculate').disabled=compareRoadStatus.state==='loading'||!hasA||!hasB||(a&&b&&a.key===b.key);
 }
-function calculatePlaceComparison() {
-  const [a,b]=comparisonStops();
-  if(!placeComparison()||!a||!b||a.key===b.key)return;
-  navigate({compare:state.compare,compareReady:true},false);
+function addTransientComparePlace(entry){
+  transientComparePlaces=[...transientComparePlaces.filter(item=>item.key!==entry.key),entry];compareCatalogCache=null;
+}
+async function calculatePlaceComparison() {
+  if(!placeComparison())return;
+  const token=++compareRequestToken;
+  compareRoadStatus={state:'loading',key:'',route:null,error:''};renderCompareResults();updateCompareButton();
+  try{
+    const stopKeys=[...(state.compareStops||[null,null])];
+    for(let slot=0;slot<2;slot++){
+      if(comparePlace(stopKeys[slot]))continue;
+      const entry=await resolveLocalRouteAddress(compareDrafts[slot]);
+      if(token!==compareRequestToken)return;
+      addTransientComparePlace(entry);stopKeys[slot]=entry.key;compareDrafts[slot]=entry.name;
+    }
+    Object.assign(state,{compareStops:stopKeys});
+    const [a,b]=comparisonStops();
+    if(!a||!b||a.key===b.key)throw new Error('Escolha dois endereços ou locais diferentes.');
+    const key=comparisonRouteKey([a,b]),route=await calculateLocalRoadRoute(a.coords,b.coords);
+    if(token!==compareRequestToken)return;
+    compareRoadStatus={state:'ready',key,route,error:''};
+    navigate({compare:state.compare,compareStops:stopKeys,compareReady:true},false);
+  }catch(error){
+    if(token!==compareRequestToken)return;
+    compareRoadStatus={state:'error',key:comparisonRouteKey(),route:null,error:error.message||String(error)};
+    Object.assign(state,{compareReady:Boolean(comparisonStops().every(Boolean))});
+    renderComparison();renderComparisonOverlay();
+  }
 }
 function clearComparison() {
+  resetCompareRoadStatus();
   compareDrafts=['',''];compareActiveSlot=0;
   navigate({compare:[],compareStops:[null,null],compareReady:false},false);
 }
 function placeComparisonResult() {
   const [a,b]=comparisonStops();
   if(!a||!b||a.key===b.key)return null;
-  const km=distanceKm(a.coords,b.coords);
-  return {a,b,km,near:km<=compareRadiusKm,sameRegion:a.region===b.region};
+  const straightKm=distanceKm(a.coords,b.coords);
+  const route=compareRoadStatus.state==='ready'&&compareRoadStatus.key===comparisonRouteKey([a,b])?compareRoadStatus.route:null;
+  const km=route?.distanceKm||straightKm;
+  return {a,b,km,straightKm,route,near:km<=compareRadiusKm,sameRegion:a.region===b.region};
 }
 function distanceKm(a,b) {
   const rad=n=>n*Math.PI/180;
@@ -115,8 +153,8 @@ function renderComparison() {
   if(placeComparison()){
     const stops=comparisonStops();
     $('comparison').innerHTML='<div class="nav-top"><h2>Comparar locais</h2></div>'+modes+
-      [0,1].map(i=>`<div class="compare-stop"><label for="compareInput${i}"><span class="stop-letter stop-${i}">${i?'B':'A'}</span>${i?'Destino':'Origem'}</label><input id="compareInput${i}" data-compare-slot="${i}" value="${esc(compareDrafts[i])}" placeholder="Nome do bairro ou região" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="compareSuggestions${i}" aria-expanded="false"><div id="compareSelected${i}" class="compare-selected">${stops[i]?`${esc(cityName(stops[i].city))} · ${esc(byRegion[stops[i].region].name)}`:''}</div><div id="compareSuggestions${i}" class="compare-suggestions" hidden></div></div>`).join('')+
-      '<button type="button" class="compare-calculate" id="compareCalculate" data-action="compareCalculate">Comparar no mapa</button>'+
+      [0,1].map(i=>`<div class="compare-stop"><label for="compareInput${i}"><span class="stop-letter stop-${i}">${i?'B':'A'}</span>${i?'Destino':'Origem'}</label><input id="compareInput${i}" data-compare-slot="${i}" value="${esc(compareDrafts[i])}" placeholder="Bairro, região ou rua, número, cidade" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="compareSuggestions${i}" aria-expanded="false"><div id="compareSelected${i}" class="compare-selected">${stops[i]?`${esc(cityName(stops[i].city))} · ${esc(byRegion[stops[i].region].name)}`:''}</div><div id="compareSuggestions${i}" class="compare-suggestions" hidden></div></div>`).join('')+
+      '<p class="compare-address-hint">Para um endereço exato, informe rua, número e cidade. A consulta usa somente a base local.</p><button type="button" class="compare-calculate" id="compareCalculate" data-action="compareCalculate">Calcular por estradas</button>'+
       `<div class="compare-controls"><label for="compareRadius">Perto até <input id="compareRadius" type="number" min="1" max="100" step="1" value="${compareRadiusKm}"> km</label><button data-action="compareClear">Limpar</button></div><div id="compareResults" aria-live="polite"></div>`;
     updateCompareButton();renderCompareResults();return;
   }
@@ -130,11 +168,16 @@ function renderComparison() {
 function renderCompareResults() {
   if(placeComparison()){
     const [a,b]=comparisonStops(),result=placeComparisonResult();
+    if(compareRoadStatus.state==='loading'){
+      $('compareResults').innerHTML='<div class="compare-route-status is-loading"><strong>Calculando pela malha viária local...</strong><span>Nenhum endereço é enviado para serviços externos.</span></div>';return;
+    }
     if(!state.compareReady||!result){
-      $('compareResults').innerHTML=a&&b&&a.key===b.key?'<p class="empty">Escolha dois locais diferentes.</p>':'';return;
+      $('compareResults').innerHTML=compareRoadStatus.state==='error'?`<div class="compare-route-status is-error"><strong>Não foi possível calcular</strong><span>${esc(compareRoadStatus.error)}</span></div>`:a&&b&&a.key===b.key?'<p class="empty">Escolha dois locais diferentes.</p>':'';return;
     }
     const mapsUrl='https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(a.coords.join(','))+'&destination='+encodeURIComponent(b.coords.join(','))+'&travelmode=driving';
-    $('compareResults').innerHTML=`<section class="place-comparison-result"><div class="compare-distance"><strong>${result.km.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})} <small>km</small></strong><span>em linha reta</span><b class="proximity-badge ${result.near?'is-near':''}">${result.near?'Perto':'Longe'} · limite de ${compareRadiusKm} km</b></div><p class="region-verdict ${result.sameRegion?'same-region':''}">${result.sameRegion?'Mesma região de atendimento':'Regiões de atendimento diferentes'}</p><div class="compare-region-summary"><span><b>A</b> ${esc(byRegion[a.region].name)} · ${esc(cityName(a.city))}</span><span><b>B</b> ${esc(byRegion[b.region].name)} · ${esc(cityName(b.city))}</span></div><a class="maps-route-link" href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Conferir rota por estrada no Google Maps ↗</a><p class="map-caution">A linha pontilhada não é uma rota por estrada. Distância entre pontos de referência aproximados; não usa o endereço do cliente. Região conforme o cadastro de atendimento.</p></section>`;
+    const routeWarning=compareRoadStatus.state==='error'?`<div class="compare-route-status is-error"><strong>Rota local indisponível</strong><span>${esc(compareRoadStatus.error)} Exibindo a distância em linha reta.</span></div>`:'';
+    const snapText=result.route&&result.route.snapMeters>100?` Os pontos foram ajustados às vias mais próximas (${Math.round(result.route.snapMeters)} m no total).`:'';
+    $('compareResults').innerHTML=`${routeWarning}<section class="place-comparison-result"><div class="compare-distance"><strong>${result.km.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})} <small>km</small></strong><span>${result.route?'por estradas':'em linha reta · contingência'}</span><b class="proximity-badge ${result.near?'is-near':''}">${result.near?'Perto':'Longe'} · limite de ${compareRadiusKm} km</b></div><p class="region-verdict ${result.sameRegion?'same-region':''}">${result.sameRegion?'Mesma região de atendimento':'Regiões de atendimento diferentes'}</p><div class="compare-region-summary"><span><b>A</b> ${esc(a.name)}<small>${esc(byRegion[a.region].name)} · ${esc(cityName(a.city))}</small></span><span><b>B</b> ${esc(b.name)}<small>${esc(byRegion[b.region].name)} · ${esc(cityName(b.city))}</small></span></div><a class="maps-route-link" href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Abrir os pontos no Google Maps ↗</a><p class="map-caution">${result.route?'Trajeto calculado no próprio RoutePilot sobre a malha viária local do Overture Maps.':'Não foi possível usar a malha local; o valor acima é apenas uma estimativa direta.'}${snapText} Confirme bloqueios e condições atuais da estrada.</p></section>`;
     return;
   }
   const pairs=comparePairs();
@@ -150,19 +193,22 @@ function updateCompareRadius(value) {
 
 function renderComparisonOverlay() {
   if(!map)return;
-  const key=placeComparison()?JSON.stringify([state.compareStops,state.compareReady]):'';
+  const route=placeComparisonResult()?.route||null;
+  const key=placeComparison()?JSON.stringify([state.compareStops,state.compareReady,compareRoadStatus.state,compareRoadStatus.key]):'';
   if(key===compareOverlayKey)return;
   compareOverlay.forEach(layer=>sincronizarCamada(layer,false));compareOverlay=[];compareOverlayKey=key;
   if(!placeComparison())return;
   const stops=comparisonStops();
   if(state.compareReady&&stops.every(Boolean)){
-    compareOverlay.push(L.polyline(stops.map(e=>e.coords),{color:'#008aa7',weight:3,dashArray:'7 8',opacity:.85,interactive:false}).addTo(map));
+    compareOverlay.push(L.polyline(route?.geometry||stops.map(e=>e.coords),{color:'#008aa7',weight:route?5:3,dashArray:route?null:'7 8',opacity:.88,interactive:false}).addTo(map));
   }
   stops.forEach((e,i)=>{
     if(!e||(i===1&&e.key===stops[0]?.key))return;
     compareOverlay.push(L.marker(e.coords,{zIndexOffset:700,title:`${i?'B':'A'}: ${e.name}`,icon:L.divIcon({className:'',html:`<span class="compare-endpoint stop-${i}">${i?'B':'A'}</span>`,iconSize:[28,28],iconAnchor:[14,14]})}).bindTooltip(`${i?'B':'A'}: ${esc(e.name)} · ${esc(cityName(e.city))}`).addTo(map));
   });
 }
+
+function currentLocalRoadRoute(){return placeComparisonResult()?.route||null;}
 function registerCoordinateComparison(inspection) {
   if(!inspection?.region)return;
   const id=`${inspection.lat.toFixed(6)},${inspection.lng.toFixed(6)}`;

@@ -203,3 +203,15 @@ Ultima atualizacao: 2026-09-04
 - Quando o Overpass fornece o polígono da edificação, o número aberto é centralizado nesse contorno.
 - Street View continua apenas como referência manual, sem extração automática de números.
 - Cache do Service Worker atualizado para `routepilot-shell-v16`.
+
+## 2026-09-04 — Comparação local por estradas
+
+- A comparação de dois locais agora aceita rua, número e cidade usando os 122.919 endereços já integrados.
+- A malha viária estática foi gerada do tema `transportation` da Overture Maps, versão `2026-08-19.0`, com fontes declaradas OpenStreetMap e TomTom sob ODbL 1.0.
+- O grafo local possui 23.632 trechos de origem, 166.307 nós e 173.611 conexões.
+- O cálculo de menor caminho ocorre no navegador e não envia endereços ou coordenadas a serviços de geocodificação ou roteamento.
+- O catálogo de 2.416 ruas e 64 fragmentos de endereços é carregado sob demanda; a malha de 6,7 MiB só é carregada ao calcular a primeira rota.
+- Sentidos de circulação explícitos são respeitados. Restrições complexas de conversão e condições temporárias continuam sendo uma limitação e exigem conferência operacional.
+- Em falha ou falta de conexão dentro da malha, o sistema informa a contingência e usa distância em linha reta.
+- Fluxo validado online e offline entre dois endereços da Avenida Duque de Caxias e Rua Voluntários da Pátria, com 3,3 km pela malha local e traçado no mapa.
+- Cache do Service Worker atualizado para `routepilot-shell-v17`.

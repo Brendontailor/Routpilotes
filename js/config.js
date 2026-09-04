@@ -63,3 +63,11 @@ const CONFIGURACAO_ENDERECOS_ABERTOS=Object.freeze({
   distanciaDuplicadaMetros:12,
   prioridade:120
 });
+
+const CONFIGURACAO_ROTAS_LOCAIS=Object.freeze({
+  arquivoMalha:'data/routing/road-network.json',
+  arquivoCatalogoRuas:'data/routing/address-streets.json',
+  diretorioDados:'data/routing',
+  distanciaMaximaAjusteMetros:3000,
+  maximoRotasCache:30
+});

@@ -33,7 +33,8 @@ RoutePilot is a static geographic consultation tool for locating service areas, 
 - `map.js`: Leaflet map, layers, markers, focus, and visibility.
 - `config.js`: centralized map, search, Overpass, cache, and address-focus settings.
 - `references.js`: visible roads and references plus spatial filtering.
-- `comparison.js`: straight-line comparison between places or regions.
+- `comparison.js`: comparison workflow, road-distance result, fallback, and route overlay.
+- `local-routing.js`: lazy local address lookup and in-browser shortest-path calculation.
 - `streetview.js`: free Street View launcher using Google Maps URLs.
 - `data-validation.js`: development/runtime data validation.
 - `area-inspector.js` and `area-intelligence.js`: coordinate identification and contextual area knowledge.
@@ -57,6 +58,7 @@ RoutePilot is a static geographic consultation tool for locating service areas, 
 - Map references and routes have their own IDs and coordinates or paths.
 - Optional V2 fields must tolerate `unknown`, `null`, and empty arrays.
 - Open addresses are stored in `data/open-address-tiles/`, indexed by `data/open-address-tiles-index.js`, and never loaded as one global dataset.
+- The local road graph and sharded address lookup live in `data/routing/`; the graph is fetched only when a road comparison is requested.
 
 ## ID Convention
 
@@ -75,7 +77,7 @@ Location IDs use normalized city and place names, for example `pelotas_cascata` 
 
 - Region membership uses point-in-polygon when a valid polygon exists.
 - Bounds are fallback only when no valid polygon exists.
-- Distances are local straight-line calculations, never presented as road routes.
+- Two-place comparison uses the embedded road graph. Multiple-region comparison remains a straight-line estimate between operational centers.
 - Unknown or uncertain geographic data is preserved as informational text and is not geocoded by assumption.
 
 ## Search
@@ -90,7 +92,7 @@ Point identification preserves the current zoom when it is already closer than t
 
 ## Comparison
 
-The application compares two places or multiple regions using straight-line distance and links to Google Maps for a real road route.
+The application compares two registered places or exact local addresses using an embedded Overture road graph and an A* shortest-path calculation in the browser. Address resolution uses the sharded local copy of the 122,919 integrated addresses. No address or route is sent to a geocoding or routing service. If the graph is unavailable or disconnected, the interface explicitly falls back to straight-line distance. Multiple-region comparison remains a straight-line estimate.
 
 ## Street View
 

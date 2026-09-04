@@ -215,6 +215,12 @@ button:disabled { opacity:.45;cursor:default; }
 .compare-suggestions .empty { padding:0 10px; }
 .compare-calculate { width:100%;background:#008aaa;color:#fff;border-color:#008aaa;border-radius:6px;font-size:13px;padding:11px;margin:0 0 14px;font-weight:600; }
 .compare-calculate:hover:not(:disabled) { background:#00758e;color:#fff; }
+.compare-address-hint { margin:-5px 0 12px;color:#607781;font-size:11px;line-height:1.5; }
+.compare-route-status { display:grid;gap:4px;margin:16px 0;padding:12px;border:1px solid #bcdde4;border-left:3px solid #008aaa;border-radius:6px;background:#f1fafb;color:#315b65;font-size:11px;line-height:1.5; }
+.compare-route-status strong { font-size:12px; }
+.compare-route-status.is-loading { animation:route-status-pulse 1.2s ease-in-out infinite alternate; }
+.compare-route-status.is-error { border-color:#f1cbbb;border-left-color:#dc6b36;background:#fff7f2;color:#82452f;animation:none; }
+@keyframes route-status-pulse { from { opacity:.68; } to { opacity:1; } }
 .place-comparison-result { margin-top:20px;padding-top:18px;border-top:1px solid #d8e6e8; }
 .compare-distance { display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 10px; }
 .compare-distance>strong { font-size:29px;font-weight:650;color:#244952;font-variant-numeric:tabular-nums; }
@@ -226,6 +232,7 @@ button:disabled { opacity:.45;cursor:default; }
 .region-verdict.same-region { color:#168064; }
 .compare-region-summary { display:grid;gap:8px;font-size:11px;line-height:1.5;color:#58747d; }
 .compare-region-summary b { color:#294f5a;margin-right:4px; }
+.compare-region-summary span small { display:block;margin:2px 0 0 20px;color:#6a8088; }
 .maps-route-link { display:block;margin-top:18px;font-size:12px;line-height:1.5; }
 @media(max-width:560px) { .header-actions { grid-template-columns:auto minmax(0,1fr) auto;gap:5px; } .header-actions button { font-size:11px; } .home-button { gap:3px; } }
 .app-icon { display:block;flex:none;width:18px;height:18px; }

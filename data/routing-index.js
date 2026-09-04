@@ -1,0 +1,2 @@
+/* Gerado por scripts/generate-local-routing-data.mjs. */
+const localRoutingIndex={"version":1,"release":"2026-08-19.0","generatedAt":"2026-09-04T16:52:05.498Z","source":"Overture Maps transportation / OpenStreetMap and TomTom","sourceUrl":"https://docs.overturemaps.org/attribution/","license":"ODbL-1.0","roadFeatures":23632,"nodes":166307,"edges":173611,"streets":2416,"addresses":122919,"addressShards":64,"roadNetworkFile":"data/routing/road-network.json","streetCatalogFile":"data/routing/address-streets.json"};

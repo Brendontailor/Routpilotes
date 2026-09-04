@@ -55,7 +55,9 @@ function focusMap() {
   map.closePopup(); map.invalidateSize();
   if(placeComparison()&&comparisonStops().some(Boolean)){
     const stops=comparisonStops().filter(Boolean);
-    if(stops.length===1)map.flyTo(stops[0].coords,stops[0].kind==='region'?12:14,{duration:.4});
+    const roadRoute=typeof currentLocalRoadRoute==='function'?currentLocalRoadRoute():null;
+    if(roadRoute?.geometry?.length)map.flyToBounds(L.latLngBounds(roadRoute.geometry),{padding:[55,55],maxZoom:CONFIGURACAO_MAPA.zoomComparacao,duration:.4});
+    else if(stops.length===1)map.flyTo(stops[0].coords,stops[0].kind==='region'?12:14,{duration:.4});
     else map.flyToBounds(L.latLngBounds(stops.map(e=>e.coords)),{padding:[55,55],maxZoom:CONFIGURACAO_MAPA.zoomComparacao,duration:.4});
   }
   else if(comparisonActive()&&state.compare.length&&!placeComparison()){
