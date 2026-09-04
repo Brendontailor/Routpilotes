@@ -38,6 +38,9 @@ RoutePilot is a static geographic consultation tool for locating service areas, 
 - `area-inspector.js` and `area-intelligence.js`: coordinate identification and contextual area knowledge.
 - `radius-search.js`: on-demand Haversine radius consultation and map circle.
 - `notes-storage.js` and `notes-ui.js`: isolated local operational-note storage and validation workflow.
+- `ui-shell.js`: desktop workspace shell, contextual-panel header, toolbar state, and Layers popover.
+- `osm-addresses.js`: bounded Overpass requests, address/building association, labels, cache, and request cancellation.
+- `osm-address-debug.js`: optional building inspection panel and copy tools for OSM diagnostics.
 - `sharing.js`: validated deep links and clipboard sharing.
 - `data-review.js`: secondary data-quality interface.
 - `events.js`: UI event wiring and application startup.
@@ -95,6 +98,10 @@ Validation checks IDs, regions, cities, coordinates, nearby IDs, boundaries, ref
 Operational notes belong to coordinates, not customers. They are stored locally in IndexedDB through an isolated abstraction, begin as `pending`, and can be validated or rejected. Only validated notes are treated as trusted operational knowledge. Validation never changes polygons, boundaries, official coordinates, cities, regions, or OpenStreetMap data.
 
 The desktop Tools menu includes **Anotar ponto**. It activates point identification and opens the pending-note form after the user selects a map coordinate.
+
+## Desktop Workspace
+
+The desktop workspace keeps map actions in one compact toolbar and keeps the contextual sidebar focused on the current city, region, location, coordinate, or operational tool. The sidebar header owns the breadcrumb and Back/Escape affordance; navigation, details, comparison, area understanding, radius consultation, and notes reuse that same context rather than rendering competing headers.
 
 ## Known Limitations
 

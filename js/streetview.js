@@ -1,10 +1,13 @@
-function setStreetViewMode(active) {
-  if(active&&identifyPointMode)setIdentifyPointMode(false);
+function setStreetViewMode(active,renderNow=true) {
+  if(active&&identifyPointMode){if(typeof cancelAnnotatePoint==='function')cancelAnnotatePoint(false);setIdentifyPointMode(false,false);}
+  if(active&&typeof closeLayers==='function')closeLayers(false);
+  if(active&&typeof closeTools==='function')closeTools(false);
   streetViewMode=Boolean(active&&map);
   $('streetViewButton').setAttribute('aria-pressed',String(streetViewMode));
   $('streetViewHint').hidden=!streetViewMode;
   $('streetViewStatus').textContent=streetViewMode?'Agora clique em uma rua':'Clique ou arraste o técnico';
   document.querySelector('.map-canvas').classList.toggle('street-view-active',streetViewMode);
+  if(renderNow&&typeof renderDesktopShell==='function')renderDesktopShell();
 }
 function streetViewUrl(latlng) {
   const viewpoint=`${latlng.lat.toFixed(6)},${latlng.lng.toFixed(6)}`;

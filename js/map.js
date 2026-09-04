@@ -26,6 +26,7 @@ function updateLayers() {
     if(x.kind==='outline') x.layer.setStyle({weight:state.region?4:3,opacity:.95});
   });
   updateLabels();
+  updateAddressDetailLayer();
 }
 function updateLabels() {
   if(!map) return;
@@ -73,11 +74,15 @@ function focusMap() {
 
 function initMap() {
   if(typeof L==='undefined') { $('map').innerHTML='<div class="map-error">Não foi possível carregar o mapa. Verifique sua conexão e atualize a página.</div>'; return; }
-  map=L.map('map',{zoomControl:true}).setView([-31.62,-52.48],10);
+  map=L.map('map',{zoomControl:false}).setView([-31.62,-52.48],10);
+  /* Zoom no canto inferior direito: evita conflito com a barra de ferramentas e o painel de camadas. */
+  L.control.zoom({position:'bottomright',zoomInTitle:'Aproximar',zoomOutTitle:'Afastar'}).addTo(map);
   map.createPane('regionAreas').style.zIndex=410;
   map.createPane('neighborhoodAreas').style.zIndex=420;
   map.createPane('roadDetails').style.zIndex=430;
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
+  map.createPane('addressDetails').style.zIndex=445;
+  map.createPane('addressDebug').style.zIndex=446;
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxNativeZoom:19,maxZoom:20,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
   L.control.scale({imperial:false}).addTo(map);
   boundaries.features.forEach(feature=>{
     const b=feature.properties;
@@ -103,6 +108,7 @@ function initMap() {
     labelRecords.push({p,layer:label});
   });
   map.on('click',event=>{if(identifyPointMode)identifyCoordinates(event.latlng.lat,event.latlng.lng,{source:'map'});});
+  map.on('movestart zoomstart',cancelAddressDetailRequest);
   map.on('zoomend moveend resize',updateLayers);
   new ResizeObserver(()=>{if(!$('mapStage').hidden)map.invalidateSize();}).observe($('map'));
 }

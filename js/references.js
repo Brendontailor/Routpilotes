@@ -146,6 +146,7 @@ function openDetailPoi(id) {
   const p=mapDetails.pois.find(p=>p.id===id);
   if(!p||!map)return;
   $('toggleRefs').checked=true;
+  identifyCoordinates(p.lat,p.lon,{source:'reference',reference:p});
   map.flyTo([p.lat,p.lon],16,{duration:.4});
   cachedDetail('poi:'+id,()=>L.marker([p.lat,p.lon],{title:`${p.name} (${p.category})`,icon:L.divIcon({className:'',html:referenceIcon(p,true),iconSize:[28,28],iconAnchor:[14,14]})}).bindPopup(detailPopup(p)).bindTooltip(esc(p.name)),visibleDetailKeys).openPopup();
 }

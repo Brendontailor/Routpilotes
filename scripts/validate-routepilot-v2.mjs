@@ -61,7 +61,7 @@ if(manifest?.start_url!=='./')failures.push(`unexpected manifest start_url: ${ma
 const serviceWorker=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
 const shellAssets=[...serviceWorker.matchAll(/\s+'\.\/([^']+)'/g)].map(match=>match[1]);
 for(const asset of shellAssets)if(!fs.existsSync(path.resolve(root,asset)))failures.push(`missing service worker asset: ${asset}`);
-if(!serviceWorker.includes("routepilot-shell-v6"))failures.push('service worker cache is not v6');
+if(!serviceWorker.includes("routepilot-shell-v11"))failures.push('service worker cache is not v11');
 if(/tile\.openstreetmap\.org/.test(serviceWorker))failures.push('service worker must not mass-cache OSM tiles');
 
 const requiredV2=['notes-storage.js','area-inspector.js','area-intelligence.js','radius-search.js','sharing.js','notes-ui.js','data-review.js'];

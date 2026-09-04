@@ -49,13 +49,14 @@ function coordinateSearchHtml(parsed) {
   return `<section class="coordinate-result"><div class="section-title">Coordenadas reconhecidas</div><button type="button" class="nav-row" data-action="identifyCoordinates" data-lat="${parsed.lat}" data-lng="${parsed.lng}"><span class="coordinate-icon">${iconSvg('pin')}</span><span class="nav-copy"><b>${parsed.lat.toFixed(6)}, ${parsed.lng.toFixed(6)}</b><small>Identificar este ponto no mapa</small></span><span class="chevron">›</span></button></section>`;
 }
 
-function setIdentifyPointMode(active) {
+function setIdentifyPointMode(active,renderNow=true) {
   if(active&&(!state.city&&!state.region&&!state.overview))generalMap();
   identifyPointMode=Boolean(active&&map);
-  if(identifyPointMode&&streetViewMode)setStreetViewMode(false);
+  if(identifyPointMode&&streetViewMode)setStreetViewMode(false,false);
   $('identifyPointButton').setAttribute('aria-pressed',String(identifyPointMode));
   $('identifyPointHint').hidden=!identifyPointMode;
   document.querySelector('.map-canvas').classList.toggle('identify-point-active',identifyPointMode);
+  if(renderNow&&typeof renderDesktopShell==='function')renderDesktopShell();
 }
 
 function clearIdentifiedArea(renderNow=true) {
@@ -63,20 +64,20 @@ function clearIdentifiedArea(renderNow=true) {
   areaPanelMode='identify';areaUnderstandingContext=null;
   if(typeof clearRadiusSearch==='function')clearRadiusSearch();
   if(identifiedMarker&&map){map.removeLayer(identifiedMarker);identifiedMarker=null;}
-  if(renderNow)renderAreaInspector();
+  if(renderNow){renderAreaInspector();if(typeof renderDesktopShell==='function')renderDesktopShell();}
 }
 
 function identifiedMarkerIcon() {
   return L.divIcon({className:'',html:'<span class="identified-pin"><span></span></span>',iconSize:[30,38],iconAnchor:[15,36]});
 }
 
-function identifyCoordinates(lat,lng,{source='search'}={}) {
+function identifyCoordinates(lat,lng,{source='search',reference=null,note=null}={}) {
   if(!Number.isFinite(lat)||!Number.isFinite(lng)||lat<-90||lat>90||lng<-180||lng>180)return;
   const openNoteForm=typeof annotatePointMode!=='undefined'&&annotatePointMode;
   if(!state.city&&!state.region&&!state.overview)generalMap();
   mapHidden=false;
   setIdentifyPointMode(false);
-  identifiedArea={...analyzeCoordinates(lat,lng),source};
+  identifiedArea={...analyzeCoordinates(lat,lng),source,reference,note};
   state.searchOpen=false;state.query='';$('q').value='';
   if(identifiedMarker&&map)map.removeLayer(identifiedMarker);
   if(map)identifiedMarker=L.marker([lat,lng],{zIndexOffset:900,title:'Ponto identificado',icon:identifiedMarkerIcon()}).addTo(map);
@@ -101,7 +102,10 @@ function renderAreaInspector() {
       <div><dt>Referência mais próxima</dt><dd>${reference?`${esc(reference.item.name)} · ${distanceLabel(reference.km)}`:'Não informado'}</dd></div>
       <div><dt>Tipo de área</dt><dd>${esc(item.areaType||'Não informado')}</dd></div>
     </dl>`:`<div class="coverage-warning"><b>Fora da cobertura</b><p>Este ponto está fora da cobertura cadastrada do RoutePilot.</p></div><dl class="inspection-grid"><div><dt>Latitude</dt><dd>${item.lat.toFixed(6)}</dd></div><div><dt>Longitude</dt><dd>${item.lng.toFixed(6)}</dd></div></dl>`;
-  panel.innerHTML=`<div class="inspector-heading"><div><small>PONTO IDENTIFICADO</small><h2>${item.insideCoverage?esc(region.name):'Coordenadas consultadas'}</h2></div><button type="button" data-action="clearIdentifiedArea" aria-label="Fechar identificação">&times;</button></div>${rows}<div class="inspector-actions"><button type="button" data-action="understandArea">Entender esta área</button><button type="button" data-action="aroundArea">Ver ao redor</button><button type="button" data-action="streetViewCoordinates">Street View</button><a href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Google Maps</a>${item.insideCoverage?'<button type="button" data-action="compareCoordinates">Comparar</button>':''}<button type="button" data-action="shareArea">Compartilhar</button></div>${addNoteSection(item.lat,item.lng)}`;
+  const note=item.note;
+  const noteCard=note?`<article class="review-note selected-note" data-note-id="${esc(note.id)}"><div class="note-state is-${esc(note.status)}">${esc(noteStatusLabel(note.status))}</div><h3>${esc(note.text)}</h3><p><b>Tipo:</b> ${esc(noteTypeLabel(note.type))}</p><p><b>Coordenadas:</b> ${item.lat.toFixed(6)}, ${item.lng.toFixed(6)}</p><div class="review-actions">${note.status==='pending'?`<button data-action="validateOperationalNote" data-id="${esc(note.id)}">Validar</button><button data-action="editOperationalNote" data-id="${esc(note.id)}">Editar</button><button data-action="rejectOperationalNote" data-id="${esc(note.id)}">Rejeitar</button>`:'<button data-action="editOperationalNote" data-id="'+esc(note.id)+'">Editar</button>'}</div><div class="note-edit-host"></div></article>`:'';
+  const actions=`<div class="inspector-actions" aria-label="Ações para este ponto"><button type="button" data-action="understandArea">${iconSvg('crosshair')}Entender área</button><button type="button" data-action="aroundArea">${iconSvg('radius')}Ver ao redor</button><button type="button" data-action="streetViewCoordinates">${iconSvg('pin')}Street View</button><a href="${mapsUrl}" target="_blank" rel="noopener noreferrer">${iconSvg('pin')}Google Maps</a>${item.insideCoverage?`<button type="button" data-action="compareCoordinates">${iconSvg('road')}Comparar</button>`:''}<button type="button" data-action="shareArea">${iconSvg('link')}Compartilhar</button></div>`;
+  panel.innerHTML=`${noteCard||rows}${actions}${note?'':addNoteSection(item.lat,item.lng)}`;
   renderNearbyOperationalNotes(item.lat,item.lng);
 }
 

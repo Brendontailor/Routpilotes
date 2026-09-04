@@ -9,7 +9,7 @@ const accessLabels={
 };
 
 function currentAreaContext() {
-  if(identifiedArea)return {kind:'coordinate',lat:identifiedArea.lat,lng:identifiedArea.lng,city:identifiedArea.city,region:identifiedArea.region,point:identifiedArea.nearestPoint?.item||null,name:identifiedArea.region?.name||'Ponto identificado'};
+  if(identifiedArea)return {kind:identifiedArea.note?'note':identifiedArea.reference?'reference':'coordinate',lat:identifiedArea.lat,lng:identifiedArea.lng,city:identifiedArea.city,region:identifiedArea.region,point:identifiedArea.nearestPoint?.item||null,name:identifiedArea.note?'Anotação operacional':identifiedArea.reference?.name||identifiedArea.region?.name||'Ponto identificado'};
   const point=pointFor(state.point),region=byRegion[state.region];
   if(point)return {kind:'point',lat:point.lat,lng:point.lon,city:point.city,region,point,name:point.name};
   if(region)return {kind:'region',lat:region.center[0],lng:region.center[1],city:region.city,region,point:null,name:region.name};
@@ -25,13 +25,16 @@ function currentAreaContext() {
 
 function openUnderstandArea(context=currentAreaContext()) {
   if(!context)return;
+  cancelMapInteraction();
   areaPanelMode='understand';areaUnderstandingContext=context;
   renderAreaInspector();
+  renderDesktopShell();
 }
 
 function closeAreaTool() {
   areaPanelMode='identify';areaUnderstandingContext=null;
   if(identifiedArea)renderAreaInspector();else $('areaInspector').hidden=true;
+  if(typeof renderDesktopShell==='function')renderDesktopShell();
 }
 
 function areaRoads(context) {
@@ -84,8 +87,7 @@ function renderAreaIntelligencePanel(panel) {
   const context=areaUnderstandingContext,access=accessFor(context),quality=qualityFor(context);
   const roads=areaRoads(context),nearby=areaNearbyNames(context),refs=contextReferences(context),notes=operationalNotesFor(context);
   panel.hidden=false;
-  panel.innerHTML=`<div class="inspector-heading"><div><small>ENTENDER ESTA ÁREA</small><h2>${esc(context.name)}</h2></div><button type="button" data-action="closeAreaTool" aria-label="Fechar painel">&times;</button></div>
-    <dl class="inspection-grid area-knowledge-grid">
+  panel.innerHTML=`<p class="panel-intro">Informações cadastradas para apoiar o planejamento desta visita.</p><dl class="inspection-grid area-knowledge-grid">
       ${labeledValue('Cidade',cityName(context.city)||'Não informado')}
       ${labeledValue('Região operacional',context.region?.name||'Não informado')}
       ${labeledValue('Tipo de área',areaTypeFor(context,access))}

@@ -106,7 +106,9 @@ function renderComparison() {
   $('searchForm').hidden=active;
   $('comparison').hidden=!active;
   $('compareButton').setAttribute('aria-pressed',String(active));
-  $('compareButton').innerHTML=iconSvg('road')+(active?'Sair da comparação':'Comparar regiões');
+  $('compareButton').setAttribute('aria-label',active?'Sair da comparação':'Comparar');
+  $('compareButton').title=active?'Sair da comparação':'Comparar locais ou regiões';
+  const tooltip=$('compareButton').querySelector('.tool-tooltip');if(tooltip)tooltip.textContent=active?'Sair da comparação':'Comparar';
   if(!active)return;
   $('navigation').hidden=true;$('results').hidden=true;$('details').hidden=true;
   const modes=`<div class="compare-modes" role="group" aria-label="Modo de comparação"><button data-action="compareMode" data-value="places" aria-pressed="${placeComparison()}">Dois locais</button><button data-action="compareMode" data-value="regions" aria-pressed="${!placeComparison()}">Várias regiões</button></div>`;
