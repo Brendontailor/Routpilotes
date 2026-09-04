@@ -98,6 +98,8 @@ RoutePilot/
 - `js/map.js`: inicialização do Leaflet e camadas do mapa;
 - `js/osm-addresses.js`: números, blocos, cache e consultas Overpass;
 - `data/osm-address-snapshot.js`: cópia local dos números OSM disponíveis nas regiões operacionais;
+- `data/open-address-tiles-index.js`: índice leve das células de endereços abertos;
+- `data/open-address-tiles/`: arquivos compactos carregados conforme o mapa visível;
 - `data/`: regiões, localidades, contornos, vias e referências;
 - `service-worker.js`: arquivos disponíveis no modo PWA/offline;
 - `docs/GUIA-DO-CODIGO.md`: guia simples para manutenção do projeto.
@@ -105,6 +107,7 @@ RoutePilot/
 ## Limitações
 
 - os tiles do OpenStreetMap exigem internet;
+- as células de endereços IBGE/Overture são carregadas sob demanda e ficam disponíveis no cache após o primeiro acesso;
 - Google Maps e Street View exigem internet;
 - alguns limites rurais são contornos operacionais aproximados;
 - distâncias calculadas internamente são em linha reta, não rotas rodoviárias;

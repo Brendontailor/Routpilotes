@@ -194,7 +194,7 @@ function visibleLabelCandidates(elements,buildings){
     const point=building?.center||originalPoint,street=String(tags['addr:street']||tags['addr:place']||'').trim().toLowerCase();
     const key=`${number}|${street}|${building?.id||point.map(value=>value.toFixed(6)).join(':')}`;
     if(seenHouse.has(key))return;
-    seenHouse.add(key);candidates.push({kind:'house',label:number,point,building,element,priority:building?70:45});
+    seenHouse.add(key);candidates.push({kind:'house',label:number,street,point,building,element,priority:building?70:45});
   });
   return candidates.sort((a,b)=>b.priority-a.priority||a.label.localeCompare(b.label,'pt-BR',{numeric:true}));
 }
@@ -212,15 +212,45 @@ function localSnapshotCandidates(){
   if(typeof osmAddressSnapshot==='undefined'||!map)return [];
   const bounds=map.getBounds();
   return osmAddressSnapshot.points.filter(item=>bounds.contains([item.lat,item.lon])).map(item=>({
-    kind:'house',label:item.label,point:[item.lat,item.lon],building:null,element:null,
+    kind:'house',label:item.label,street:String(item.street||item.place||'').trim().toLowerCase(),point:[item.lat,item.lon],building:null,element:null,
     priority:110,local:true,source:'OpenStreetMap · base local',sourceUrl:`https://www.openstreetmap.org/${item.osmId}`
   }));
 }
 
+function openAddressCandidates(buildings){
+  if(typeof openAddressVisiblePoints==='undefined'||!map)return [];
+  const bounds=map.getBounds(),buildingIndex=buildAddressSpatialIndex(buildings),seen=new Map(),candidates=[];
+  openAddressVisiblePoints.filter(item=>bounds.contains([item.lat,item.lon])).forEach(item=>{
+    const originalPoint=[item.lat,item.lon],street=String(item.street||'').trim().toLowerCase();
+    const duplicateKey=`${clean(item.number)}|${clean(street)}`,nearby=seen.get(duplicateKey)||[];
+    if(nearby.some(point=>map.distance(point,originalPoint)<=CONFIGURACAO_ENDERECOS_ABERTOS.distanciaDuplicadaMetros))return;
+    nearby.push(originalPoint);seen.set(duplicateKey,nearby);
+    const building=nearestBuildingForAddress(originalPoint,buildings,buildingIndex);
+    candidates.push({
+      kind:'house',label:item.number,street,point:building?.center||originalPoint,building,element:null,
+      priority:CONFIGURACAO_ENDERECOS_ABERTOS.prioridade,openAddress:true,
+      source:'IBGE via Overture Maps',sourceUrl:openAddressTileIndex.sourceUrl
+    });
+  });
+  return candidates;
+}
+
+function sameAddressCandidate(a,b){
+  if(a.kind!==b.kind||clean(a.label)!==clean(b.label))return false;
+  if(a.street&&b.street&&clean(a.street)!==clean(b.street))return false;
+  return map.distance(a.point,b.point)<=CONFIGURACAO_ENDERECOS_ABERTOS.distanciaDuplicadaMetros;
+}
+
 function mergedAddressCandidates(elements,buildings){
-  const verified=verifiedLabelCandidates(),local=localSnapshotCandidates(),preferenciais=[...verified,...local],osm=visibleLabelCandidates(elements,buildings);
-  return [...preferenciais,...osm.filter(candidate=>!preferenciais.some(item=>item.kind===candidate.kind&&clean(item.label)===clean(candidate.label)&&map.distance(item.point,candidate.point)<=25))]
+  const ordered=[...verifiedLabelCandidates(),...openAddressCandidates(buildings),...localSnapshotCandidates(),...visibleLabelCandidates(elements,buildings)]
     .sort((a,b)=>b.priority-a.priority||a.label.localeCompare(b.label,'pt-BR',{numeric:true}));
+  const unique=[],buckets=new Map();
+  ordered.forEach(candidate=>{
+    const key=`${candidate.kind}|${clean(candidate.label)}`,bucket=buckets.get(key)||[];
+    if(bucket.some(item=>sameAddressCandidate(item,candidate)))return;
+    bucket.push(candidate);buckets.set(key,bucket);unique.push(candidate);
+  });
+  return unique;
 }
 
 function osmReferenceType(tags={}){
@@ -277,7 +307,7 @@ function renderAddressDetails(elements,{cacheExpirado=false}={}){
     const padding=candidate.kind==='block'?Math.max(4,profile.collisionPadding):profile.collisionPadding;
     if(candidate.kind==='house'&&occupied.some(existing=>boxesCollide(box,existing,padding))&&!(candidate.verified&&map.getZoom()>=19))return;
     if(candidate.kind==='block'&&candidate.building?.polygons)L.polygon(candidate.building.polygons,{pane:'addressDetails',interactive:false,color:'#6d28d9',weight:2.5,opacity:.88,fill:true,fillOpacity:.035,dashArray:'6 4'}).addTo(addressDetailLayer);
-    L.marker(candidate.point,{keyboard:false,interactive:false,title:candidate.verified||candidate.local?`${candidate.label} · ${candidate.source}`:'',zIndexOffset:candidate.kind==='block'?980:900,icon:candidate.kind==='block'?blockLabelIcon(candidate.label,profile.labelScale,candidate.verified):addressLabelIcon(candidate.label,profile.labelScale,candidate.verified)}).addTo(addressDetailLayer);
+    L.marker(candidate.point,{keyboard:false,interactive:false,title:candidate.verified||candidate.local||candidate.openAddress?`${candidate.label} · ${candidate.source}`:'',zIndexOffset:candidate.kind==='block'?980:900,icon:candidate.kind==='block'?blockLabelIcon(candidate.label,profile.labelScale,candidate.verified):addressLabelIcon(candidate.label,profile.labelScale,candidate.verified)}).addTo(addressDetailLayer);
     occupied.push(box);rendered++;
   });
   references.slice(0,CONFIGURACAO_OVERPASS.limiteReferenciasMapa).forEach(reference=>{
@@ -286,7 +316,7 @@ function renderAddressDetails(elements,{cacheExpirado=false}={}){
       .bindTooltip(esc(reference.name)).bindPopup(`<b>${esc(reference.name)}</b><br>${esc(reference.category)}<br><a href="${url}" target="_blank" rel="noopener noreferrer">Fonte: OpenStreetMap</a>`).addTo(addressDetailLayer);
   });
   addressDetailBuildings=buildings;
-  addressDetailStatus={...addressDetailStatus,state:'ready',cacheExpirado,elements:elements.length,addresses:candidates.filter(item=>item.kind==='house').length,blocks:candidates.filter(item=>item.kind==='block').length,verified:candidates.filter(item=>item.verified).length,local:candidates.filter(item=>item.local).length,references:references.map(item=>({id:item.id,name:item.name,category:item.category,type:item.type,lat:item.point[0],lng:item.point[1],source:item.source})),buildings:buildings.length,rendered,error:''};
+  addressDetailStatus={...addressDetailStatus,state:'ready',cacheExpirado,elements:elements.length,addresses:candidates.filter(item=>item.kind==='house').length,blocks:candidates.filter(item=>item.kind==='block').length,verified:candidates.filter(item=>item.verified).length,local:candidates.filter(item=>item.local).length,openAddresses:candidates.filter(item=>item.openAddress).length,references:references.map(item=>({id:item.id,name:item.name,category:item.category,type:item.type,lat:item.point[0],lng:item.point[1],source:item.source})),buildings:buildings.length,rendered,error:''};
   publishAddressDetailStatus();
   renderAddressDebugBuildings(buildings);
 }
@@ -337,6 +367,7 @@ function cancelAddressDetailRequest(){
 /** Carrega endereços OSM do trecho visível, usando cache e fallback entre endpoints. */
 async function loadAddressDetails({force=false,endpoints=CONFIGURACAO_OVERPASS.endpoints}={}){
   if(!map||!addressDetailsEnabled()||map.getZoom()<CONFIGURACAO_OVERPASS.zoomMinimo){
+    clearVisibleOpenAddresses();
     addressDetailLayer.clearLayers();addressDebugLayer.clearLayers();
     if(map?.hasLayer(addressDetailLayer))map.removeLayer(addressDetailLayer);
     if(map?.hasLayer(addressDebugLayer))map.removeLayer(addressDebugLayer);
@@ -353,13 +384,19 @@ async function loadAddressDetails({force=false,endpoints=CONFIGURACAO_OVERPASS.e
   cancelAddressDetailRequest();addressDetailPendingKey=key;
   if(key!==addressDetailRenderedKey){addressDetailLayer.clearLayers();addressDebugLayer.clearLayers();}
   const cached=force?null:lerCacheEnderecos(key);
-  if(cached){addressDetailRenderedKey=key;addressDetailPendingKey='';addressDetailStatus={...addressDetailStatus,state:'cache',endpoint:'cache',error:''};renderAddressDetails(cached);return;}
   const cacheExpirado=force?null:lerCacheEnderecos(key,{aceitarExpirado:true});
   addressDetailAbort=new AbortController();
   const token=++addressDetailRequestToken;
   renderAddressDetails([]);
   addressDetailStatus={...addressDetailStatus,state:'loading',endpoint:'',error:''};publishAddressDetailStatus();
   try{
+    let openPoints=[];
+    try{openPoints=await loadOpenAddressesForBounds(bounds);}
+    catch(error){console.warn('RoutePilot: não foi possível carregar uma célula de endereços abertos.',error);}
+    if(token!==addressDetailRequestToken)return;
+    setVisibleOpenAddresses(openPoints);
+    renderAddressDetails(cached||[]);
+    if(cached){addressDetailRenderedKey=key;addressDetailStatus={...addressDetailStatus,state:'cache',endpoint:'cache',error:''};publishAddressDetailStatus();return;}
     const result=await consultarOverpass(montarConsultaOverpass(bounds),addressDetailAbort.signal,endpoints);
     if(token!==addressDetailRequestToken)return;
     gravarCacheEnderecos(key,result.elements);addressDetailRenderedKey=key;
@@ -367,8 +404,8 @@ async function loadAddressDetails({force=false,endpoints=CONFIGURACAO_OVERPASS.e
   }catch(error){
     if(error.name!=='AbortError'&&cacheExpirado){addressDetailRenderedKey=key;addressDetailStatus={...addressDetailStatus,endpoint:'cache-expirado',error:''};renderAddressDetails(cacheExpirado,{cacheExpirado:true});}
     else if(error.name!=='AbortError'){
-      const locais=localSnapshotCandidates();
-      if(locais.length){addressDetailStatus={...addressDetailStatus,state:'ready',cacheExpirado:false,local:locais.length,endpoint:'base-local',error:error.message||String(error)};publishAddressDetailStatus();}
+      const abertos=openAddressCandidates([]),locais=localSnapshotCandidates();
+      if(abertos.length||locais.length){addressDetailStatus={...addressDetailStatus,state:'ready',cacheExpirado:false,openAddresses:abertos.length,local:locais.length,endpoint:abertos.length?'base-aberta':'base-local',error:error.message||String(error)};publishAddressDetailStatus();}
       else {addressDetailStatus={...addressDetailStatus,state:'error',cacheExpirado:false,error:error.message||String(error)};publishAddressDetailStatus();console.warn('RoutePilot: numeros de imoveis indisponiveis no momento.',error);}
     }
   }finally{if(token===addressDetailRequestToken){addressDetailPendingKey='';addressDetailAbort=null;}}
@@ -376,7 +413,7 @@ async function loadAddressDetails({force=false,endpoints=CONFIGURACAO_OVERPASS.e
 function scheduleAddressDetails(){
   cancelAddressDetailRequest();
   if(!map||!addressDetailsEnabled()||map.getZoom()<CONFIGURACAO_OVERPASS.zoomMinimo){
-    addressDetailRenderedKey='';addressDetailLayer.clearLayers();addressDebugLayer.clearLayers();
+    addressDetailRenderedKey='';clearVisibleOpenAddresses();addressDetailLayer.clearLayers();addressDebugLayer.clearLayers();
     if(map?.hasLayer(addressDetailLayer))map.removeLayer(addressDetailLayer);
     if(map?.hasLayer(addressDebugLayer))map.removeLayer(addressDebugLayer);
     return;
@@ -387,7 +424,7 @@ function updateAddressDetailLayer(){
   if(!map)return;
   if(addressDetailsEnabled()&&map.getZoom()>=CONFIGURACAO_OVERPASS.zoomMinimo){if(!map.hasLayer(addressDetailLayer))addressDetailLayer.addTo(map);scheduleAddressDetails();}
   else{
-    cancelAddressDetailRequest();addressDetailRenderedKey='';addressDetailLayer.clearLayers();addressDebugLayer.clearLayers();
+    cancelAddressDetailRequest();addressDetailRenderedKey='';clearVisibleOpenAddresses();addressDetailLayer.clearLayers();addressDebugLayer.clearLayers();
     if(map.hasLayer(addressDetailLayer))map.removeLayer(addressDetailLayer);
     if(map.hasLayer(addressDebugLayer))map.removeLayer(addressDebugLayer);
   }
@@ -421,4 +458,4 @@ window.RoutePilotAddressDebug={
 };
 
 const addressLayerSourceHint=$('toggleAddresses')?.closest('label')?.querySelector('small');
-if(addressLayerSourceHint)addressLayerSourceHint.textContent='(OSM + fontes verificadas · zoom 17+)';
+if(addressLayerSourceHint)addressLayerSourceHint.textContent='(OSM + Overture/IBGE · zoom 17+)';

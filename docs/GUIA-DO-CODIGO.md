@@ -15,9 +15,13 @@ Este guia indica onde começar e qual arquivo alterar. O RoutePilot usa JavaScri
 - Números em nós OSM podem ser associados ao polígono do prédio que os contém ou ao prédio próximo, respeitando o limite configurado.
 - `data/coab-duque-addresses.js` contém apenas os pontos verificados da fonte fornecida para a COAB Duque.
 - `data/osm-address-snapshot.js` mantém uma cópia local dos números OSM encontrados dentro das regiões operacionais.
+- `data/open-address-tiles-index.js` informa quais células abertas existem; `data/open-address-tiles/` guarda os arquivos JSON carregados sob demanda.
+- `js/open-address-tiles.js` calcula as células que cruzam o mapa, evita downloads repetidos e mantém somente os pontos visíveis no renderizador.
 - `js/address-radius.js` controla o círculo de 100 a 500 metros, a lista de números e as referências no raio.
 
 A cópia local pode ser atualizada com `node scripts/update-osm-address-snapshot.mjs`. O script consulta o Overpass, filtra os resultados pelos contornos existentes e nunca cria números ausentes.
+
+Os dados abertos IBGE/Overture podem ser regenerados com `node scripts/generate-open-address-tiles.mjs <pasta-dos-geojsonseq>`. A pasta de entrada deve conter os recortes baixados pelo cliente oficial Overture e descritos em `data/open-address-tiles/README.md`.
 
 Nunca criar número, bloco ou coordenada por suposição. Tags externas como `addr:housenumber`, `building`, `name` e `ref` mantêm seus nomes originais.
 
@@ -76,6 +80,7 @@ Cada lugar deve manter um ID interno único. O nome mostrado ao usuário não po
 | Busca | `js/search.js` |
 | Números, blocos e Overpass | `js/osm-addresses.js` |
 | Atualizar a base local de números OSM | `scripts/update-osm-address-snapshot.mjs` |
+| Gerar células de endereços IBGE/Overture | `scripts/generate-open-address-tiles.mjs` |
 | Foco em um raio | `js/address-radius.js` |
 | Regiões e localidades | `data/regions.js`, `data/locations.js` |
 | Contornos | `data/boundaries.js` |

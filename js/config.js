@@ -57,3 +57,9 @@ const CONFIGURACAO_FOCO_ENDERECOS=Object.freeze({
   zoomNumeroVerificado:20,
   zoomReferencia:19
 });
+
+const CONFIGURACAO_ENDERECOS_ABERTOS=Object.freeze({
+  diretorioTiles:'data/open-address-tiles',
+  distanciaDuplicadaMetros:12,
+  prioridade:120
+});

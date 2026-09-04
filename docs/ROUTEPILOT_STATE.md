@@ -191,3 +191,15 @@ Ultima atualizacao: 2026-09-04
 - Números de região, rótulos de bairros, pontos e ícones de referência não impedem mais a marcação da coordenada no primeiro clique.
 - Controles, botões, links e popups do mapa continuam protegidos contra marcações acidentais.
 - Cache do Service Worker atualizado para `routepilot-shell-v15`.
+
+## 2026-09-04 — Endereços abertos por células geográficas
+
+- Foram integrados 122.919 números da versão `2026-08-19.0` do tema `addresses` da Overture Maps.
+- Para o Brasil, a fonte declarada é IBGE via AddressForAll, com licença CC0 conforme a página oficial de atribuição da Overture.
+- Os dados foram filtrados pelos contornos operacionais atuais e divididos em 850 células de 0,01 grau.
+- A aplicação carrega somente as células que cruzam o `bbox` visível em zoom 17 ou superior e mantém cada requisição em cache para não repetir downloads na sessão.
+- O Service Worker guarda as células já acessadas para reutilização posterior e não as inclui em massa no app shell.
+- Pontos distantes deixam de ser renderizados; números próximos e repetidos passam por deduplicação e controle de colisão.
+- Quando o Overpass fornece o polígono da edificação, o número aberto é centralizado nesse contorno.
+- Street View continua apenas como referência manual, sem extração automática de números.
+- Cache do Service Worker atualizado para `routepilot-shell-v16`.

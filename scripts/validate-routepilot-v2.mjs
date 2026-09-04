@@ -7,12 +7,12 @@ const failures=[];
 const context={console:{groupCollapsed(){},groupEnd(){},info(){},warn(){},error(){}}};
 vm.createContext(context);
 
-for(const file of ['regions.js','locations.js','routes.js','boundaries.js','map-details.js','v2-metadata.js','priority-areas.js','coab-duque-addresses.js','osm-address-snapshot.js']){
+for(const file of ['regions.js','locations.js','routes.js','boundaries.js','map-details.js','v2-metadata.js','priority-areas.js','coab-duque-addresses.js','osm-address-snapshot.js','open-address-tiles-index.js']){
   const source=fs.readFileSync(path.join(root,'data',file),'utf8').replace(/^const /gm,'var ');
   vm.runInContext(source,context,{filename:file});
 }
 
-const {regions,points,boundaries,mapDetails,priorityMapAreas,verifiedAddressPoints,osmAddressSnapshot}=context;
+const {regions,points,boundaries,mapDetails,priorityMapAreas,verifiedAddressPoints,osmAddressSnapshot,openAddressTileIndex}=context;
 const duplicate=values=>[...new Set(values.filter((value,index)=>values.indexOf(value)!==index))];
 const regionIds=new Set(regions.map(item=>item.id));
 const pointIds=new Set(points.map(item=>item.id));
@@ -46,6 +46,28 @@ for(const item of osmAddressSnapshot.points){
   if(!item.label)failures.push(`snapshot address without number: ${item.id}`);
 }
 
+const openAddressIds=new Set();
+let openAddressCount=0;
+for(const [key,expectedCount] of Object.entries(openAddressTileIndex.tiles||{})){
+  const tileFile=path.join(root,'data','open-address-tiles',`${key}.json`);
+  if(!fs.existsSync(tileFile)){failures.push(`missing open address tile: ${key}`);continue;}
+  let tile;
+  try{tile=JSON.parse(fs.readFileSync(tileFile,'utf8'));}
+  catch(error){failures.push(`invalid open address tile ${key}: ${error.message}`);continue;}
+  if(!Array.isArray(tile.points)){failures.push(`open address tile without points: ${key}`);continue;}
+  if(tile.points.length!==expectedCount)failures.push(`open address tile count mismatch: ${key}`);
+  for(const item of tile.points){
+    const [id,lat,lng,number,,regionId]=item;
+    openAddressCount++;
+    if(openAddressIds.has(id))failures.push(`duplicate open address id: ${id}`);
+    openAddressIds.add(id);
+    if(!validCoordinate(lat,lng))failures.push(`invalid open address coordinates: ${id}`);
+    if(!number)failures.push(`open address without number: ${id}`);
+    if(!regionIds.has(regionId))failures.push(`invalid open address region: ${id}/${regionId}`);
+  }
+}
+if(openAddressCount!==openAddressTileIndex.total)failures.push(`open address total mismatch: ${openAddressCount}/${openAddressTileIndex.total}`);
+
 const cascatas=points.filter(point=>point.name==='Cascata');
 if(cascatas.length!==2)failures.push(`expected 2 Cascata points, found ${cascatas.length}`);
 if(!pointIds.has('pelotas_cascata'))failures.push('pelotas_cascata is missing');
@@ -75,15 +97,15 @@ if(manifest?.start_url!=='./')failures.push(`unexpected manifest start_url: ${ma
 const serviceWorker=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
 const shellAssets=[...serviceWorker.matchAll(/\s+'\.\/([^']+)'/g)].map(match=>match[1]);
 for(const asset of shellAssets)if(!fs.existsSync(path.resolve(root,asset)))failures.push(`missing service worker asset: ${asset}`);
-if(!serviceWorker.includes("routepilot-shell-v15"))failures.push('service worker cache is not v15');
+if(!serviceWorker.includes("routepilot-shell-v16"))failures.push('service worker cache is not v16');
 if(/tile\.openstreetmap\.org/.test(serviceWorker))failures.push('service worker must not mass-cache OSM tiles');
 
-const requiredV2=['config.js','notes-storage.js','area-inspector.js','area-intelligence.js','radius-search.js','address-radius.js','sharing.js','map-point-actions.js','notes-ui.js','data-review.js'];
+const requiredV2=['config.js','notes-storage.js','area-inspector.js','area-intelligence.js','radius-search.js','address-radius.js','sharing.js','map-point-actions.js','notes-ui.js','data-review.js','open-address-tiles.js'];
 for(const file of requiredV2)if(!index.includes(`js/${file}`))failures.push(`V2 script not loaded: ${file}`);
 
 const report={
   root,
-  counts:{cities:new Set(regions.map(item=>item.city)).size,regions:regions.length,points:points.length,boundaries:boundaries.features.length,references:mapDetails.pois.length,priorityAreas:priorityMapAreas.length,verifiedAddresses:verifiedAddressPoints.length,snapshotAddresses:osmAddressSnapshot.points.length},
+  counts:{cities:new Set(regions.map(item=>item.city)).size,regions:regions.length,points:points.length,boundaries:boundaries.features.length,references:mapDetails.pois.length,priorityAreas:priorityMapAreas.length,verifiedAddresses:verifiedAddressPoints.length,snapshotAddresses:osmAddressSnapshot.points.length,openAddresses:openAddressCount,openAddressTiles:Object.keys(openAddressTileIndex.tiles||{}).length},
   cascatas:cascatas.map(point=>({id:point.id,city:point.city,region:point.region})),
   informativeNearby:unresolved.length,
   checked:{htmlAssets:htmlAssets.length,cssAssets:cssAssets.length,serviceWorkerAssets:shellAssets.length,htmlIds:htmlIds.length},

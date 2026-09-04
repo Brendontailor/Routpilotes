@@ -75,6 +75,7 @@ function addressRadiusStatusText() {
   if(addressRadiusStatus.state==='error')return 'Os números estão temporariamente indisponíveis. O mapa e as referências continuam funcionando.';
   if(addressRadiusStatus.state==='limited')return 'A área visível é grande demais. Escolha um raio menor.';
   if(addressRadiusStatus.state==='ready'&&addressRadiusStatus.cacheExpirado)return 'Exibindo a última consulta salva porque o OpenStreetMap está temporariamente indisponível.';
+  if(addressRadiusStatus.state==='ready'&&addressRadiusStatus.endpoint==='base-aberta')return `${addressRadiusStatus.openAddresses||0} números da base aberta IBGE/Overture. A atualização do OpenStreetMap está temporariamente indisponível.`;
   if(addressRadiusStatus.state==='ready'&&addressRadiusStatus.endpoint==='base-local')return `${addressRadiusStatus.local||0} números da base local. A atualização do OpenStreetMap está temporariamente indisponível.`;
   if(addressRadiusStatus.state==='ready')return `${addressRadiusStatus.addresses||0} números e ${addressRadiusStatus.blocks||0} blocos encontrados neste trecho${addressRadiusStatus.verified?`, incluindo ${addressRadiusStatus.verified} do mapa verificado`:''}.`;
   return 'Os números disponíveis aparecem sobre as construções.';

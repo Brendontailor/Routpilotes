@@ -42,6 +42,7 @@ RoutePilot is a static geographic consultation tool for locating service areas, 
 - `notes-storage.js` and `notes-ui.js`: isolated local operational-note storage and validation workflow.
 - `ui-shell.js`: desktop workspace shell, contextual-panel header, toolbar state, and Layers popover.
 - `osm-addresses.js`: bounded Overpass requests, address/building association, labels, cache, and request cancellation.
+- `open-address-tiles.js`: lazy bbox loading and in-memory cache for tiled IBGE/Overture addresses.
 - `osm-address-debug.js`: optional building inspection panel and copy tools for OSM diagnostics.
 - `sharing.js`: validated deep links, clipboard sharing, and concise nearby-place summaries.
 - `map-point-actions.js`: left-click point focus and right-click coordinate/share actions.
@@ -55,6 +56,7 @@ RoutePilot is a static geographic consultation tool for locating service areas, 
 - Boundary GeoJSON features link to locations through `pointId`.
 - Map references and routes have their own IDs and coordinates or paths.
 - Optional V2 fields must tolerate `unknown`, `null`, and empty arrays.
+- Open addresses are stored in `data/open-address-tiles/`, indexed by `data/open-address-tiles-index.js`, and never loaded as one global dataset.
 
 ## ID Convention
 
