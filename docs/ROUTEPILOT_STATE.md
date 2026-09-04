@@ -184,3 +184,10 @@ Ultima atualizacao: 2026-09-04
 - O número 331 do conjunto `728-7`, nas coordenadas `-31.763328, -52.362457`, foi incluído com ID interno próprio.
 - Também foram recuperados da mesma série os números 270, 290, 341, 350, 641 e 641A, que não tinham o prefixo `COHADUQUE` no nome do KML.
 - O painel de foco agora separa blocos de números e ordena cada lista do menor para o maior.
+
+## 2026-09-04 — Identificação de ponto no primeiro clique
+
+- O modo `Identificar ponto` agora captura o clique antes das camadas do Leaflet.
+- Números de região, rótulos de bairros, pontos e ícones de referência não impedem mais a marcação da coordenada no primeiro clique.
+- Controles, botões, links e popups do mapa continuam protegidos contra marcações acidentais.
+- Cache do Service Worker atualizado para `routepilot-shell-v15`.

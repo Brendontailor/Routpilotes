@@ -1,4 +1,4 @@
-const CACHE_NAME='routepilot-shell-v14';
+const CACHE_NAME='routepilot-shell-v15';
 const CACHE_PREFIX='routepilot-shell-';
 const APP_SHELL=[
   './',

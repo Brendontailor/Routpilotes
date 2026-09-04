@@ -75,6 +75,7 @@ function focusMap() {
 /** Inicializa o Leaflet, as camadas operacionais e os eventos principais do mapa. */
 function initMap() {
   if(typeof L==='undefined') { $('map').innerHTML='<div class="map-error">Não foi possível carregar o mapa. Verifique sua conexão e atualize a página.</div>'; return; }
+  const mapNode=$('map');
   map=L.map('map',{zoomControl:false}).setView(CONFIGURACAO_MAPA.centroInicial,CONFIGURACAO_MAPA.zoomInicial);
   /* Zoom no canto inferior direito: evita conflito com a barra de ferramentas e o painel de camadas. */
   L.control.zoom({position:'bottomright',zoomInTitle:'Aproximar',zoomOutTitle:'Afastar'}).addTo(map);
@@ -109,6 +110,14 @@ function initMap() {
     labelRecords.push({p,layer:label});
   });
   map.on('click',event=>identifyCoordinates(event.latlng.lat,event.latlng.lng,{source:'map'}));
+  /* No modo de identificação, captura o clique antes das camadas Leaflet que normalmente o bloqueariam. */
+  mapNode.addEventListener('click',event=>{
+    if(!identifyPointMode||event.target.closest('.leaflet-control,.leaflet-popup,button,a,input,select,textarea'))return;
+    event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+    const rect=mapNode.getBoundingClientRect();
+    const point=map.containerPointToLatLng(L.point(event.clientX-rect.left,event.clientY-rect.top));
+    identifyCoordinates(point.lat,point.lng,{source:'map'});
+  },true);
   map.on('contextmenu',event=>{
     event.originalEvent?.preventDefault();
     openMapPointMenu(event.latlng.lat,event.latlng.lng);
