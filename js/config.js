@@ -1,3 +1,4 @@
+/* Recurso RoutePilot: configurações globais. */
 /* Configurações compartilhadas da aplicação. Alterar valores aqui evita números soltos nos módulos. */
 const CONFIGURACAO_MAPA=Object.freeze({
   centroInicial:Object.freeze([-31.62,-52.48]),

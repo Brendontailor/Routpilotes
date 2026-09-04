@@ -1,3 +1,4 @@
+/* Recurso RoutePilot: atualização da cópia de endereços OSM. */
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -16,6 +17,7 @@ const contexto={};
 vm.createContext(contexto);
 vm.runInContext(fs.readFileSync(path.join(RAIZ,'data','regions.js'),'utf8').replace(/^const /gm,'var '),contexto);
 
+/** Guia: Executa uma etapa auxiliar em atualização da cópia de endereços OSM (`pontoNoPoligono`). */
 function pontoNoPoligono(lat,lon,poligono){
   let dentro=false;
   for(let i=0,j=poligono.length-1;i<poligono.length;j=i++){
@@ -25,18 +27,21 @@ function pontoNoPoligono(lat,lon,poligono){
   return dentro;
 }
 
+/** Guia: Executa uma etapa auxiliar em atualização da cópia de endereços OSM (`limitesRegiao`). */
 function limitesRegiao(regiao){
   const latitudes=regiao.polygon.map(ponto=>ponto[0]);
   const longitudes=regiao.polygon.map(ponto=>ponto[1]);
   return [Math.min(...latitudes),Math.min(...longitudes),Math.max(...latitudes),Math.max(...longitudes)];
 }
 
+/** Guia: Executa uma etapa auxiliar em atualização da cópia de endereços OSM (`coordenadasElemento`). */
 function coordenadasElemento(elemento){
   if(Number.isFinite(elemento.lat)&&Number.isFinite(elemento.lon))return [elemento.lat,elemento.lon];
   if(Number.isFinite(elemento.center?.lat)&&Number.isFinite(elemento.center?.lon))return [elemento.center.lat,elemento.center.lon];
   return null;
 }
 
+/** Guia: Executa uma etapa auxiliar em atualização da cópia de endereços OSM (`dividirLimites`). */
 function dividirLimites(limites){
   const [sul,oeste,norte,leste]=limites;
   const linhas=Math.max(1,Math.ceil((norte-sul)/TAMANHO_MAXIMO_BLOCO_GRAUS));
@@ -51,6 +56,7 @@ function dividirLimites(limites){
   return blocos;
 }
 
+/** Guia: Executa uma etapa auxiliar em atualização da cópia de endereços OSM (`consultarBloco`). */
 async function consultarBloco(limites){
   const bbox=limites.map(valor=>valor.toFixed(7)).join(',');
   const consulta=`[out:json][timeout:45][maxsize:33554432];nwr["addr:housenumber"](${bbox});out tags center qt;`;
@@ -69,6 +75,7 @@ async function consultarBloco(limites){
   throw ultimoErro||new Error(`Não foi possível consultar ${bbox}`);
 }
 
+/** Guia: Executa uma etapa auxiliar em atualização da cópia de endereços OSM (`consultarRegiao`). */
 async function consultarRegiao(regiao){
   const blocos=dividirLimites(limitesRegiao(regiao));
   const recebidos=[];

@@ -1,4 +1,5 @@
-const CACHE_NAME='routepilot-shell-v17';
+/* Recurso RoutePilot: instalação e cache offline da PWA. */
+const CACHE_NAME='routepilot-shell-v18';
 const CACHE_PREFIX='routepilot-shell-';
 const APP_SHELL=[
   './',
@@ -53,10 +54,12 @@ const APP_SHELL=[
   './manifest.webmanifest'
 ];
 
+// Guarda o núcleo estático necessário para abrir o sistema sem conexão.
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
 });
 
+// Remove versões antigas do cache após uma atualização.
 self.addEventListener('activate',event=>{
   event.waitUntil(
     caches.keys()
@@ -65,6 +68,7 @@ self.addEventListener('activate',event=>{
   );
 });
 
+/** Tenta atualizar pela rede e usa o cache quando a conexão falha. */
 async function networkFirst(request,fallback) {
   const cache=await caches.open(CACHE_NAME);
   try {
@@ -76,6 +80,7 @@ async function networkFirst(request,fallback) {
   }
 }
 
+// Intercepta somente arquivos locais; os blocos do OpenStreetMap não são armazenados em massa.
 self.addEventListener('fetch',event=>{
   const request=event.request;
   if(request.method!=='GET')return;

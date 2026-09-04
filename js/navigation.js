@@ -1,4 +1,7 @@
+/* Recurso RoutePilot: navegação entre cidades, regiões e locais. */
+/** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`pushState`). */
 function pushState() { history.push({...state}); if(history.length > 40) history.shift(); }
+/** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`navigate`). */
 function navigate(patch, save=true) {
   patch={compare:null,...patch};
   clearTimeout(searchTimer);
@@ -8,10 +11,15 @@ function navigate(patch, save=true) {
   Object.assign(state,patch);
   render(); focusMap();
 }
+/** Guia: Monta a estrutura necessária em navegação entre cidades, regiões e locais (`prepareAreaNavigation`). */
 function prepareAreaNavigation() { if(typeof clearIdentifiedArea==='function'&&identifiedArea)clearIdentifiedArea(false);if(typeof clearRadiusSearch==='function')clearRadiusSearch();if(typeof clearAddressRadius==='function')clearAddressRadius();areaPanelMode='identify'; }
+/** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`selectCity`). */
 function selectCity(city) { prepareAreaNavigation();navigate({city, region:null,point:null,boundary:null,road:null,searchOpen:false,overview:false}); }
+/** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`selectRegion`). */
 function selectRegion(id) { if(comparisonActive()){toggleCompareRegion(id);return;}const r=byRegion[id]; if(r) {prepareAreaNavigation();$('toggleRegions').checked=true;navigate({city:r.city,region:id,point:null,boundary:null,road:null,searchOpen:false,overview:false});} }
+/** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`selectPoint`). */
 function selectPoint(id) { const p=pointFor(id); if(p) {prepareAreaNavigation();if(boundaryForPoint(p))$('toggleNeighborhoods').checked=true;else if(ruralPoint(p))$('toggleRegions').checked=true;navigate({city:p.city,region:p.region,point:p.id,boundary:boundaryForPoint(p)?.properties.id||null,road:null,searchOpen:false,overview:false});} }
+/** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`selectBoundary`). */
 function selectBoundary(id) {
   const f=boundaryById[id]; if(!f) return;
   $('toggleNeighborhoods').checked=true;
@@ -19,17 +27,21 @@ function selectBoundary(id) {
   if(p) selectPoint(p.id);
   else navigate({city:f.properties.city,region:f.properties.region,point:null,boundary:id,road:null,searchOpen:false,overview:false});
 }
+/** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`mapPointClick`). */
 function mapPointClick(name) {
   const p=pointFor(name);if(!p)return;
   if(state.region!==p.region)selectRegion(p.region);else selectPoint(name);
 }
+/** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`mapBoundaryClick`). */
 function mapBoundaryClick(id) {
   const b=boundaryById[id]?.properties;if(!b)return;
   if(state.region!==b.region)selectRegion(b.region);else selectBoundary(id);
 }
+/** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`selectRoad`). */
 function selectRoad(name, point, region) {
   const r=byRegion[region]; if(r) navigate({city:r.city,region,point:point||null,boundary:boundaryForPoint(pointFor(point))?.properties.id||null,road:name,searchOpen:false,overview:false});
 }
+/** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`goBack`). */
 function goBack() {
   clearTimeout(searchTimer);
   if(pendingCityChoice){pendingCityChoice=null;renderSearch();return;}
@@ -38,21 +50,26 @@ function goBack() {
   $('q').value=state.query;
   render(); focusMap();
 }
+/** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`generalMap`). */
 function generalMap() {
   if(typeof clearIdentifiedArea==='function')clearIdentifiedArea(false);
   navigate({city:null,region:null,point:null,boundary:null,road:null,query:'',searchOpen:false,overview:true});
   $('q').value='';
 }
+/** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`goHome`). */
 function goHome() {if(typeof clearIdentifiedArea==='function')clearIdentifiedArea(false);navigate({city:null,region:null,point:null,boundary:null,road:null,query:'',searchOpen:false,overview:false});$('q').value='';}
+/** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`sameNameChoices`). */
 function sameNameChoices(entry) {
   const names=(entry.aliases||[entry.name]).map(clean);
   return INDICE_PESQUISA.filter(e=>e.kind!=='road'&&(e.aliases||[e.name]).some(n=>names.includes(clean(n))));
 }
+/** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`askCity`). */
 function askCity(choices) {
   const cities=[...new Set(choices.map(e=>e.city))];
   if(cities.length<2) return false;
   pendingCityChoice=choices;state.searchOpen=true;renderSearch();renderNavigation();renderDetails();return true;
 }
+/** Guia: Exibe o conteúdo solicitado em navegação entre cidades, regiões e locais (`openEntry`). */
 function openEntry(e) {
   if(e.kind==='region') selectRegion(e.id);
   else if(e.kind==='point') selectPoint(e.id);
@@ -60,12 +77,14 @@ function openEntry(e) {
   else if(e.kind==='priority') openPriorityArea(e.id);
   else selectRoad(e.name,e.id,e.region);
 }
+/** Guia: Exibe o conteúdo solicitado em navegação entre cidades, regiões e locais (`openResult`). */
 function openResult(index) {
   const e=searchAll(state.query)[index]; if(!e) return;
   const namedCity=Object.keys(cityNames).find(city=>clean(state.query).includes(clean(city)));
   if(!namedCity && e.kind!=='road' && askCity(sameNameChoices(e))) return;
   openEntry(e);
 }
+/** Guia: Renderiza a parte correspondente da interface em navegação entre cidades, regiões e locais (`renderSearch`). */
 function renderSearch() {
   $('results').hidden=!state.searchOpen;
   if(!state.searchOpen) return;
@@ -81,6 +100,7 @@ function renderSearch() {
     (matches.length ? matches.map((e,i) => actionButton('result',i,e.name,`${cityName(e.city)} · ${e.sub}`)).join('') : '<p class="empty">Nenhum local cadastrado com esse nome.</p>')+
     `<p class="address-note">Os números disponíveis aparecem no mapa em zoom 17+ ou pelo botão “Ver números no raio”. <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Conferir endereço no Google Maps</a></p>`;
 }
+/** Guia: Renderiza a parte correspondente da interface em navegação entre cidades, regiões e locais (`renderNavigation`). */
 function renderNavigation() {
   const r=byRegion[state.region], p=pointFor(state.point);
   $('startStats').innerHTML=`<span class="stat-chip">${Object.keys(cityNames).length} cidades</span><span class="stat-chip">${regions.length} regiões cadastradas</span><span class="stat-chip is-map">Mapa disponível</span>`;
@@ -94,6 +114,7 @@ function renderNavigation() {
   $('navigation').innerHTML=html;
   $('navigation').hidden=state.searchOpen;
 }
+/** Guia: Renderiza a parte correspondente da interface em navegação entre cidades, regiões e locais (`renderDetails`). */
 function renderDetails() {
   const r=byRegion[state.region], p=pointFor(state.point);
   $('details').hidden=!r || state.searchOpen;
@@ -109,6 +130,7 @@ function renderDetails() {
   const references=referenceRows(detailedRefs.slice(0,10))+(refs.length?refs.map(ref=>`<button class="reference-row" data-action="point" data-value="${esc(ref.id)}">${referenceIcon(ref)}<span>${esc(ref.name)}</span></button>`).join(''):detailedRefs.length?'':'<p class="empty">Nenhuma referência cadastrada nesta região.</p>');
   $('details').innerHTML=`<div class="context-actions" aria-label="Ações para a seleção">${pointActions}<button data-action="shareArea">${iconSvg('link')}Compartilhar</button></div><details class="context-section selection-info"><summary>Informações principais</summary><p class="boundary-source">${source}</p>${state.road?`<div class="selection-note"><b>${esc(state.road)}</b><p>Exibindo a localidade associada. Confira o traçado e o número exato no mapa de ruas.</p></div>`:''}</details><details class="context-section" open><summary>Regiões próximas</summary><div class="near-buttons">${nearButtons(r.nearby,r.nearbyText)}</div></details>${nearbyPlaces}<details class="context-section"><summary>Pontos de referência <span>${detailedRefs.length+refs.length}</span></summary>${references}</details>${p?addNoteSection(context.lat,context.lng,false):''}`;
 }
+/** Guia: Renderiza a parte correspondente da interface em navegação entre cidades, regiões e locais (`renderContext`). */
 function renderContext() {
   if(comparisonActive()){
     $('mapGuide').hidden=true;
@@ -124,6 +146,7 @@ function renderContext() {
       '<p class="map-caution">Posições aproximadas da base de atendimento.</p>';
   }
 }
+/** Guia: Renderiza a parte correspondente da interface em navegação entre cidades, regiões e locais (`renderLayout`). */
 function renderLayout() {
   const start=!state.city&&!state.region&&!state.overview;
   $('app').classList.toggle('is-start',start);
@@ -136,13 +159,16 @@ function renderLayout() {
   $('toggleMap').innerHTML=iconSvg('pin')+(hidden?'Mostrar mapa':'Ocultar mapa');
   $('toggleMap').setAttribute('aria-expanded',String(!hidden));
 }
+/** Guia: Alterna o estado do recurso em navegação entre cidades, regiões e locais (`toggleMapVisibility`). */
 function toggleMapVisibility() {
   if(!state.city&&!state.region&&!state.overview){generalMap();return;}
   mapHidden=!mapHidden;
   renderLayout();
   if(!mapHidden&&map){map.invalidateSize();updateLayers();}
 }
+/** Guia: Renderiza a parte correspondente da interface em navegação entre cidades, regiões e locais (`render`). */
 function render() { renderLayout(); renderSearch(); renderNavigation(); renderDetails(); renderAreaInspector(); renderComparison(); renderContext(); updateLayers();if(typeof renderDesktopShell==='function')renderDesktopShell(); }
+/** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`doSearch`). */
 function doSearch(autoOpen=false) {
   const leavingComparison=comparisonActive();
   if(leavingComparison)Object.assign(state,{compare:null,overview:true});

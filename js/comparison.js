@@ -1,5 +1,8 @@
+/* Recurso RoutePilot: comparação de locais e regiões. */
 let compareRadiusKm=15;
+/** Guia: Executa uma etapa auxiliar em comparação de locais e regiões (`comparisonActive`). */
 const comparisonActive=()=>Array.isArray(state.compare);
+/** Guia: Executa uma etapa auxiliar em comparação de locais e regiões (`placeComparison`). */
 const placeComparison=()=>comparisonActive()&&state.compareMode==='places';
 let compareDrafts=['',''],compareActiveSlot=0;
 let compareCatalogCache;
@@ -8,9 +11,12 @@ let transientComparePlaces=[];
 let compareRequestToken=0;
 let compareRoadStatus={state:'idle',key:'',route:null,error:''};
 
+/** Guia: Limpa dados ou estados temporários em comparação de locais e regiões (`resetCompareRoadStatus`). */
 function resetCompareRoadStatus(){compareRequestToken++;compareRoadStatus={state:'idle',key:'',route:null,error:''};}
+/** Guia: Executa uma etapa auxiliar em comparação de locais e regiões (`comparisonRouteKey`). */
 function comparisonRouteKey(stops=comparisonStops()){return stops.every(Boolean)?stops.map(item=>item.key).join('|'):'';}
 
+/** Guia: Inicia o fluxo do recurso em comparação de locais e regiões (`startCompare`). */
 function startCompare(mode='places') {
   resetCompareRoadStatus();
   const selected=state.region?[state.region]:[];
@@ -19,12 +25,14 @@ function startCompare(mode='places') {
   $('toggleRegions').checked=true;
   navigate({city:null,region:null,point:null,boundary:null,road:null,searchOpen:false,overview:true,compare:selected,compareMode:mode,compareStops:[origin,null],compareReady:false});
 }
+/** Guia: Alterna o estado do recurso em comparação de locais e regiões (`toggleCompareRegion`). */
 function toggleCompareRegion(id) {
   if(!byRegion[id]||!comparisonActive())return;
   if(placeComparison()){if(!state.compareReady)chooseComparePlace(compareActiveSlot,'region:'+id);return;}
   const selected=state.compare.includes(id)?state.compare.filter(x=>x!==id):[...state.compare,id];
   navigate({compare:selected},false);
 }
+/** Guia: Processa e organiza os itens em comparação de locais e regiões (`compareCatalog`). */
 function compareCatalog() {
   if(compareCatalogCache)return compareCatalogCache;
   compareCatalogCache=INDICE_PESQUISA.filter(e=>['region','point','boundary'].includes(e.kind)&&!(e.kind==='point'&&pointFor(e.id)?.kind==='referencia')).map(e=>{
@@ -36,22 +44,28 @@ function compareCatalog() {
   }).filter(e=>e.coords).concat(transientComparePlaces);
   return compareCatalogCache;
 }
+/** Guia: Processa e organiza os itens em comparação de locais e regiões (`comparePlace`). */
 function comparePlace(key) { return compareCatalog().find(e=>e.key===key); }
+/** Guia: Executa uma etapa auxiliar em comparação de locais e regiões (`comparisonStops`). */
 function comparisonStops() { return (state.compareStops||[null,null]).map(comparePlace); }
+/** Guia: Executa uma etapa auxiliar em comparação de locais e regiões (`comparisonRegionIds`). */
 function comparisonRegionIds() {
   return placeComparison()?[...new Set(comparisonStops().filter(Boolean).map(e=>e.region))]:state.compare||[];
 }
+/** Guia: Processa e organiza os itens em comparação de locais e regiões (`comparePlaceMatches`). */
 function comparePlaceMatches(query) {
   if(!clean(query))return [];
   return compareCatalog().map(e=>({...e,score:Math.max(...(e.aliases||[e.name]).map(name=>pontuarTexto(name,e.context,query)))}))
     .filter(e=>e.score).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name,'pt-BR')).slice(0,16);
 }
+/** Guia: Alterna o estado do recurso em comparação de locais e regiões (`switchCompareMode`). */
 function switchCompareMode(mode) {
   if(!['places','regions'].includes(mode))return;
   resetCompareRoadStatus();
   const selected=comparisonRegionIds();
   navigate({compare:selected,compareMode:mode,compareReady:false},false);
 }
+/** Guia: Executa uma etapa auxiliar em comparação de locais e regiões (`chooseComparePlace`). */
 function chooseComparePlace(slot,key) {
   if(!placeComparison()||![0,1].includes(slot)||!comparePlace(key))return;
   resetCompareRoadStatus();
@@ -59,6 +73,7 @@ function chooseComparePlace(slot,key) {
   compareDrafts[slot]=comparePlace(key).name;compareActiveSlot=slot===0?1:0;
   navigate({compare:state.compare,compareStops:stops,compareReady:false},false);
 }
+/** Guia: Atualiza o estado e a interface em comparação de locais e regiões (`updateCompareDraft`). */
 function updateCompareDraft(slot,value) {
   if(!placeComparison()||![0,1].includes(slot))return;
   resetCompareRoadStatus();
@@ -68,6 +83,7 @@ function updateCompareDraft(slot,value) {
   $('compareSelected'+slot).innerHTML='';
   renderCompareSuggestions(slot);renderCompareResults();updateCompareButton();renderContext();updateLayers();
 }
+/** Guia: Renderiza a parte correspondente da interface em comparação de locais e regiões (`renderCompareSuggestions`). */
 function renderCompareSuggestions(slot) {
   const matches=comparePlaceMatches(compareDrafts[slot]);
   const exact=matches.filter(e=>(e.aliases||[e.name]).some(n=>clean(n)===clean(compareDrafts[slot])));
@@ -78,16 +94,20 @@ function renderCompareSuggestions(slot) {
   $('compareInput'+slot).setAttribute('aria-expanded',String(!panel.hidden));
   panel.innerHTML=(ambiguous?'<p class="compare-ambiguity">Em qual cidade fica esse local?</p>':'')+(matches.length?matches.map(e=>`<button type="button" class="compare-suggestion" data-action="comparePlace" data-slot="${slot}" data-value="${esc(e.key)}"><strong>${esc(e.name)}</strong><small>${esc(cityName(e.city))} · ${esc(byRegion[e.region].name)}</small></button>`).join(''):addressDraft?'<p class="empty">Endereço exato: informe também a cidade e use “Calcular por estradas”.</p>':'<p class="empty">Nenhum bairro ou região encontrado.</p>');
 }
+/** Guia: Atualiza o estado e a interface em comparação de locais e regiões (`updateCompareButton`). */
 function updateCompareButton() {
   const [a,b]=comparisonStops();
   const hasA=Boolean(a||clean(compareDrafts[0])),hasB=Boolean(b||clean(compareDrafts[1]));
   $('compareCalculate').disabled=compareRoadStatus.state==='loading'||!hasA||!hasB||(a&&b&&a.key===b.key);
 }
+/** Guia: Registra um novo item em comparação de locais e regiões (`addTransientComparePlace`). */
 function addTransientComparePlace(entry){
   transientComparePlaces=[...transientComparePlaces.filter(item=>item.key!==entry.key),entry];compareCatalogCache=null;
 }
+/** Guia: Calcula o resultado solicitado em comparação de locais e regiões (`calculatePlaceComparison`). */
 async function calculatePlaceComparison() {
   if(!placeComparison())return;
+  // O token impede que uma resposta antiga substitua uma comparação mais recente.
   const token=++compareRequestToken;
   compareRoadStatus={state:'loading',key:'',route:null,error:''};renderCompareResults();updateCompareButton();
   try{
@@ -112,25 +132,31 @@ async function calculatePlaceComparison() {
     renderComparison();renderComparisonOverlay();
   }
 }
+/** Guia: Limpa dados ou estados temporários em comparação de locais e regiões (`clearComparison`). */
 function clearComparison() {
   resetCompareRoadStatus();
   compareDrafts=['',''];compareActiveSlot=0;
   navigate({compare:[],compareStops:[null,null],compareReady:false},false);
 }
+/** Guia: Executa uma etapa auxiliar em comparação de locais e regiões (`placeComparisonResult`). */
 function placeComparisonResult() {
   const [a,b]=comparisonStops();
   if(!a||!b||a.key===b.key)return null;
   const straightKm=distanceKm(a.coords,b.coords);
   const route=compareRoadStatus.state==='ready'&&compareRoadStatus.key===comparisonRouteKey([a,b])?compareRoadStatus.route:null;
+  // A linha reta é usada somente como contingência quando não há rota local válida.
   const km=route?.distanceKm||straightKm;
   return {a,b,km,straightKm,route,near:km<=compareRadiusKm,sameRegion:a.region===b.region};
 }
+/** Guia: Calcula o resultado solicitado em comparação de locais e regiões (`distanceKm`). */
 function distanceKm(a,b) {
+  /** Guia: Executa uma etapa auxiliar em comparação de locais e regiões (`rad`). */
   const rad=n=>n*Math.PI/180;
   const dlat=rad(b[0]-a[0]),dlon=rad(b[1]-a[1]);
   const h=Math.sin(dlat/2)**2+Math.cos(rad(a[0]))*Math.cos(rad(b[0]))*Math.sin(dlon/2)**2;
   return 6371*2*Math.atan2(Math.sqrt(h),Math.sqrt(Math.max(0,1-h)));
 }
+/** Guia: Processa e organiza os itens em comparação de locais e regiões (`comparePairs`). */
 function comparePairs() {
   const selected=(state.compare||[]).map(id=>byRegion[id]).filter(Boolean),pairs=[];
   for(let i=0;i<selected.length;i++)for(let j=i+1;j<selected.length;j++){
@@ -139,6 +165,7 @@ function comparePairs() {
   }
   return pairs.sort((a,b)=>a.km-b.km);
 }
+/** Guia: Renderiza a parte correspondente da interface em comparação de locais e regiões (`renderComparison`). */
 function renderComparison() {
   const active=comparisonActive();
   $('searchForm').hidden=active;
@@ -165,6 +192,7 @@ function renderComparison() {
     `<div class="compare-controls"><label for="compareRadius">Próximas até <input id="compareRadius" type="number" min="1" max="100" step="1" value="${compareRadiusKm}"> km</label><button data-action="compareClear" ${selected?'':'disabled'}>Limpar</button></div><div id="compareResults" aria-live="polite"></div>`;
   renderCompareResults();
 }
+/** Guia: Renderiza a parte correspondente da interface em comparação de locais e regiões (`renderCompareResults`). */
 function renderCompareResults() {
   if(placeComparison()){
     const [a,b]=comparisonStops(),result=placeComparisonResult();
@@ -184,6 +212,7 @@ function renderCompareResults() {
   $('compareResults').innerHTML=pairs.length?`<h3>Distância entre centros de referência</h3><div class="compare-pairs">`+
     pairs.map(({a,b,km,near})=>`<div class="compare-pair"><div><span>${esc(a.name)}</span><span>${esc(b.name)}</span></div><div class="distance-result ${near?'is-near':''}"><strong>${km.toLocaleString('pt-BR',{maximumFractionDigits:1,minimumFractionDigits:1})} km</strong><small>${near?'Dentro':'Fora'} de ${compareRadiusKm} km</small></div></div>`).join('')+'</div><p class="map-caution">Estimativa em linha reta entre centros operacionais aproximados. Não é distância por estrada nem tempo de deslocamento.</p>':'<p class="empty">Selecione pelo menos duas regiões.</p>';
 }
+/** Guia: Atualiza o estado e a interface em comparação de locais e regiões (`updateCompareRadius`). */
 function updateCompareRadius(value) {
   const number=Number(value);
   if(!Number.isFinite(number)||number<1||number>100){$('compareRadius').value=compareRadiusKm;return;}
@@ -191,6 +220,7 @@ function updateCompareRadius(value) {
   renderCompareResults();
 }
 
+/** Guia: Renderiza a parte correspondente da interface em comparação de locais e regiões (`renderComparisonOverlay`). */
 function renderComparisonOverlay() {
   if(!map)return;
   const route=placeComparisonResult()?.route||null;
@@ -208,7 +238,9 @@ function renderComparisonOverlay() {
   });
 }
 
+/** Guia: Obtém o valor atual em comparação de locais e regiões (`currentLocalRoadRoute`). */
 function currentLocalRoadRoute(){return placeComparisonResult()?.route||null;}
+/** Guia: Registra um novo item em comparação de locais e regiões (`registerCoordinateComparison`). */
 function registerCoordinateComparison(inspection) {
   if(!inspection?.region)return;
   const id=`${inspection.lat.toFixed(6)},${inspection.lng.toFixed(6)}`;

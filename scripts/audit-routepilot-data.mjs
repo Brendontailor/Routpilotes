@@ -1,3 +1,4 @@
+/* Recurso RoutePilot: auditoria dos dados do projeto. */
 import fs from 'node:fs';
 import vm from 'node:vm';
 
@@ -18,6 +19,7 @@ const context = {};
 vm.createContext(context);
 vm.runInContext(scriptMatch[1].slice(0, dataEnd).replace(/^const /gm, 'var '), context);
 
+/** Guia: Formata os dados para uso consistente em auditoria dos dados do projeto (`clean`). */
 const clean = value => String(value)
   .normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '')
@@ -37,6 +39,7 @@ const duplicatesAcrossCities = [...duplicateNames]
   .filter(([, entries]) => new Set(entries.map(entry => entry.split(' / ')[0])).size > 1)
   .map(([name, entries]) => ({ name, entries }));
 
+/** Guia: Executa uma etapa auxiliar em auditoria dos dados do projeto (`classifyNearby`). */
 const classifyNearby = (owner, name, kind) => {
   const collection = kind === 'region' ? regions : points;
   const sameCity = collection.filter(item => item.city === owner.city && clean(item.name) === clean(name));

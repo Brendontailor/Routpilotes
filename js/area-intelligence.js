@@ -1,3 +1,4 @@
+/* Recurso RoutePilot: resumo inteligente da área. */
 let areaPanelMode='identify';
 let areaUnderstandingContext=null;
 
@@ -8,6 +9,7 @@ const accessLabels={
   confidence:{high:'Alta',medium:'Média',approximate:'Aproximada',unknown:'Não informado'}
 };
 
+/** Guia: Obtém o valor atual em resumo inteligente da área (`currentAreaContext`). */
 function currentAreaContext() {
   if(identifiedArea)return {kind:identifiedArea.note?'note':identifiedArea.reference?'reference':'coordinate',lat:identifiedArea.lat,lng:identifiedArea.lng,city:identifiedArea.city,region:identifiedArea.region,point:identifiedArea.nearestPoint?.item||null,name:identifiedArea.note?'Anotação operacional':identifiedArea.priorityArea?.name||identifiedArea.reference?.name||identifiedArea.region?.name||'Ponto identificado'};
   const point=pointFor(state.point),region=byRegion[state.region];
@@ -23,6 +25,7 @@ function currentAreaContext() {
   return null;
 }
 
+/** Guia: Exibe o conteúdo solicitado em resumo inteligente da área (`openUnderstandArea`). */
 function openUnderstandArea(context=currentAreaContext()) {
   if(!context)return;
   cancelMapInteraction();
@@ -31,16 +34,19 @@ function openUnderstandArea(context=currentAreaContext()) {
   renderDesktopShell();
 }
 
+/** Guia: Fecha a interface ou ação ativa em resumo inteligente da área (`closeAreaTool`). */
 function closeAreaTool() {
   areaPanelMode='identify';areaUnderstandingContext=null;
   if(identifiedArea)renderAreaInspector();else $('areaInspector').hidden=true;
   if(typeof renderDesktopShell==='function')renderDesktopShell();
 }
 
+/** Guia: Executa uma etapa auxiliar em resumo inteligente da área (`areaRoads`). */
 function areaRoads(context) {
   return context.point?streetNames(context.point):context.region?.roads||[];
 }
 
+/** Guia: Executa uma etapa auxiliar em resumo inteligente da área (`contextReferences`). */
 function contextReferences(context) {
   const pool=mapDetails.pois||[];
   return pool.map(item=>({...item,_km:distanceKm([context.lat,context.lng],[item.lat,item.lon])}))
@@ -48,6 +54,7 @@ function contextReferences(context) {
     .sort((a,b)=>a._km-b._km).slice(0,6);
 }
 
+/** Guia: Executa uma etapa auxiliar em resumo inteligente da área (`areaNearbyNames`). */
 function areaNearbyNames(context) {
   if(context.point){
     const resolved=(context.point.nearby||[]).map(pointFor).filter(Boolean).map(item=>item.name);
@@ -60,28 +67,34 @@ function areaNearbyNames(context) {
   return regions.filter(item=>item.city===context.city).map(item=>item.name);
 }
 
+/** Guia: Executa uma etapa auxiliar em resumo inteligente da área (`qualityFor`). */
 function qualityFor(context) {
   return context.point?.dataQuality||context.region?.dataQuality||{confidence:'unknown',source:null,sourceDate:null,reviewed:false};
 }
 
+/** Guia: Executa uma etapa auxiliar em resumo inteligente da área (`accessFor`). */
 function accessFor(context) {
   return context.point?.access||context.region?.access||{type:'unknown',surface:'unknown',difficulty:'unknown',mainAccess:null};
 }
 
+/** Guia: Executa uma etapa auxiliar em resumo inteligente da área (`operationalNotesFor`). */
 function operationalNotesFor(context) {
   return [...(context.region?.notes||[]),...(context.point?.notes||[])].filter(note=>note?.text);
 }
 
+/** Guia: Executa uma etapa auxiliar em resumo inteligente da área (`areaTypeFor`). */
 function areaTypeFor(context,access) {
   if(context.kind==='coordinate'&&identifiedArea?.areaType)return identifiedArea.areaType;
   if(context.point)return areaTypeLabels[context.point.kind]||accessLabels.type[access.type]||'Não informado';
   return accessLabels.type[access.type]||'Não informado';
 }
 
+/** Guia: Executa uma etapa auxiliar em resumo inteligente da área (`labeledValue`). */
 function labeledValue(label,value) {
   return `<div><dt>${esc(label)}</dt><dd>${esc(value??'Não informado')}</dd></div>`;
 }
 
+/** Guia: Renderiza a parte correspondente da interface em resumo inteligente da área (`renderAreaIntelligencePanel`). */
 function renderAreaIntelligencePanel(panel) {
   if(areaPanelMode!=='understand'||!areaUnderstandingContext)return false;
   const context=areaUnderstandingContext,access=accessFor(context),quality=qualityFor(context);
@@ -109,6 +122,7 @@ function renderAreaIntelligencePanel(panel) {
   return true;
 }
 
+/** Guia: Carrega os dados necessários em resumo inteligente da área (`loadValidatedAreaKnowledge`). */
 async function loadValidatedAreaKnowledge(context) {
   const target=$('areaValidatedKnowledge');
   if(!target)return;
@@ -118,6 +132,7 @@ async function loadValidatedAreaKnowledge(context) {
   } catch(error) { target.innerHTML='<h3>Conhecimento operacional validado</h3><p>Armazenamento local indisponível.</p>'; }
 }
 
+/** Guia: Executa uma etapa auxiliar em resumo inteligente da área (`streetViewContext`). */
 function streetViewContext() {
   const context=areaUnderstandingContext||currentAreaContext();
   if(context)openStreetViewAt(L.latLng(context.lat,context.lng));

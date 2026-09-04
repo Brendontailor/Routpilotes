@@ -1,11 +1,15 @@
+/* Recurso RoutePilot: compartilhamento de coordenadas. */
 let toastTimer;
 
+/** Guia: Executa uma etapa auxiliar em compartilhamento de coordenadas (`googleMapsPointUrl`). */
 function googleMapsPointUrl(lat,lng) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
 }
 
+/** Guia: Executa uma etapa auxiliar em compartilhamento de coordenadas (`citySlug`). */
 function citySlug(city) { return clean(city).replace(/\s+/g,'_'); }
 
+/** Guia: Executa uma etapa auxiliar em compartilhamento de coordenadas (`routePilotDeepLink`). */
 function routePilotDeepLink(context=areaUnderstandingContext||currentAreaContext()) {
   const url=new URL(location.href);
   url.search='';url.hash='';
@@ -18,6 +22,7 @@ function routePilotDeepLink(context=areaUnderstandingContext||currentAreaContext
   return url.toString();
 }
 
+/** Guia: Executa uma etapa auxiliar em compartilhamento de coordenadas (`coordinateDeepLink`). */
 function coordinateDeepLink(lat,lng) {
   const url=new URL(location.href);
   url.search='';url.hash='';
@@ -26,6 +31,7 @@ function coordinateDeepLink(lat,lng) {
   return url.toString();
 }
 
+/** Guia: Executa uma etapa auxiliar em compartilhamento de coordenadas (`nearbyShareItems`). */
 function nearbyShareItems(lat,lng,maxKm=5) {
   const context={lat,lng};
   const candidates=typeof radiusCandidates==='function'?radiusCandidates(context,maxKm):[];
@@ -40,6 +46,7 @@ function nearbyShareItems(lat,lng,maxKm=5) {
   return [...unique.values()].sort((a,b)=>a.km-b.km).slice(0,3);
 }
 
+/** Guia: Executa uma etapa auxiliar em compartilhamento de coordenadas (`coordinateShareText`). */
 function coordinateShareText(lat,lng) {
   const area=analyzeCoordinates(lat,lng);
   const nearby=nearbyShareItems(lat,lng);
@@ -50,18 +57,21 @@ function coordinateShareText(lat,lng) {
   return lines.join('\n');
 }
 
+/** Guia: Exibe o conteúdo solicitado em compartilhamento de coordenadas (`showToast`). */
 function showToast(message) {
   const toast=$('appToast');
   clearTimeout(toastTimer);toast.textContent=message;toast.hidden=false;
   toastTimer=setTimeout(()=>{toast.hidden=true;},2600);
 }
 
+/** Prepara os dados para compartilhamento em compartilhamento de coordenadas (`shareArea`). */
 async function shareArea() {
   const url=routePilotDeepLink();
   try { await navigator.clipboard.writeText(url);showToast('Link copiado'); }
   catch(error) { showCopyFallback(url); }
 }
 
+/** Prepara os dados para compartilhamento em compartilhamento de coordenadas (`shareMapCoordinates`). */
 async function shareMapCoordinates(lat,lng) {
   const text=coordinateShareText(lat,lng),url=coordinateDeepLink(lat,lng);
   if(navigator.share&&window.matchMedia('(pointer:coarse)').matches){
@@ -72,12 +82,14 @@ async function shareMapCoordinates(lat,lng) {
   catch(error) { showCopyFallback(text,'Compartilhar localização'); }
 }
 
+/** Prepara os dados para compartilhamento em compartilhamento de coordenadas (`copyMapCoordinates`). */
 async function copyMapCoordinates(lat,lng) {
   const text=`${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)}`;
   try { await navigator.clipboard.writeText(text);showToast('Coordenadas copiadas'); }
   catch(error) { showCopyFallback(text,'Copiar coordenadas'); }
 }
 
+/** Guia: Exibe o conteúdo solicitado em compartilhamento de coordenadas (`showCopyFallback`). */
 function showCopyFallback(value,title='Copiar link') {
   const panel=$('toolsPanel');
   panel.hidden=false;toolsOpen=true;$('toolsButton')?.setAttribute('aria-pressed','true');
@@ -86,11 +98,13 @@ function showCopyFallback(value,title='Copiar link') {
   requestAnimationFrame(()=>{$('copyFallback')?.select();});
 }
 
+/** Guia: Localiza o item correspondente em compartilhamento de coordenadas (`resolveCityParam`). */
 function resolveCityParam(value) {
   const normalized=clean(value).replace(/\s+/g,'_');
   return Object.keys(cityNames).find(city=>citySlug(city)===normalized)||null;
 }
 
+/** Guia: Executa uma etapa auxiliar em compartilhamento de coordenadas (`applyDeepLink`). */
 function applyDeepLink() {
   const params=new URLSearchParams(location.search);
   const latValue=params.get('lat'),lngValue=params.get('lng');

@@ -1,3 +1,4 @@
+/* Recurso RoutePilot: geração da malha de roteamento local. */
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
@@ -18,20 +19,26 @@ vm.runInContext(`${fs.readFileSync(path.join(root,'data','regions.js'),'utf8')};
 const regions=context.routePilotRegions;
 const regionById=new Map(regions.map(region=>[region.id,region]));
 
+/** Guia: Executa uma etapa auxiliar em geração da malha de roteamento local (`radians`). */
 function radians(value){return value*Math.PI/180;}
+/** Guia: Calcula o resultado solicitado em geração da malha de roteamento local (`distanceMeters`). */
 function distanceMeters(a,b){
   const dlat=radians(b[1]-a[1]),dlon=radians(b[0]-a[0]);
   const h=Math.sin(dlat/2)**2+Math.cos(radians(a[1]))*Math.cos(radians(b[1]))*Math.sin(dlon/2)**2;
   return 6371000*2*Math.atan2(Math.sqrt(h),Math.sqrt(Math.max(0,1-h)));
 }
+/** Guia: Executa uma etapa auxiliar em geração da malha de roteamento local (`interpolate`). */
 function interpolate(a,b,ratio){return [a[0]+(b[0]-a[0])*ratio,a[1]+(b[1]-a[1])*ratio];}
+/** Guia: Formata os dados para uso consistente em geração da malha de roteamento local (`clean`). */
 function clean(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
+/** Guia: Executa uma etapa auxiliar em geração da malha de roteamento local (`hash`). */
 function hash(value){
   let result=2166136261;
   for(let index=0;index<value.length;index++){result^=value.charCodeAt(index);result=Math.imul(result,16777619);}
   return result>>>0;
 }
 
+/** Guia: Executa uma etapa auxiliar em geração da malha de roteamento local (`roadDirections`). */
 function roadDirections(properties){
   let forward=true,reverse=true;
   for(const rule of properties.access_restrictions||[]){
@@ -48,6 +55,7 @@ function roadDirections(properties){
   return (forward?1:0)|(reverse?2:0);
 }
 
+/** Guia: Verifica as condições necessárias em geração da malha de roteamento local (`usableRoad`). */
 function usableRoad(feature){
   const properties=feature.properties||{};
   if(properties.subtype!=='road'||!ALLOWED_CLASSES.has(properties.class)||EXCLUDED_SUBCLASSES.has(properties.subclass))return false;
@@ -55,6 +63,7 @@ function usableRoad(feature){
   return !flags.includes('is_under_construction')&&!flags.includes('is_abandoned')&&roadDirections(properties)!==0;
 }
 
+/** Guia: Monta a estrutura necessária em geração da malha de roteamento local (`prepareSegment`). */
 function prepareSegment(feature){
   const source=feature.geometry?.coordinates||[];
   if(source.length<2)return null;
@@ -63,6 +72,7 @@ function prepareSegment(feature){
   const total=cumulative.at(-1);
   if(!total)return null;
   const entries=source.map((coordinate,index)=>({at:cumulative[index]/total,coordinate,connectorId:null}));
+  // Conectores unem segmentos diferentes; pontos intermediários limitam arestas longas.
   for(const connector of feature.properties.connectors||[]){
     const at=Math.max(0,Math.min(1,Number(connector.at)));
     let segmentIndex=1;
@@ -94,6 +104,7 @@ const edges=[];
 const connectorNodes=new Map();
 let roadFeatures=0;
 
+/** Guia: Registra um novo item em geração da malha de roteamento local (`addNode`). */
 function addNode(coordinate,connectorId,segmentId,index){
   if(connectorId&&connectorNodes.has(connectorId))return connectorNodes.get(connectorId);
   const nodeIndex=nodes.length;
@@ -142,6 +153,7 @@ fs.writeFileSync(path.join(outputDir,'road-network.json'),JSON.stringify({v:1,no
 
 const shards=Array.from({length:ADDRESS_SHARDS},()=>({v:1,streets:{}}));
 const catalog=[];
+// O hash mantém cada rua sempre no mesmo fragmento, sem carregar toda a base.
 for(const [normalized,record] of [...streets.entries()].sort(([a],[b])=>a.localeCompare(b,'pt-BR'))){
   const shard=(hash(normalized)%ADDRESS_SHARDS).toString(16).padStart(2,'0');
   record.addresses.sort((a,b)=>a[0].localeCompare(b[0],'pt-BR',{numeric:true})||a[1]-b[1]||a[2]-b[2]);

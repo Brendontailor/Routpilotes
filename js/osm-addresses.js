@@ -1,3 +1,4 @@
+/* Recurso RoutePilot: consulta de endereços do OpenStreetMap. */
 /*
  * RoutePilot - detalhes de enderecamento OpenStreetMap.
  * Consulta somente o bbox visivel e funciona sem lista fixa de cidades.
@@ -15,23 +16,29 @@ let addressDebugEnabled=false;
 let addressDetailRadiusFilter=null;
 let addressDetailStatus={state:'idle',endpoint:'',elements:0,addresses:0,blocks:0,buildings:0,rendered:0,error:''};
 
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`publishAddressDetailStatus`). */
 function publishAddressDetailStatus(){
   window.dispatchEvent(new CustomEvent('routepilot:address-status',{detail:{...addressDetailStatus}}));
 }
 
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`addressDetailsEnabled`). */
 function addressDetailsEnabled(){return Boolean($('toggleAddresses')?.checked);}
 
+/** Guia: Obtém o valor atual em consulta de endereços do OpenStreetMap (`obterPerfilRenderizacaoEnderecos`). */
 function obterPerfilRenderizacaoEnderecos(zoom=map?.getZoom()||CONFIGURACAO_OVERPASS.zoomMinimo){
   return CONFIGURACAO_OVERPASS.perfisRenderizacao.find(perfil=>zoom>=perfil.zoomMinimo)||CONFIGURACAO_OVERPASS.perfisRenderizacao.at(-1);
 }
 
+/** Guia: Monta a estrutura necessária em consulta de endereços do OpenStreetMap (`criarChaveCacheEnderecos`). */
 function criarChaveCacheEnderecos(bounds,zoom){
   const precision=zoom>=CONFIGURACAO_OVERPASS.zoomCacheDetalhado?4:3;
   return [bounds.getSouth(),bounds.getWest(),bounds.getNorth(),bounds.getEast()]
     .map(value=>value.toFixed(precision)).concat(Math.min(zoom,CONFIGURACAO_OVERPASS.zoomMaximoChaveCache),addressDetailRadiusFilter?'focus':'map').join(':');
 }
+/** Guia: Monta a estrutura necessária em consulta de endereços do OpenStreetMap (`criarChaveArmazenamentoEnderecos`). */
 function criarChaveArmazenamentoEnderecos(key){return `${CONFIGURACAO_OVERPASS.prefixoCache}${key}`;}
 
+/** Guia: Limpa dados ou estados temporários em consulta de endereços do OpenStreetMap (`limparCachePersistenteAntigo`). */
 function limparCachePersistenteAntigo(){
   try{
     const entries=[];
@@ -44,6 +51,7 @@ function limparCachePersistenteAntigo(){
     entries.sort((a,b)=>b.ts-a.ts).slice(CONFIGURACAO_OVERPASS.cacheMaximo).forEach(entry=>localStorage.removeItem(entry.key));
   }catch(error){/* armazenamento pode estar indisponivel */}
 }
+/** Guia: Interpreta os dados recebidos em consulta de endereços do OpenStreetMap (`lerCacheEnderecos`). */
 function lerCacheEnderecos(key,{aceitarExpirado=false}={}){
   const memory=addressDetailMemoryCache.get(key);
   if(memory&&(aceitarExpirado||Date.now()-memory.ts<CONFIGURACAO_OVERPASS.cacheTtlMs))return memory.elements;
@@ -57,6 +65,7 @@ function lerCacheEnderecos(key,{aceitarExpirado=false}={}){
     return parsed.elements;
   }catch(error){return null;}
 }
+/** Guia: Salva os dados no armazenamento adequado em consulta de endereços do OpenStreetMap (`gravarCacheEnderecos`). */
 function gravarCacheEnderecos(key,elements){
   const entry={ts:Date.now(),elements};
   addressDetailMemoryCache.set(key,entry);
@@ -65,6 +74,7 @@ function gravarCacheEnderecos(key,elements){
   catch(error){/* cache persistente e apenas uma otimizacao */}
 }
 
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`addressDetailPolygons`). */
 function addressDetailPolygons(element){
   if(element.type==='relation'&&Array.isArray(element.members)){
     const outers=element.members
@@ -75,6 +85,7 @@ function addressDetailPolygons(element){
   const geometry=element.geometry||[];
   return geometry.length>=3?[geometry.map(point=>[point.lat,point.lon])]:[];
 }
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`ringCentroid`). */
 function ringCentroid(ring){
   let twiceArea=0,centroidX=0,centroidY=0;
   for(let i=0,j=ring.length-1;i<ring.length;j=i++){
@@ -84,11 +95,13 @@ function ringCentroid(ring){
   if(Math.abs(twiceArea)<1e-12)return {point:[ring.reduce((sum,p)=>sum+p[0],0)/ring.length,ring.reduce((sum,p)=>sum+p[1],0)/ring.length],area:0};
   return {point:[centroidY/(3*twiceArea),centroidX/(3*twiceArea)],area:Math.abs(twiceArea/2)};
 }
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`polygonsCentroid`). */
 function polygonsCentroid(polygons){
   const parts=polygons.map(ringCentroid),total=parts.reduce((sum,part)=>sum+part.area,0);
   if(total>0)return [parts.reduce((sum,part)=>sum+part.point[0]*part.area,0)/total,parts.reduce((sum,part)=>sum+part.point[1]*part.area,0)/total];
   return parts[0]?.point||null;
 }
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`addressDetailPoint`). */
 function addressDetailPoint(element,polygons=null){
   if(Number.isFinite(element.lat)&&Number.isFinite(element.lon))return [element.lat,element.lon];
   if(polygons?.length)return polygonsCentroid(polygons);
@@ -96,7 +109,9 @@ function addressDetailPoint(element,polygons=null){
   const geometry=element.geometry||[];
   return geometry.length?[geometry.reduce((sum,p)=>sum+p.lat,0)/geometry.length,geometry.reduce((sum,p)=>sum+p.lon,0)/geometry.length]:null;
 }
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`addressElementId`). */
 function addressElementId(element){return `${element.type||'unknown'}/${element.id||'0'}`;}
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`pointInsideLatLngPolygon`). */
 function pointInsideLatLngPolygon(point,polygon){
   const [lat,lon]=point;let inside=false;
   for(let i=0,j=polygon.length-1;i<polygon.length;j=i++){
@@ -105,7 +120,9 @@ function pointInsideLatLngPolygon(point,polygon){
   }
   return inside;
 }
+/** Guia: Formata os dados para uso consistente em consulta de endereços do OpenStreetMap (`normalizeAddressNumber`). */
 function normalizeAddressNumber(value){return String(value||'').trim().replace(/\s+/g,' ');}
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`explicitBlockLabel`). */
 function explicitBlockLabel(tags={}){
   const direct=tags['addr:block']||tags['addr:block_number']||tags['addr:block-number']||tags['building:block'];
   if(direct){
@@ -123,18 +140,22 @@ function explicitBlockLabel(tags={}){
   return '';
 }
 
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`addressLabelIcon`). */
 function addressLabelIcon(number,scale,verified=false){
   return L.divIcon({className:`address-number-icon address-label-${scale}${verified?' verified-address-icon':''}`,html:`<span class="house-number">${esc(number)}</span>`,iconSize:[64,26],iconAnchor:[32,13]});
 }
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`blockLabelIcon`). */
 function blockLabelIcon(label,scale,verified=false){
   return L.divIcon({className:`block-number-icon address-label-${scale}${verified?' verified-address-icon':''}`,html:`<span class="block-number">${esc(label)}</span>`,iconSize:[132,30],iconAnchor:[66,15]});
 }
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`buildingRecords`). */
 function buildingRecords(elements){
   return elements.filter(element=>['way','relation'].includes(element.type)&&element.tags?.building).map(element=>{
     const polygons=addressDetailPolygons(element);
     return {element,id:addressElementId(element),tags:element.tags||{},polygons,center:addressDetailPoint(element,polygons)};
   }).filter(building=>building.polygons.length&&building.center);
 }
+/** Guia: Monta a estrutura necessária em consulta de endereços do OpenStreetMap (`buildAddressSpatialIndex`). */
 function buildAddressSpatialIndex(buildings){
   const grid=new Map();
   buildings.forEach(building=>{
@@ -150,12 +171,14 @@ function buildAddressSpatialIndex(buildings){
   });
   return grid;
 }
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`nearbyIndexedBuildings`). */
 function nearbyIndexedBuildings(point,grid,size=.00055){
   const latCell=Math.floor(point[0]/size),lonCell=Math.floor(point[1]/size),found=new Set();
   (grid.get('*')||[]).forEach(building=>found.add(building));
   for(let latOffset=-1;latOffset<=1;latOffset++)for(let lonOffset=-1;lonOffset<=1;lonOffset++)(grid.get(`${latCell+latOffset}:${lonCell+lonOffset}`)||[]).forEach(building=>found.add(building));
   return [...found];
 }
+/** Guia: Localiza o item correspondente em consulta de endereços do OpenStreetMap (`nearestBuildingForAddress`). */
 function nearestBuildingForAddress(point,buildings,index){
   const indexed=nearbyIndexedBuildings(point,index),pool=indexed.length?indexed:buildings;
   const containing=pool.find(building=>building.polygons.some(polygon=>pointInsideLatLngPolygon(point,polygon)));
@@ -165,15 +188,19 @@ function nearestBuildingForAddress(point,buildings,index){
   pool.forEach(building=>{const distance=map.distance(point,building.center);if(distance<bestDistance){bestDistance=distance;best=building;}});
   return bestDistance<=CONFIGURACAO_OVERPASS.distanciaAssociacaoPredioMetros?best:null;
 }
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`labelBox`). */
 function labelBox(point,text,kind){
   const screen=map.latLngToContainerPoint(point);
   const width=kind==='block'?Math.min(142,Math.max(74,text.length*7.4+20)):Math.min(72,Math.max(26,text.length*6.7+14));
   return {x:screen.x-width/2,y:screen.y-(kind==='block'?15:12),w:width,h:kind==='block'?30:24};
 }
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`boxesCollide`). */
 function boxesCollide(a,b,padding=3){return a.x<b.x+b.w+padding&&a.x+a.w+padding>b.x&&a.y<b.y+b.h+padding&&a.y+a.h+padding>b.y;}
 
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`visibleLabelCandidates`). */
 function visibleLabelCandidates(elements,buildings){
   const candidates=[],seenHouse=new Set(),seenBlocks=new Set(),index=buildAddressSpatialIndex(buildings),buildingIds=new Set(buildings.map(item=>item.id));
+  /** Guia: Registra um novo item em consulta de endereços do OpenStreetMap (`addBlock`). */
   const addBlock=(element,building)=>{
     const label=explicitBlockLabel(element.tags||{}),point=building?.center||addressDetailPoint(element);
     if(!label||!point)return;
@@ -199,6 +226,7 @@ function visibleLabelCandidates(elements,buildings){
   return candidates.sort((a,b)=>b.priority-a.priority||a.label.localeCompare(b.label,'pt-BR',{numeric:true}));
 }
 
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`verifiedLabelCandidates`). */
 function verifiedLabelCandidates(){
   if(typeof verifiedAddressPoints==='undefined'||!map)return [];
   const bounds=map.getBounds();
@@ -208,6 +236,7 @@ function verifiedLabelCandidates(){
   }));
 }
 
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`localSnapshotCandidates`). */
 function localSnapshotCandidates(){
   if(typeof osmAddressSnapshot==='undefined'||!map)return [];
   const bounds=map.getBounds();
@@ -217,6 +246,7 @@ function localSnapshotCandidates(){
   }));
 }
 
+/** Guia: Exibe o conteúdo solicitado em consulta de endereços do OpenStreetMap (`openAddressCandidates`). */
 function openAddressCandidates(buildings){
   if(typeof openAddressVisiblePoints==='undefined'||!map)return [];
   const bounds=map.getBounds(),buildingIndex=buildAddressSpatialIndex(buildings),seen=new Map(),candidates=[];
@@ -235,12 +265,14 @@ function openAddressCandidates(buildings){
   return candidates;
 }
 
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`sameAddressCandidate`). */
 function sameAddressCandidate(a,b){
   if(a.kind!==b.kind||clean(a.label)!==clean(b.label))return false;
   if(a.street&&b.street&&clean(a.street)!==clean(b.street))return false;
   return map.distance(a.point,b.point)<=CONFIGURACAO_ENDERECOS_ABERTOS.distanciaDuplicadaMetros;
 }
 
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`mergedAddressCandidates`). */
 function mergedAddressCandidates(elements,buildings){
   const ordered=[...verifiedLabelCandidates(),...openAddressCandidates(buildings),...localSnapshotCandidates(),...visibleLabelCandidates(elements,buildings)]
     .sort((a,b)=>b.priority-a.priority||a.label.localeCompare(b.label,'pt-BR',{numeric:true}));
@@ -253,6 +285,7 @@ function mergedAddressCandidates(elements,buildings){
   return unique;
 }
 
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`osmReferenceType`). */
 function osmReferenceType(tags={}){
   if(['hospital','clinic','doctors','pharmacy'].includes(tags.amenity))return 'health';
   if(['school','college','university','kindergarten'].includes(tags.amenity))return 'school';
@@ -265,6 +298,7 @@ function osmReferenceType(tags={}){
   return 'landmark';
 }
 
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`osmReferenceRecords`). */
 function osmReferenceRecords(elements){
   if(!addressDetailRadiusFilter||!map||!$('toggleRefs')?.checked)return [];
   const keys=['amenity','shop','tourism','leisure','public_transport'];
@@ -275,6 +309,7 @@ function osmReferenceRecords(elements){
     .sort((a,b)=>map.distance(a.point,addressDetailRadiusFilter.center)-map.distance(b.point,addressDetailRadiusFilter.center)).slice(0,CONFIGURACAO_OVERPASS.limiteReferenciasConsulta);
 }
 
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`addressBuildingGeoJSON`). */
 function addressBuildingGeoJSON(building){
   const rings=building.polygons.map(ring=>{
     const coordinates=ring.map(([lat,lon])=>[lon,lat]),first=coordinates[0],last=coordinates[coordinates.length-1];
@@ -283,6 +318,7 @@ function addressBuildingGeoJSON(building){
   });
   return {type:'Feature',properties:{osmId:building.id,...building.tags},geometry:rings.length===1?{type:'Polygon',coordinates:[rings[0]]}:{type:'MultiPolygon',coordinates:rings.map(ring=>[ring])}};
 }
+/** Guia: Renderiza a parte correspondente da interface em consulta de endereços do OpenStreetMap (`renderAddressDebugBuildings`). */
 function renderAddressDebugBuildings(buildings=addressDetailBuildings){
   addressDebugLayer.clearLayers();
   if(!map||!addressDebugEnabled||map.getZoom()<CONFIGURACAO_OVERPASS.zoomMinimo){if(map?.hasLayer(addressDebugLayer))map.removeLayer(addressDebugLayer);return;}
@@ -294,6 +330,7 @@ function renderAddressDebugBuildings(buildings=addressDetailBuildings){
       .addTo(addressDebugLayer);
   });
 }
+/** Guia: Renderiza a parte correspondente da interface em consulta de endereços do OpenStreetMap (`renderAddressDetails`). */
 function renderAddressDetails(elements,{cacheExpirado=false}={}){
   addressDetailLayer.clearLayers();if(!map)return;
   const profile=obterPerfilRenderizacaoEnderecos(),buildings=buildingRecords(elements),allCandidates=mergedAddressCandidates(elements,buildings);
@@ -321,6 +358,7 @@ function renderAddressDetails(elements,{cacheExpirado=false}={}){
   renderAddressDebugBuildings(buildings);
 }
 
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`montarConsultaOverpass`). */
 function montarConsultaOverpass(bounds){
   const bbox=[bounds.getSouth(),bounds.getWest(),bounds.getNorth(),bounds.getEast()].map(value=>value.toFixed(7)).join(',');
   const references=addressDetailRadiusFilter?`nwr["amenity"]["name"](${bbox});nwr["shop"]["name"](${bbox});nwr["tourism"]["name"](${bbox});nwr["leisure"]["name"](${bbox});nwr["public_transport"]["name"](${bbox});`:'';
@@ -334,6 +372,7 @@ function montarConsultaOverpass(bounds){
     ${references}
   );out tags center geom qt;`;
 }
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`consultarOverpass`). */
 async function consultarOverpass(query,signal,endpoints=CONFIGURACAO_OVERPASS.endpoints){
   let lastError=null;
   for(const endpoint of endpoints){
@@ -354,11 +393,14 @@ async function consultarOverpass(query,signal,endpoints=CONFIGURACAO_OVERPASS.en
   }
   throw lastError||new Error('Overpass indisponivel');
 }
+/** Guia: Obtém o valor atual em consulta de endereços do OpenStreetMap (`obterLimitesConsulta`). */
 function obterLimitesConsulta(){return map.getBounds().pad(map.getZoom()>=CONFIGURACAO_OVERPASS.zoomCacheDetalhado?CONFIGURACAO_OVERPASS.margemConsultaDetalhada:CONFIGURACAO_OVERPASS.margemConsultaPadrao);}
+/** Guia: Calcula o resultado solicitado em consulta de endereços do OpenStreetMap (`calcularAreaConsultaKm2`). */
 function calcularAreaConsultaKm2(bounds){
   const center=bounds.getCenter(),width=map.distance([center.lat,bounds.getWest()],[center.lat,bounds.getEast()])/1000,height=map.distance([bounds.getSouth(),center.lng],[bounds.getNorth(),center.lng])/1000;
   return width*height;
 }
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`cancelAddressDetailRequest`). */
 function cancelAddressDetailRequest(){
   clearTimeout(addressDetailTimer);addressDetailTimer=null;
   if(addressDetailAbort)addressDetailAbort.abort();
@@ -410,6 +452,7 @@ async function loadAddressDetails({force=false,endpoints=CONFIGURACAO_OVERPASS.e
     }
   }finally{if(token===addressDetailRequestToken){addressDetailPendingKey='';addressDetailAbort=null;}}
 }
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`scheduleAddressDetails`). */
 function scheduleAddressDetails(){
   cancelAddressDetailRequest();
   if(!map||!addressDetailsEnabled()||map.getZoom()<CONFIGURACAO_OVERPASS.zoomMinimo){
@@ -420,6 +463,7 @@ function scheduleAddressDetails(){
   }
   addressDetailTimer=setTimeout(()=>loadAddressDetails(),CONFIGURACAO_OVERPASS.debounceMs);
 }
+/** Guia: Atualiza o estado e a interface em consulta de endereços do OpenStreetMap (`updateAddressDetailLayer`). */
 function updateAddressDetailLayer(){
   if(!map)return;
   if(addressDetailsEnabled()&&map.getZoom()>=CONFIGURACAO_OVERPASS.zoomMinimo){if(!map.hasLayer(addressDetailLayer))addressDetailLayer.addTo(map);scheduleAddressDetails();}
@@ -429,12 +473,15 @@ function updateAddressDetailLayer(){
     if(map.hasLayer(addressDebugLayer))map.removeLayer(addressDebugLayer);
   }
 }
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`setAddressDebugMode`). */
 function setAddressDebugMode(enabled){addressDebugEnabled=Boolean(enabled);renderAddressDebugBuildings();if(!addressDebugEnabled)window.RoutePilotAddressInspector?.close();}
+/** Guia: Executa uma etapa auxiliar em consulta de endereços do OpenStreetMap (`setAddressDetailRadius`). */
 function setAddressDetailRadius(center,meters){
   const lat=Number(center?.[0]),lng=Number(center?.[1]),radius=Number(meters);
   addressDetailRadiusFilter=Number.isFinite(lat)&&Number.isFinite(lng)&&Number.isFinite(radius)&&radius>0?{center:[lat,lng],meters:radius}:null;
   addressDetailRenderedKey='';addressDetailLayer.clearLayers();scheduleAddressDetails();
 }
+/** Guia: Limpa dados ou estados temporários em consulta de endereços do OpenStreetMap (`clearAddressDetailRadius`). */
 function clearAddressDetailRadius(){setAddressDetailRadius(null,0);}
 
 window.RoutePilotAddressDebug={

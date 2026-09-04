@@ -215,3 +215,11 @@ Ultima atualizacao: 2026-09-04
 - Em falha ou falta de conexão dentro da malha, o sistema informa a contingência e usa distância em linha reta.
 - Fluxo validado online e offline entre dois endereços da Avenida Duque de Caxias e Rua Voluntários da Pátria, com 3,3 km pela malha local e traçado no mapa.
 - Cache do Service Worker atualizado para `routepilot-shell-v17`.
+
+## 2026-09-04 — Comentários didáticos no código
+
+- Os módulos próprios em `js/` e os scripts de manutenção receberam cabeçalhos que identificam seus recursos.
+- Funções nomeadas receberam comentários curtos sobre sua responsabilidade, preservando explicações específicas já existentes.
+- Eventos anônimos foram documentados por blocos para manter a leitura clara sem poluir cada linha.
+- Bibliotecas de `vendor/` e dados gerados não foram alterados.
+- Cache do Service Worker atualizado para `routepilot-shell-v18`.

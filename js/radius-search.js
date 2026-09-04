@@ -1,8 +1,10 @@
+/* Recurso RoutePilot: busca de locais próximos. */
 let radiusSearchContext=null;
 let radiusSearchKm=5;
 let radiusSearchLayer=null;
 let radiusSearchToken=0;
 
+/** Guia: Exibe o conteúdo solicitado em busca de locais próximos (`openAroundArea`). */
 function openAroundArea(context=areaUnderstandingContext||currentAreaContext()) {
   if(!context)return;
   cancelMapInteraction('around');
@@ -11,12 +13,14 @@ function openAroundArea(context=areaUnderstandingContext||currentAreaContext()) 
   renderDesktopShell();
 }
 
+/** Guia: Limpa dados ou estados temporários em busca de locais próximos (`clearRadiusSearch`). */
 function clearRadiusSearch({close=false}={}) {
   radiusSearchToken++;
   if(radiusSearchLayer&&map){map.removeLayer(radiusSearchLayer);radiusSearchLayer=null;}
   if(close){radiusSearchContext=null;areaPanelMode=identifiedArea?'identify':'none';renderAreaInspector();if(typeof renderDesktopShell==='function')renderDesktopShell();}
 }
 
+/** Guia: Renderiza a parte correspondente da interface em busca de locais próximos (`renderRadiusPanel`). */
 function renderRadiusPanel(panel) {
   if(areaPanelMode!=='radius'||!radiusSearchContext)return false;
   panel.hidden=false;
@@ -27,6 +31,7 @@ function renderRadiusPanel(panel) {
   return true;
 }
 
+/** Guia: Executa uma etapa auxiliar em busca de locais próximos (`radiusCandidates`). */
 function radiusCandidates(context,maxKm) {
   const origin=[context.lat,context.lng],items=[];
   points.filter(point=>point.kind!=='referencia').forEach(point=>{
@@ -45,6 +50,7 @@ function radiusCandidates(context,maxKm) {
   return items.sort((a,b)=>a.km-b.km||a.name.localeCompare(b.name,'pt-BR'));
 }
 
+/** Guia: Calcula o resultado solicitado em busca de locais próximos (`calculateAroundArea`). */
 async function calculateAroundArea(km) {
   if(!radiusSearchContext)return;
   radiusSearchKm=Math.max(1,Math.min(100,Number(km)||5));
@@ -67,13 +73,16 @@ async function calculateAroundArea(km) {
   target.innerHTML=`<div class="section-title">DENTRO DE ${radiusSearchKm.toLocaleString('pt-BR')} KM <span>${items.length+notes.length}</span></div>${knownRows||'<p class="empty">Nenhum local cadastrado dentro deste raio.</p>'}${noteRows?`<div class="section-title">CONHECIMENTO VALIDADO <span>${notes.length}</span></div>${noteRows}`:''}`;
 }
 
+/** Guia: Executa uma etapa auxiliar em busca de locais próximos (`setRadius`). */
 function setRadius(value) { calculateAroundArea(value); }
 
+/** Guia: Executa uma etapa auxiliar em busca de locais próximos (`applyCustomRadius`). */
 function applyCustomRadius() {
   const input=$('customRadius');
   if(input)calculateAroundArea(input.value);
 }
 
+/** Guia: Exibe o conteúdo solicitado em busca de locais próximos (`openRadiusResult`). */
 function openRadiusResult(kind,id) {
   if(kind==='point')selectPoint(id);
   else if(kind==='region')selectRegion(id);

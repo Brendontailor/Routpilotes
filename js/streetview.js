@@ -1,3 +1,5 @@
+/* Recurso RoutePilot: abertura do Street View. */
+/** Guia: Executa uma etapa auxiliar em abertura do Street View (`setStreetViewMode`). */
 function setStreetViewMode(active,renderNow=true) {
   if(active&&identifyPointMode){if(typeof cancelAnnotatePoint==='function')cancelAnnotatePoint(false);setIdentifyPointMode(false,false);}
   if(active&&typeof closeLayers==='function')closeLayers(false);
@@ -9,15 +11,18 @@ function setStreetViewMode(active,renderNow=true) {
   document.querySelector('.map-canvas').classList.toggle('street-view-active',streetViewMode);
   if(renderNow&&typeof renderDesktopShell==='function')renderDesktopShell();
 }
+/** Guia: Executa uma etapa auxiliar em abertura do Street View (`streetViewUrl`). */
 function streetViewUrl(latlng) {
   const viewpoint=`${latlng.lat.toFixed(6)},${latlng.lng.toFixed(6)}`;
   return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(viewpoint)}`;
 }
+/** Guia: Exibe o conteúdo solicitado em abertura do Street View (`openStreetViewAt`). */
 function openStreetViewAt(latlng) {
   const url=streetViewUrl(latlng);
   setStreetViewMode(false);
   window.open(url,'_blank','noopener,noreferrer');
 }
+/** Guia: Inicia o fluxo do recurso em abertura do Street View (`initStreetViewLauncher`). */
 function initStreetViewLauncher() {
   const button=$('streetViewButton'),mapNode=$('map');
   if(!map){button.disabled=true;$('streetViewStatus').textContent='Mapa indisponível';return;}

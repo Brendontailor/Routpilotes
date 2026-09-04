@@ -1,10 +1,13 @@
+/* Recurso RoutePilot: diagnóstico dos endereços do OpenStreetMap. */
 let addressDebugSelection=null;
 
+/** Guia: Executa uma etapa auxiliar em diagnóstico dos endereços do OpenStreetMap (`addressDebugValue`). */
 function addressDebugValue(value){
   const text=String(value??'').trim();
   return text||'Nao informado';
 }
 
+/** Guia: Executa uma etapa auxiliar em diagnóstico dos endereços do OpenStreetMap (`addressDebugRows`). */
 function addressDebugRows(building){
   const tags=building.tags||{},center=building.center||[];
   return [
@@ -21,6 +24,7 @@ function addressDebugRows(building){
   ].map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(addressDebugValue(value))}</dd></div>`).join('');
 }
 
+/** Guia: Executa uma etapa auxiliar em diagnóstico dos endereços do OpenStreetMap (`ensureAddressDebugPanel`). */
 function ensureAddressDebugPanel(){
   let panel=$('addressDebugPanel');
   if(panel)return panel;
@@ -33,6 +37,7 @@ function ensureAddressDebugPanel(){
   return panel;
 }
 
+/** Guia: Exibe o conteúdo solicitado em diagnóstico dos endereços do OpenStreetMap (`openAddressDebugPanel`). */
 function openAddressDebugPanel(building,geojson){
   const panel=ensureAddressDebugPanel(),tags=building.tags||{};
   addressDebugSelection={building,geojson};
@@ -45,12 +50,14 @@ function openAddressDebugPanel(building,geojson){
   panel.hidden=false;
 }
 
+/** Guia: Fecha a interface ou ação ativa em diagnóstico dos endereços do OpenStreetMap (`closeAddressDebugPanel`). */
 function closeAddressDebugPanel(){
   const panel=$('addressDebugPanel');
   if(panel)panel.hidden=true;
   addressDebugSelection=null;
 }
 
+/** Prepara os dados para compartilhamento em diagnóstico dos endereços do OpenStreetMap (`copyAddressDebugValue`). */
 async function copyAddressDebugValue(value,label){
   try{
     await navigator.clipboard.writeText(value);
@@ -60,6 +67,7 @@ async function copyAddressDebugValue(value,label){
   }
 }
 
+/** Guia: Inicia o fluxo do recurso em diagnóstico dos endereços do OpenStreetMap (`initAddressDebug`). */
 function initAddressDebug(){
   ensureAddressDebugPanel();
   document.addEventListener('click',event=>{
@@ -75,6 +83,7 @@ function initAddressDebug(){
   });
 }
 
+/** Guia: Alterna o estado do recurso em diagnóstico dos endereços do OpenStreetMap (`toggleAddressDebugMode`). */
 function toggleAddressDebugMode(enabled){
   window.RoutePilotAddressDebug?.setDebug(enabled);
   document.querySelector('.map-canvas')?.classList.toggle('is-address-debug',Boolean(enabled));

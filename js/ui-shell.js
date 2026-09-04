@@ -1,3 +1,4 @@
+/* Recurso RoutePilot: estrutura principal da interface. */
 let layersOpen=false;
 
 const toolbarLabels={
@@ -11,6 +12,7 @@ const toolbarLabels={
   addressRadius:'Números no raio'
 };
 
+/** Guia: Inicia o fluxo do recurso em estrutura principal da interface (`initDesktopShell`). */
 function initDesktopShell() {
   document.querySelectorAll('[data-icon]').forEach(button=>{
     if(!button.querySelector('.app-icon'))button.insertAdjacentHTML('afterbegin',iconSvg(button.dataset.icon));
@@ -18,6 +20,7 @@ function initDesktopShell() {
   renderDesktopShell();
 }
 
+/** Guia: Executa uma etapa auxiliar em estrutura principal da interface (`activeToolbarMode`). */
 function activeToolbarMode() {
   if(typeof annotatePointMode!=='undefined'&&annotatePointMode)return 'annotate';
   if(typeof identifyPointMode!=='undefined'&&identifyPointMode)return 'identify';
@@ -30,17 +33,20 @@ function activeToolbarMode() {
   return null;
 }
 
+/** Guia: Fecha a interface ou ação ativa em estrutura principal da interface (`closeLayers`). */
 function closeLayers(renderNow=true) {
   layersOpen=false;
   if(renderNow)renderDesktopShell();
 }
 
+/** Guia: Alterna o estado do recurso em estrutura principal da interface (`toggleLayers`). */
 function toggleLayers() {
   layersOpen=!layersOpen;
   if(layersOpen&&typeof closeTools==='function')closeTools(false);
   renderDesktopShell();
 }
 
+/** Guia: Executa uma etapa auxiliar em estrutura principal da interface (`focusGlobalSearch`). */
 function focusGlobalSearch() {
   if(typeof comparisonActive==='function'&&comparisonActive())goBack();
   if(typeof closeTools==='function')closeTools(false);
@@ -49,6 +55,7 @@ function focusGlobalSearch() {
   $('q').focus();
 }
 
+/** Guia: Executa uma etapa auxiliar em estrutura principal da interface (`cancelMapInteraction`). */
 function cancelMapInteraction(except=null) {
   if(except!=='identify'&&typeof identifyPointMode!=='undefined'&&identifyPointMode){
     if(typeof cancelAnnotatePoint==='function')cancelAnnotatePoint(false);
@@ -62,6 +69,7 @@ function cancelMapInteraction(except=null) {
   if(except!=='understand'&&typeof areaPanelMode!=='undefined'&&areaPanelMode==='understand')closeAreaTool();
 }
 
+/** Guia: Executa uma etapa auxiliar em estrutura principal da interface (`contextDescriptor`). */
 function contextDescriptor() {
   const compare=typeof comparisonActive==='function'&&comparisonActive();
   const area=typeof identifiedArea!=='undefined'?identifiedArea:null;
@@ -82,6 +90,7 @@ function contextDescriptor() {
   return null;
 }
 
+/** Guia: Executa uma etapa auxiliar em estrutura principal da interface (`breadcrumbHtml`). */
 function breadcrumbHtml(descriptor) {
   const area=typeof identifiedArea!=='undefined'?identifiedArea:null;
   const region=descriptor.region;
@@ -104,6 +113,7 @@ function breadcrumbHtml(descriptor) {
   return parts.join('');
 }
 
+/** Guia: Executa uma etapa auxiliar em estrutura principal da interface (`panelBackAction`). */
 function panelBackAction(descriptor) {
   if(descriptor.kind==='tools')return 'closeTools';
   if(typeof areaPanelMode!=='undefined'&&areaPanelMode==='radius')return 'clearRadiusClose';
@@ -113,6 +123,7 @@ function panelBackAction(descriptor) {
   return 'back';
 }
 
+/** Guia: Renderiza a parte correspondente da interface em estrutura principal da interface (`renderContextHeader`). */
 function renderContextHeader() {
   const target=$('mapContext'),descriptor=contextDescriptor();
   const start=!state.city&&!state.region&&!state.overview&&!(typeof comparisonActive==='function'&&comparisonActive())&&!(typeof toolsOpen!=='undefined'&&toolsOpen)&&!(typeof identifiedArea!=='undefined'&&identifiedArea);
@@ -123,6 +134,7 @@ function renderContextHeader() {
   target.innerHTML=`<div class="context-toolbar"><button type="button" class="panel-back" data-action="${backAction}" title="Voltar um nível (Esc)">${iconSvg('arrow')}<span>Voltar</span><kbd>Esc</kbd></button>${active?`<span class="active-tool-status"><i aria-hidden="true"></i>${esc(toolbarLabels[active])} ativo</span>`:''}</div><nav class="context-breadcrumb" aria-label="Localização atual">${breadcrumbHtml(descriptor)}</nav><div class="context-heading"><div><small>${esc(descriptor.eyebrow)}</small><h2>${esc(descriptor.title)}</h2></div>${descriptor.region?`<button class="region-badge" data-action="region" data-value="${esc(descriptor.region.id)}" style="--region-color:${descriptor.region.color}" title="Abrir região inteira">${regionCode(descriptor.region)}</button>`:''}</div>`;
 }
 
+/** Guia: Renderiza a parte correspondente da interface em estrutura principal da interface (`renderDesktopShell`). */
 function renderDesktopShell() {
   const active=activeToolbarMode();
   const pressed={identify:'identifyPointButton',annotate:'annotatePointButton',around:'aroundToolButton',compare:'compareButton',layers:'layersButton',tools:'toolsButton'};

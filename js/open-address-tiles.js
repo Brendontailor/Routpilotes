@@ -1,10 +1,13 @@
+/* Recurso RoutePilot: números de imóveis por células. */
 /* Carrega apenas as células de endereços abertos próximas ao bbox visível. */
 const openAddressTileCache=new Map();
 const openAddressTileRequests=new Map();
 let openAddressVisiblePoints=[];
 
+/** Guia: Exibe o conteúdo solicitado em números de imóveis por células (`openAddressTileKey`). */
 function openAddressTileKey(latIndex,lonIndex){return `${latIndex}_${lonIndex}`;}
 
+/** Guia: Exibe o conteúdo solicitado em números de imóveis por células (`openAddressTileKeys`). */
 function openAddressTileKeys(bounds){
   if(typeof openAddressTileIndex==='undefined'||!bounds)return [];
   const size=openAddressTileIndex.cellSize,keys=[];
@@ -17,6 +20,7 @@ function openAddressTileKeys(bounds){
   return keys;
 }
 
+/** Guia: Carrega os dados necessários em números de imóveis por células (`fetchOpenAddressTile`). */
 async function fetchOpenAddressTile(key){
   if(openAddressTileCache.has(key))return openAddressTileCache.get(key);
   if(openAddressTileRequests.has(key))return openAddressTileRequests.get(key);
@@ -39,7 +43,9 @@ async function loadOpenAddressesForBounds(bounds){
   return loaded.flat().map(item=>({id:item[0],lat:item[1],lon:item[2],number:item[3],street:item[4],region:item[5]}));
 }
 
+/** Guia: Executa uma etapa auxiliar em números de imóveis por células (`setVisibleOpenAddresses`). */
 function setVisibleOpenAddresses(points){openAddressVisiblePoints=Array.isArray(points)?points:[];}
+/** Guia: Limpa dados ou estados temporários em números de imóveis por células (`clearVisibleOpenAddresses`). */
 function clearVisibleOpenAddresses(){openAddressVisiblePoints=[];}
 
 window.RoutePilotOpenAddresses={

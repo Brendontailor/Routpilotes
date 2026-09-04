@@ -1,5 +1,9 @@
+/* Recurso RoutePilot: mapa. */
+/** Guia: Registra um novo item em mapa (`registrarCamada`). */
 function registrarCamada(layer,meta) { layers.push({layer,...meta}); return layer; }
+/** Guia: Executa uma etapa auxiliar em mapa (`sincronizarCamada`). */
 function sincronizarCamada(layer,exibir) { if(exibir&&!map.hasLayer(layer)) layer.addTo(map); else if(!exibir&&map.hasLayer(layer)) map.removeLayer(layer); }
+/** Guia: Atualiza o estado e a interface em mapa (`updateLayers`). */
 function updateLayers() {
   if(!map) return;
   const zoom=map.getZoom();
@@ -28,6 +32,7 @@ function updateLayers() {
   updateLabels();
   updateAddressDetailLayer();
 }
+/** Guia: Atualiza o estado e a interface em mapa (`updateLabels`). */
 function updateLabels() {
   if(!map) return;
   if(comparisonActive()){labelRecords.forEach(x=>sincronizarCamada(x.layer,false));updateMapDetails();return;}
@@ -45,11 +50,13 @@ function updateLabels() {
   });
   updateMapDetails(occupied);
 }
+/** Guia: Executa uma etapa auxiliar em mapa (`regionBounds`). */
 function regionBounds(id) {
   const bounds=L.latLngBounds([...byRegion[id].polygon,...points.filter(p=>p.region===id).map(p=>[p.lat,p.lon])]);
   boundaries.features.filter(f=>f.properties.region===id).forEach(f=>{if(boundaryLayers[f.properties.id])bounds.extend(boundaryLayers[f.properties.id].getBounds());});
   return bounds;
 }
+/** Guia: Executa uma etapa auxiliar em mapa (`focusMap`). */
 function focusMap() {
   if(!map||$('mapStage').hidden) return;
   map.closePopup(); map.invalidateSize();

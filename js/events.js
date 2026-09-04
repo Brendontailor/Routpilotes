@@ -1,3 +1,5 @@
+/* Recurso RoutePilot: eventos da interface. */
+// Centraliza os cliques dos botões que usam o atributo data-action.
 document.addEventListener('click',event=>{
   const button=event.target.closest('[data-action]');
   if(!button){if(layersOpen&&!event.target.closest('#mapToggles')&&!event.target.closest('#layersButton'))closeLayers();return;}
@@ -64,10 +66,12 @@ document.addEventListener('click',event=>{
   }
   if(layersOpen&&!event.target.closest('#mapToggles')&&!event.target.closest('#layersButton'))closeLayers();
 });
+// Salva formulários de anotações sem recarregar a página.
 document.addEventListener('submit',event=>{
   if(event.target.id==='operationalNoteForm'){event.preventDefault();saveOperationalNote(event.target);}
   if(event.target.matches('.note-edit-form')){event.preventDefault();saveOperationalNoteEdit(event.target);}
 });
+// Mantém a pesquisa, os comandos principais e os modos do mapa sincronizados.
 $('q').addEventListener('input',()=>{ clearTimeout(searchTimer); doSearch(); searchTimer=setTimeout(()=>doSearch(true),CONFIGURACAO_PESQUISA.debounceMs); });
 $('searchForm').addEventListener('submit',event=>{event.preventDefault();clearTimeout(searchTimer);doSearch();const coordinate=parseCoordinateQuery(state.query);if(coordinate.matched&&coordinate.valid)identifyCoordinates(coordinate.lat,coordinate.lng);else if(searchAll(state.query).length)openResult(0);});
 $('clearSearch').addEventListener('click',()=>{clearTimeout(searchTimer);$('q').value='';doSearch();$('q').focus();});
@@ -75,6 +79,7 @@ $('reset').addEventListener('click',generalMap);
 $('toggleMap').addEventListener('click',toggleMapVisibility);
 $('compareButton').addEventListener('click',()=>{if(comparisonActive()){goBack();return;}cancelMapInteraction('compare');startCompare();});
 $('identifyPointButton').addEventListener('click',()=>{const active=!identifyPointMode||annotatePointMode;if(annotatePointMode)cancelAnnotatePoint(false);if(active){if(comparisonActive())goBack();cancelMapInteraction('identify');}setIdentifyPointMode(active);});
+// Atualiza comparação e camadas quando os controles mudam.
 document.addEventListener('change',event=>{if(event.target.id==='compareRadius')updateCompareRadius(event.target.value);});
 document.addEventListener('input',event=>{
   const slot=event.target.dataset?.compareSlot;
@@ -87,6 +92,7 @@ document.addEventListener('focusin',event=>{
 ['toggleRegions','toggleNeighborhoods','toggleLabels','toggleRefs','toggleRoads'].forEach(id=>$(id).addEventListener('change',updateLayers));
 $('toggleAddresses').addEventListener('change',updateAddressDetailLayer);
 $('toggleAddressDebug').addEventListener('change',event=>toggleAddressDebugMode(event.target.checked));
+// Trata o Esc por prioridade e confirma escolhas da comparação com Enter.
 document.addEventListener('keydown',event=>{
   const plainEscape=event.key==='Escape'&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing;
   if(plainEscape&&$('operationalNoteForm')){event.preventDefault();cancelAddNote();return;}
@@ -113,6 +119,7 @@ document.addEventListener('keydown',event=>{
   if(event.key!=='Escape'||event.ctrlKey||event.altKey||event.metaKey||event.repeat||event.isComposing) return;
   event.preventDefault(); goBack();
 });
+// Inicializa os recursos somente depois que todos os módulos foram carregados.
 initDesktopShell();initToolsButton();initMap();initAddressDebug();initStreetViewLauncher();render();applyDeepLink();
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')) {
   window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));

@@ -1,3 +1,5 @@
+/* Recurso RoutePilot: pesquisa geral. */
+/** Guia: Calcula o resultado solicitado em pesquisa geral (`calcularDistanciaEdicao`). */
 function calcularDistanciaEdicao(a,b) {
   let previous = Array.from({length:b.length+1}, (_,i) => i);
   for(let i=1;i<=a.length;i++) {
@@ -7,6 +9,7 @@ function calcularDistanciaEdicao(a,b) {
   }
   return previous[b.length];
 }
+/** Guia: Executa uma etapa auxiliar em pesquisa geral (`pontuarTexto`). */
 function pontuarTexto(name, context, query) {
   const q = clean(query), n = clean(name), full = clean(name+' '+context);
   if(!q) return 0;
@@ -14,6 +17,7 @@ function pontuarTexto(name, context, query) {
   if(n.startsWith(q)) return 108;
   if(n.includes(q)) return 100;
   const terms = q.split(' '), words = full.split(' '), nameWords=n.split(' ');
+  /** Guia: Executa uma etapa auxiliar em pesquisa geral (`correspondenciaAproximada`). */
   const correspondenciaAproximada=(termo,palavra)=>palavra===termo||(termo.length>=4&&calcularDistanciaEdicao(termo,palavra)<=(termo.length>=8?2:1));
   if(terms.every(t=>nameWords.some(w=>w.startsWith(t)))) return 96;
   if(terms.every(t=>nameWords.some(w=>correspondenciaAproximada(t,w)))) return 90;
@@ -38,10 +42,12 @@ function searchAll(query) {
     seen.add(key); return true;
   }).sort((a,b) => b.score-a.score || (a.kind==='road')-(b.kind==='road') || a.name.length-b.name.length || a.name.localeCompare(b.name,'pt-BR')).slice(0,CONFIGURACAO_PESQUISA.limiteResultados);
 }
+/** Guia: Executa uma etapa auxiliar em pesquisa geral (`actionButton`). */
 function actionButton(action, value, title, subtitle='', extra='') {
   const city=action==='city'?cityStyles[value]:null;
   return `<button type="button" class="nav-row ${city?'city-option':''}" data-action="${action}" data-value="${esc(value)}" ${extra}>${city?`<span class="city-monogram" style="--city-color:${city.color}" aria-hidden="true">${city.initials}</span>`:''}<span class="nav-copy">${esc(title)}${subtitle ? `<small>${esc(subtitle)}</small>` : ''}</span><span class="chevron" aria-hidden="true">›</span></button>`;
 }
+/** Guia: Executa uma etapa auxiliar em pesquisa geral (`nearButtons`). */
 function nearButtons(ids=[], unresolved=[]) {
   const linked=ids.map(id=>{
     const region=byRegion[id],point=pointFor(id);

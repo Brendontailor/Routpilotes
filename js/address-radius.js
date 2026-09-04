@@ -1,8 +1,10 @@
+/* Recurso RoutePilot: consulta de números e referências no raio. */
 let addressRadiusContext=null;
 let addressRadiusMeters=CONFIGURACAO_FOCO_ENDERECOS.raioInicialMetros;
 let addressRadiusLayer=null;
 let addressRadiusStatus={state:'idle',addresses:0,blocks:0,rendered:0,error:''};
 
+/** Guia: Exibe o conteúdo solicitado em consulta de números e referências no raio (`openPriorityArea`). */
 function openPriorityArea(id) {
   const area=(typeof priorityMapAreas!=='undefined'?priorityMapAreas:[]).find(item=>item.id===id);
   if(!area)return;
@@ -24,12 +26,14 @@ function openAddressRadius(context=currentAreaContext()) {
   renderDesktopShell();
 }
 
+/** Guia: Limpa dados ou estados temporários em consulta de números e referências no raio (`clearAddressRadius`). */
 function clearAddressRadius({close=false}={}) {
   if(addressRadiusLayer&&map){map.removeLayer(addressRadiusLayer);addressRadiusLayer=null;}
   if(typeof clearAddressDetailRadius==='function')clearAddressDetailRadius();
   if(close){addressRadiusContext=null;areaPanelMode=identifiedArea?'identify':'none';renderAreaInspector();if(typeof renderDesktopShell==='function')renderDesktopShell();}
 }
 
+/** Guia: Executa uma etapa auxiliar em consulta de números e referências no raio (`addressRadiusReferences`). */
 function addressRadiusReferences() {
   if(!addressRadiusContext||!map)return [];
   const origin=[addressRadiusContext.lat,addressRadiusContext.lng],limit=addressRadiusMeters/1000,items=[];
@@ -49,6 +53,7 @@ function addressRadiusReferences() {
   return [...unique.values()].sort((a,b)=>a.km-b.km||a.name.localeCompare(b.name,'pt-BR'));
 }
 
+/** Guia: Executa uma etapa auxiliar em consulta de números e referências no raio (`addressRadiusVerifiedItems`). */
 function addressRadiusVerifiedItems(){
   if(!addressRadiusContext||typeof verifiedAddressPoints==='undefined')return [];
   const origin=[addressRadiusContext.lat,addressRadiusContext.lng],limit=addressRadiusMeters/1000;
@@ -56,6 +61,7 @@ function addressRadiusVerifiedItems(){
     .sort((a,b)=>a.label.localeCompare(b.label,'pt-BR',{numeric:true,sensitivity:'base'}));
 }
 
+/** Guia: Executa uma etapa auxiliar em consulta de números e referências no raio (`focusVerifiedAddress`). */
 function focusVerifiedAddress(id){
   const item=(typeof verifiedAddressPoints!=='undefined'?verifiedAddressPoints:[]).find(entry=>entry.id===id);
   if(!item||!map)return;
@@ -63,6 +69,7 @@ function focusVerifiedAddress(id){
   L.popup().setLatLng([item.lat,item.lon]).setContent(`<b>${item.kind==='block'?'Bloco ':''}${esc(item.label)}</b><br><small>${esc(item.source)}</small><br><a href="${esc(item.sourceUrl)}" target="_blank" rel="noopener noreferrer">Abrir fonte</a>`).openOn(map);
 }
 
+/** Guia: Executa uma etapa auxiliar em consulta de números e referências no raio (`focusAddressReference`). */
 function focusAddressReference(key){
   const item=addressRadiusReferences().find(reference=>reference.key===key);
   if(!item||!map)return;
@@ -70,6 +77,7 @@ function focusAddressReference(key){
   L.popup().setLatLng([item.lat,item.lng]).setContent(`<b>${esc(item.name)}</b><br>${esc(item.category)}<br><small>${esc(item.source)}</small>`).openOn(map);
 }
 
+/** Guia: Executa uma etapa auxiliar em consulta de números e referências no raio (`addressRadiusStatusText`). */
 function addressRadiusStatusText() {
   if(addressRadiusStatus.state==='loading')return 'Consultando números no OpenStreetMap...';
   if(addressRadiusStatus.state==='error')return 'Os números estão temporariamente indisponíveis. O mapa e as referências continuam funcionando.';
@@ -81,12 +89,14 @@ function addressRadiusStatusText() {
   return 'Os números disponíveis aparecem sobre as construções.';
 }
 
+/** Guia: Renderiza a parte correspondente da interface em consulta de números e referências no raio (`renderAddressRadiusPanel`). */
 function renderAddressRadiusPanel(panel=$('areaInspector')) {
   if(areaPanelMode!=='addressRadius'||!addressRadiusContext)return false;
   const references=addressRadiusReferences(),verified=addressRadiusVerifiedItems();
   const verifiedBlocks=verified.filter(item=>item.kind==='block');
   const verifiedNumbers=verified.filter(item=>item.kind!=='block');
   const rows=references.slice(0,24).map((item,index)=>`<button type="button" class="radius-row" data-action="focusAddressReference" data-value="${esc(item.key)}"><span>${index+1}</span><b>${esc(item.name)}</b><small>${esc(item.category)}</small><strong>${distanceLabel(item.km)}</strong></button>`).join('');
+  /** Guia: Executa uma etapa auxiliar em consulta de números e referências no raio (`verifiedButtons`). */
   const verifiedButtons=items=>items.map(item=>`<button type="button" data-action="focusVerifiedAddress" data-value="${esc(item.id)}" title="${esc(item.source)}">${esc(item.label)}</button>`).join('');
   panel.hidden=false;
   panel.innerHTML=`<p class="panel-intro">Foco em <b>${esc(addressRadiusContext.name)}</b>. Exibe números disponíveis no OpenStreetMap e referências cadastradas dentro do círculo.</p>
@@ -101,6 +111,7 @@ function renderAddressRadiusPanel(panel=$('areaInspector')) {
   return true;
 }
 
+/** Guia: Executa uma etapa auxiliar em consulta de números e referências no raio (`applyAddressRadius`). */
 function applyAddressRadius(meters) {
   if(!addressRadiusContext||!map)return;
   addressRadiusMeters=Math.max(CONFIGURACAO_FOCO_ENDERECOS.raioMinimoMetros,Math.min(CONFIGURACAO_FOCO_ENDERECOS.raioMaximoMetros,Number(meters)||CONFIGURACAO_FOCO_ENDERECOS.raioInicialMetros));
@@ -113,6 +124,7 @@ function applyAddressRadius(meters) {
   if(window.matchMedia('(max-width:900px)').matches)document.querySelector('.map-stage').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
+/** Guia: Atualiza o estado e a interface em consulta de números e referências no raio (`refreshAddressRadius`). */
 function refreshAddressRadius() {
   if(!addressRadiusContext)return;
   setAddressDetailRadius([addressRadiusContext.lat,addressRadiusContext.lng],addressRadiusMeters);

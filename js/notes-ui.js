@@ -1,7 +1,9 @@
+/* Recurso RoutePilot: interface de anotações. */
 let toolsOpen=false;
 let nearbyNotesToken=0;
 let annotatePointMode=false;
 
+/** Guia: Inicia o fluxo do recurso em interface de anotações (`initToolsButton`). */
 function initToolsButton() {
   let button=$('toolsButton');
   if(!button){
@@ -15,17 +17,20 @@ function initToolsButton() {
   button.addEventListener('click',toggleTools);
 }
 
+/** Guia: Alterna o estado do recurso em interface de anotações (`toggleTools`). */
 function toggleTools() {
   if(toolsOpen){closeTools();return;}
   cancelMapInteraction('tools');toolsOpen=true;
   renderToolsMenu();renderDesktopShell();
 }
 
+/** Guia: Fecha a interface ou ação ativa em interface de anotações (`closeTools`). */
 function closeTools(renderNow=true) {
   toolsOpen=false;$('toolsButton').setAttribute('aria-pressed','false');$('toolsPanel').hidden=true;
   if(renderNow)renderDesktopShell();
 }
 
+/** Guia: Renderiza a parte correspondente da interface em interface de anotações (`renderToolsMenu`). */
 function renderToolsMenu() {
   const panel=$('toolsPanel');panel.hidden=false;
   panel.innerHTML=`<div class="inspector-heading"><div><small>ROUTEPILOT V2</small><h2>Ferramentas</h2></div><button data-action="closeTools" aria-label="Fechar ferramentas">&times;</button></div>
@@ -33,6 +38,7 @@ function renderToolsMenu() {
     <p class="local-storage-note">Anotações armazenadas neste computador.</p>`;
 }
 
+/** Guia: Inicia o fluxo do recurso em interface de anotações (`startAnnotatePoint`). */
 function startAnnotatePoint() {
   if(annotatePointMode){cancelAnnotatePoint(false);setIdentifyPointMode(false);return;}
   if(comparisonActive())goBack();
@@ -44,24 +50,29 @@ function startAnnotatePoint() {
   renderDesktopShell();
 }
 
+/** Guia: Executa uma etapa auxiliar em interface de anotações (`cancelAnnotatePoint`). */
 function cancelAnnotatePoint(renderNow=true) {
   annotatePointMode=false;
   $('identifyPointHint').firstChild.textContent='Selecione um ponto no mapa ';
   if(renderNow)renderDesktopShell();
 }
 
+/** Guia: Executa uma etapa auxiliar em interface de anotações (`noteStatusLabel`). */
 function noteStatusLabel(status) {
   return status==='validated'?'Informação operacional validada':status==='rejected'?'Informação rejeitada':'Informação ainda não validada';
 }
 
+/** Guia: Executa uma etapa auxiliar em interface de anotações (`noteTypeLabel`). */
 function noteTypeLabel(type) {
   return {general:'Geral',reference:'Referência',access:'Acesso',warning:'Alerta'}[type]||'Geral';
 }
 
+/** Guia: Registra um novo item em interface de anotações (`addNoteSection`). */
 function addNoteSection(lat,lng,showButton=true) {
   return `<div class="add-note-area">${showButton?'<button type="button" data-action="showAddNote" class="add-note-button">+ Adicionar anotação</button>':''}<div id="addNoteFormHost"></div><div id="nearbyOperationalNotes" class="nearby-notes"></div><p class="local-storage-note">Anotações armazenadas neste computador.</p></div>`;
 }
 
+/** Guia: Exibe o conteúdo solicitado em interface de anotações (`showAddNoteForm`). */
 function showAddNoteForm() {
   const context=identifiedArea||areaUnderstandingContext||currentAreaContext();
   if(!context)return;
@@ -70,8 +81,10 @@ function showAddNoteForm() {
   $('noteText').focus();
 }
 
+/** Guia: Executa uma etapa auxiliar em interface de anotações (`cancelAddNote`). */
 function cancelAddNote() { const host=$('addNoteFormHost');if(host)host.innerHTML=''; }
 
+/** Guia: Salva os dados no armazenamento adequado em interface de anotações (`saveOperationalNote`). */
 async function saveOperationalNote(form) {
   const context=identifiedArea||areaUnderstandingContext||currentAreaContext();
   if(!context)return;
@@ -82,6 +95,7 @@ async function saveOperationalNote(form) {
   } catch(error) { showToast(error.message||'Não foi possível salvar'); }
 }
 
+/** Guia: Renderiza a parte correspondente da interface em interface de anotações (`renderNearbyOperationalNotes`). */
 async function renderNearbyOperationalNotes(lat,lng) {
   const target=$('nearbyOperationalNotes');if(!target)return;
   const token=++nearbyNotesToken;
@@ -89,15 +103,18 @@ async function renderNearbyOperationalNotes(lat,lng) {
     const notes=await getNearbyNotes(lat,lng,500);
     if(token!==nearbyNotesToken||!$('nearbyOperationalNotes'))return;
     const pending=notes.filter(note=>note.status==='pending'),validated=notes.filter(note=>note.status==='validated');
+    /** Guia: Executa uma etapa auxiliar em interface de anotações (`group`). */
     const group=(title,items,status)=>items.length?`<div class="note-group"><h3>${title}</h3>${items.map(note=>`<article class="note-summary is-${status}"><b>${esc(note.text)}</b><span>${esc(noteTypeLabel(note.type))} · ${distanceLabel(note.distanceKm)}</span><small>${esc(noteStatusLabel(note.status))}</small></article>`).join('')}</div>`:'';
     target.innerHTML=group('INFORMAÇÕES VALIDADAS',validated,'validated')+group('ANOTAÇÕES PENDENTES',pending,'pending')||'<p class="empty">Nenhuma anotação operacional a até 500 m.</p>';
   } catch(error) { target.innerHTML='<p class="empty">Armazenamento local de anotações indisponível.</p>'; }
 }
 
+/** Guia: Localiza o item correspondente em interface de anotações (`nearestKnownLocations`). */
 function nearestKnownLocations(note) {
   return points.filter(point=>point.kind!=='referencia').map(point=>({point,km:distanceKm([note.latitude,note.longitude],[point.lat,point.lon])})).sort((a,b)=>a.km-b.km).slice(0,3);
 }
 
+/** Guia: Renderiza a parte correspondente da interface em interface de anotações (`renderNotesReview`). */
 async function renderNotesReview() {
   toolsOpen=true;$('toolsButton').setAttribute('aria-pressed','true');renderDesktopShell();
   const panel=$('toolsPanel');panel.hidden=false;
@@ -112,6 +129,7 @@ async function renderNotesReview() {
   } catch(error) { $('pendingNotesList').innerHTML='<p class="empty">Não foi possível acessar as anotações deste computador.</p>'; }
 }
 
+/** Guia: Exibe o conteúdo solicitado em interface de anotações (`openOperationalNote`). */
 async function openOperationalNote(id,lat,lng) {
   let note=null;
   try { note=(await RoutePilotNotes.getAllNotes()).find(item=>item.id===id)||null; } catch(error) {}
@@ -119,20 +137,25 @@ async function openOperationalNote(id,lat,lng) {
   identifyCoordinates(lat,lng,{source:'note',note});
 }
 
+/** Guia: Verifica as condições necessárias em interface de anotações (`validateOperationalNote`). */
 async function validateOperationalNote(id) { try{const note=await validateNote(id);showToast('Informação operacional validada');if(identifiedArea?.note?.id===id){identifiedArea.note=note;renderAreaInspector();renderDesktopShell();}else renderNotesReview();refreshOperationalKnowledge();}catch(error){showToast(error.message);} }
+/** Guia: Executa uma etapa auxiliar em interface de anotações (`rejectOperationalNote`). */
 async function rejectOperationalNote(id) { try{const note=await rejectNote(id);showToast('Anotação rejeitada');if(identifiedArea?.note?.id===id){identifiedArea.note=note;renderAreaInspector();renderDesktopShell();}else renderNotesReview();refreshOperationalKnowledge();}catch(error){showToast(error.message);} }
 
+/** Guia: Executa uma etapa auxiliar em interface de anotações (`editOperationalNote`). */
 function editOperationalNote(id) {
   const article=document.querySelector(`[data-note-id="${CSS.escape(id)}"]`),host=article?.querySelector('.note-edit-host');if(!host)return;
   const current=article.querySelector('h3').textContent;
   host.innerHTML=`<form class="note-edit-form" data-note-id="${esc(id)}"><textarea name="text" maxlength="500" required>${esc(current)}</textarea><select name="type"><option value="general">Geral</option><option value="reference">Referência</option><option value="access">Acesso</option><option value="warning">Alerta</option></select><button type="submit">Salvar edição</button></form>`;
 }
 
+/** Guia: Salva os dados no armazenamento adequado em interface de anotações (`saveOperationalNoteEdit`). */
 async function saveOperationalNoteEdit(form) {
   const data=new FormData(form);
   try { const note=await updateNote(form.dataset.noteId,{text:data.get('text'),type:data.get('type')});showToast('Anotação atualizada');if(identifiedArea?.note?.id===note.id){identifiedArea.note=note;renderAreaInspector();renderDesktopShell();}else renderNotesReview(); } catch(error) { showToast(error.message); }
 }
 
+/** Guia: Atualiza o estado e a interface em interface de anotações (`refreshOperationalKnowledge`). */
 function refreshOperationalKnowledge() {
   if(identifiedArea)renderNearbyOperationalNotes(identifiedArea.lat,identifiedArea.lng);
   if(areaPanelMode==='understand'&&areaUnderstandingContext)loadValidatedAreaKnowledge(areaUnderstandingContext);

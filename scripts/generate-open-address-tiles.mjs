@@ -1,3 +1,4 @@
+/* Recurso RoutePilot: geração das células de endereços. */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -27,6 +28,7 @@ const ids=new Set();
 const dedupe=new Set();
 const counts={input:0,inside:0,withoutNumber:0,duplicates:0,integrated:0};
 
+/** Guia: Executa uma etapa auxiliar em geração das células de endereços (`insidePolygon`). */
 function insidePolygon(lat,lon,polygon){
   let inside=false;
   for(let i=0,j=polygon.length-1;i<polygon.length;j=i++){
@@ -36,22 +38,26 @@ function insidePolygon(lat,lon,polygon){
   return inside;
 }
 
+/** Guia: Calcula o resultado solicitado em geração das células de endereços (`distanceSquared`). */
 function distanceSquared(a,b){
   const lat=a[0]-b[0],lon=(a[1]-b[1])*Math.cos(a[0]*Math.PI/180);
   return lat*lat+lon*lon;
 }
 
+/** Guia: Executa uma etapa auxiliar em geração das células de endereços (`regionFor`). */
 function regionFor(city,lat,lon){
   return regions.filter(region=>region.city===city&&insidePolygon(lat,lon,region.polygon))
     .sort((a,b)=>distanceSquared([lat,lon],a.center)-distanceSquared([lat,lon],b.center))[0]||null;
 }
 
+/** Guia: Executa uma etapa auxiliar em geração das células de endereços (`normalizedNumber`). */
 function normalizedNumber(value){
   const number=String(value||'').trim().replace(/\s+/g,' ');
   if(!number||/^(?:S\/?N|SN)(?:\b|\s|\()/i.test(number)||!/[0-9]/.test(number))return '';
   return number.slice(0,40);
 }
 
+/** Guia: Executa uma etapa auxiliar em geração das células de endereços (`uniqueId`). */
 function uniqueId(sourceId){
   const digest=crypto.createHash('sha1').update(String(sourceId)).digest('hex');
   for(let length=12;length<=digest.length;length+=2){
@@ -61,8 +67,10 @@ function uniqueId(sourceId){
   throw new Error(`Nao foi possivel gerar ID unico para ${sourceId}`);
 }
 
+/** Guia: Executa uma etapa auxiliar em geração das células de endereços (`tileKey`). */
 function tileKey(lat,lon){return `${Math.floor(lat/CELL_SIZE)}_${Math.floor(lon/CELL_SIZE)}`;}
 
+/** Guia: Executa uma etapa auxiliar em geração das células de endereços (`processFile`). */
 async function processFile(baseName,city){
   const inputFile=path.join(inputDir,`${baseName}.geojsonseq`);
   if(!fs.existsSync(inputFile))throw new Error(`Arquivo Overture ausente: ${inputFile}`);

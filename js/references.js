@@ -1,3 +1,4 @@
+/* Recurso RoutePilot: referências e pontos conhecidos. */
 const detailKinds={
   school:{label:'Escola / ensino',icon:'campus',color:'#2463a2',tint:'#edf5ff'},
   bus:{label:'Rodoviária',icon:'bus',color:'#247491',tint:'#eaf7fc'},
@@ -14,11 +15,13 @@ const detailKinds={
 const detailCache=new Map();
 let visibleDetailKeys=new Set();
 const detailBoundsCache=new Map();
+/** Guia: Executa uma etapa auxiliar em referências e pontos conhecidos (`detailBounds`). */
 function detailBounds(id) {
   if(!detailBoundsCache.has(id))detailBoundsCache.set(id,regionBounds(id));
   return detailBoundsCache.get(id);
 }
 
+/** Guia: Verifica as condições necessárias em referências e pontos conhecidos (`isPointInsidePolygon`). */
 function isPointInsidePolygon(lat,lon,polygon) {
   if(!Array.isArray(polygon)||polygon.length<3)return false;
   let inside=false;
@@ -28,10 +31,12 @@ function isPointInsidePolygon(lat,lon,polygon) {
   }
   return inside;
 }
+/** Guia: Executa uma etapa auxiliar em referências e pontos conhecidos (`regionContainsPoint`). */
 function regionContainsPoint(region,lat,lon) {
   return region?.polygon?.length>=3?isPointInsidePolygon(lat,lon,region.polygon):detailBounds(region.id).contains([lat,lon]);
 }
 
+/** Guia: Executa uma etapa auxiliar em referências e pontos conhecidos (`insideRing`). */
 function insideRing(lat,lon,ring) {
   let inside=false;
   for(let i=0,j=ring.length-1;i<ring.length;j=i++){
@@ -40,10 +45,12 @@ function insideRing(lat,lon,ring) {
   }
   return inside;
 }
+/** Guia: Executa uma etapa auxiliar em referências e pontos conhecidos (`insideGeometry`). */
 function insideGeometry(lat,lon,geometry) {
   const polygons=geometry.type==='Polygon'?[geometry.coordinates]:geometry.coordinates;
   return polygons.some(rings=>insideRing(lat,lon,rings[0])&&!rings.slice(1).some(r=>insideRing(lat,lon,r)));
 }
+/** Guia: Executa uma etapa auxiliar em referências e pontos conhecidos (`detailInArea`). */
 function detailInArea(lat,lon) {
   if(comparisonActive()||(!state.region&&!state.city))return false;
   if(state.boundary)return insideGeometry(lat,lon,boundaryById[state.boundary].geometry);
@@ -52,25 +59,31 @@ function detailInArea(lat,lon) {
   if(state.region)return regionContainsPoint(byRegion[state.region],lat,lon);
   return regions.filter(r=>r.city===state.city).some(r=>regionContainsPoint(r,lat,lon));
 }
+/** Guia: Executa uma etapa auxiliar em referências e pontos conhecidos (`detailInScope`). */
 function detailInScope(lat,lon) {
   return map.getBounds().contains([lat,lon])&&detailInArea(lat,lon);
 }
+/** Guia: Executa uma etapa auxiliar em referências e pontos conhecidos (`areaReferences`). */
 function areaReferences() {
   if(!map)return [];
   const p=pointFor(state.point),center=p?[p.lat,p.lon]:byRegion[state.region]?.center||map.getCenter();
   return mapDetails.pois.filter(p=>detailInArea(p.lat,p.lon)).sort((a,b)=>map.distance(center,[a.lat,a.lon])-map.distance(center,[b.lat,b.lon]));
 }
+/** Guia: Executa uma etapa auxiliar em referências e pontos conhecidos (`referenceRows`). */
 function referenceRows(pois) {
   return pois.map(p=>`<button class="reference-row" data-action="detailPoi" data-value="${p.id}">${referenceIcon(p)}<span>${esc(p.name)}<small>${esc(p.category)}</small></span></button>`).join('');
 }
+/** Guia: Executa uma etapa auxiliar em referências e pontos conhecidos (`detailPopup`). */
 function detailPopup(p) {
   const note=p.source==='OpenStreetMap'?`OpenStreetMap consultado em ${p.sourceDate}. Cadastro colaborativo; confirme a situação atual.`:`Levantamento municipal de ${mapDetails.poiYear}. Confirme a existência atual.`;
   return `<b>${esc(p.name)}</b><br>${esc(p.category)}${p.address?'<br>'+esc(p.address):''}<br><small>${esc(note)}</small><br><a href="${esc(p.sourceUrl||mapDetails.sourceUrl)}" target="_blank" rel="noopener noreferrer">Fonte: ${esc(p.source||mapDetails.source)}</a>`;
 }
+/** Guia: Executa uma etapa auxiliar em referências e pontos conhecidos (`cachedDetail`). */
 function cachedDetail(key,create,visible) {
   if(!detailCache.has(key))detailCache.set(key,create());
   const layer=detailCache.get(key);sincronizarCamada(layer,true);visible.add(key);return layer;
 }
+/** Guia: Executa uma etapa auxiliar em referências e pontos conhecidos (`detailLabel`). */
 function detailLabel(key,latlon,text,kind,visible,occupied) {
   const pos=map.latLngToContainerPoint(latlon),size=map.getSize();
   const box={x:pos.x+12,y:pos.y-10,w:Math.min(176,text.length*5.5+8),h:20};
@@ -81,9 +94,11 @@ function detailLabel(key,latlon,text,kind,visible,occupied) {
   layer.setLatLng(latlon);
   return true;
 }
+/** Guia: Executa uma etapa auxiliar em referências e pontos conhecidos (`detailDensity`). */
 function detailDensity(zoom) {
   return zoom<12?{limit:6,gap:72,names:0,roads:4}:zoom<14?{limit:10,gap:60,names:0,roads:6}:zoom<16?{limit:24,gap:40,names:8,roads:12}:{limit:40,gap:30,names:16,roads:16};
 }
+/** Guia: Executa uma etapa auxiliar em referências e pontos conhecidos (`visibleRoadAnchor`). */
 function visibleRoadAnchor(road) {
   const center=map.getCenter();let best=null,bestDistance=Infinity;
   // Test the closest point on each segment, including roads with no vertex in the viewport.
@@ -98,6 +113,7 @@ function visibleRoadAnchor(road) {
   }
   return best;
 }
+/** Guia: Atualiza o estado e a interface em referências e pontos conhecidos (`updateMapDetails`). */
 function updateMapDetails(occupied=[]) {
   if(!map)return;
   const visible=new Set(),pois=[],roads=[];
@@ -142,6 +158,7 @@ function updateMapDetails(occupied=[]) {
     (pois.length?referenceRows(pois.slice(0,8)):'<p class="empty">Sem referências cadastradas na área visível.</p>')+
     `<p class="map-caution"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap / ODbL</a>: ${mapDetails.osmDate}. <a href="${mapDetails.sourceUrl}" target="_blank" rel="noopener noreferrer">Prefeitura de Pelotas</a>: referências ${mapDetails.poiYear}, vias ${mapDetails.roadYear}. Confirme a situação atual.</p>`:'';
 }
+/** Guia: Exibe o conteúdo solicitado em referências e pontos conhecidos (`openDetailPoi`). */
 function openDetailPoi(id) {
   const p=mapDetails.pois.find(p=>p.id===id);
   if(!p||!map)return;

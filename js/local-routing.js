@@ -1,8 +1,10 @@
+/* Recurso RoutePilot: roteamento local. */
 let localRoadNetworkPromise=null;
 let localStreetCatalogPromise=null;
 const localAddressShardPromises=new Map();
 const localRouteCache=new Map();
 
+/** Guia: Executa uma etapa auxiliar em roteamento local (`localRoutingFetch`). */
 function localRoutingFetch(path){
   return fetch(path).then(response=>{
     if(!response.ok)throw new Error(`Arquivo local indisponível (${response.status}).`);
@@ -10,10 +12,12 @@ function localRoutingFetch(path){
   });
 }
 
+/** Guia: Carrega os dados necessários em roteamento local (`loadLocalRoadNetwork`). */
 function loadLocalRoadNetwork(){
   if(!localRoadNetworkPromise){
     localRoadNetworkPromise=localRoutingFetch(CONFIGURACAO_ROTAS_LOCAIS.arquivoMalha).then(data=>{
       if(!Array.isArray(data?.nodes)||!Array.isArray(data?.edges))throw new Error('Malha viária local inválida.');
+      // Converte as arestas compactas em vizinhos rápidos para o cálculo das rotas.
       const adjacency=Array.from({length:data.nodes.length},()=>[]);
       data.edges.forEach(([from,to,meters,flags])=>{
         if(flags&1)adjacency[from].push([to,meters]);
@@ -25,12 +29,15 @@ function loadLocalRoadNetwork(){
   return localRoadNetworkPromise;
 }
 
+/** Guia: Carrega os dados necessários em roteamento local (`loadLocalStreetCatalog`). */
 function loadLocalStreetCatalog(){
   if(!localStreetCatalogPromise)localStreetCatalogPromise=localRoutingFetch(CONFIGURACAO_ROTAS_LOCAIS.arquivoCatalogoRuas).catch(error=>{localStreetCatalogPromise=null;throw error;});
   return localStreetCatalogPromise;
 }
 
+/** Guia: Carrega os dados necessários em roteamento local (`loadLocalAddressShard`). */
 function loadLocalAddressShard(shard){
+  // Cada fragmento é baixado no máximo uma vez durante a sessão.
   if(!localAddressShardPromises.has(shard)){
     const promise=localRoutingFetch(`${CONFIGURACAO_ROTAS_LOCAIS.diretorioDados}/addresses-${encodeURIComponent(shard)}.json`)
       .catch(error=>{localAddressShardPromises.delete(shard);throw error;});
@@ -39,6 +46,7 @@ function loadLocalAddressShard(shard){
   return localAddressShardPromises.get(shard);
 }
 
+/** Guia: Interpreta os dados recebidos em roteamento local (`parseLocalAddressQuery`). */
 function parseLocalAddressQuery(query){
   let normalized=clean(query),city=null;
   Object.keys(cityNames).forEach(cityId=>{
@@ -52,12 +60,14 @@ function parseLocalAddressQuery(query){
   return match?{number:match[2],street:match[1].trim(),city}:{number:'',street:'',city};
 }
 
+/** Guia: Executa uma etapa auxiliar em roteamento local (`localStreetScore`). */
 function localStreetScore(entry,query){
   if(entry[0]===query)return 10000;
   if(entry[0].startsWith(query)||query.startsWith(entry[0]))return 8000-Math.abs(entry[0].length-query.length);
   return typeof pontuarTexto==='function'?pontuarTexto(entry[1],'',query):0;
 }
 
+/** Guia: Processa e organiza os itens em roteamento local (`dedupeLocalAddressMatches`). */
 function dedupeLocalAddressMatches(matches){
   const unique=[];
   matches.forEach(match=>{
@@ -99,8 +109,10 @@ async function resolveLocalRouteAddress(query){
   return {...unique[0],key:`address:${unique[0].id}`};
 }
 
+/** Guia: Executa uma etapa auxiliar em roteamento local (`routingNodeCoordinates`). */
 function routingNodeCoordinates(network,index){const node=network.nodes[index];return [node[0]/1e6,node[1]/1e6];}
 
+/** Guia: Localiza o item correspondente em roteamento local (`nearestRoutingNode`). */
 function nearestRoutingNode(network,coords){
   let bestIndex=-1,bestMeters=Infinity;
   for(let index=0;index<network.nodes.length;index++){
@@ -110,23 +122,30 @@ function nearestRoutingNode(network,coords){
   return {index:bestIndex,meters:bestMeters,coords:routingNodeCoordinates(network,bestIndex)};
 }
 
+/** Guia: estrutura auxiliar `RoutingMinHeap` usada pelo recurso de roteamento local. */
 class RoutingMinHeap{
+  /** Inicializa a fila de prioridade usada pelo algoritmo A*. */
   constructor(){this.items=[];}
+  /** Insere um nó mantendo o menor custo no topo da fila. */
   push(item){
     this.items.push(item);let index=this.items.length-1;
     while(index){const parent=(index-1)>>1;if(this.items[parent][0]<=item[0])break;this.items[index]=this.items[parent];index=parent;}
     this.items[index]=item;
   }
+  /** Retira e devolve o nó com menor custo estimado. */
   pop(){
     if(!this.items.length)return null;
     const first=this.items[0],last=this.items.pop();
     if(this.items.length){let index=0;this.items[0]=last;while(true){let child=index*2+1;if(child>=this.items.length)break;if(child+1<this.items.length&&this.items[child+1][0]<this.items[child][0])child++;if(this.items[child][0]>=this.items[index][0])break;[this.items[index],this.items[child]]=[this.items[child],this.items[index]];index=child;}}
     return first;
   }
+  /** Informa quantos nós ainda aguardam processamento. */
   get length(){return this.items.length;}
 }
 
+/** Guia: Executa uma etapa auxiliar em roteamento local (`shortestLocalRoadPath`). */
 function shortestLocalRoadPath(network,start,target){
+  // A* combina a distância percorrida com a estimativa até o destino.
   const distances=new Float64Array(network.nodes.length);distances.fill(Infinity);distances[start]=0;
   const previous=new Int32Array(network.nodes.length);previous.fill(-1);
   const visited=new Uint8Array(network.nodes.length),heap=new RoutingMinHeap();
@@ -150,6 +169,7 @@ function shortestLocalRoadPath(network,start,target){
   path.reverse();return {meters:distances[target],path};
 }
 
+/** Guia: Executa uma etapa auxiliar em roteamento local (`localRouteCacheKey`). */
 function localRouteCacheKey(origin,destination){return [...origin,...destination].map(value=>Number(value).toFixed(5)).join(':');}
 
 /** Calcula a menor distância na malha viária embutida, sem serviço externo. */

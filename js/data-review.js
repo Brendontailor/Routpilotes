@@ -1,9 +1,12 @@
+/* Recurso RoutePilot: revisão dos dados operacionais. */
+/** Guia: Executa uma etapa auxiliar em revisão dos dados operacionais (`issueGroups`). */
 function issueGroups(items) {
   const groups=new Map();
   items.forEach(issue=>groups.set(issue.code,(groups.get(issue.code)||[]).concat(issue)));
   return [...groups.entries()].map(([code,group])=>`<details class="review-issue"><summary><span>${group.length}</span>${esc(group[0].message.replace(/:.*/,''))}</summary><ul>${group.slice(0,30).map(issue=>`<li>${esc(issue.message)}</li>`).join('')}${group.length>30?`<li>Mais ${group.length-30} itens.</li>`:''}</ul></details>`).join('');
 }
 
+/** Guia: Exibe o conteúdo solicitado em revisão dos dados operacionais (`openDataReview`). */
 function openDataReview() {
   toolsOpen=true;$('toolsButton').setAttribute('aria-pressed','true');
   const report=validateRoutePilotData({log:false}),panel=$('toolsPanel');panel.hidden=false;

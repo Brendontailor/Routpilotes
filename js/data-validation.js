@@ -1,8 +1,14 @@
+/* Recurso RoutePilot: validação dos dados geográficos. */
+/** Guia: Verifica as condições necessárias em validação dos dados geográficos (`validateRoutePilotData`). */
 function validateRoutePilotData({log=true}={}) {
   const issues={errors:[],warnings:[],info:[]};
+  /** Guia: Registra um novo item em validação dos dados geográficos (`add`). */
   const add=(level,code,message,entity=null)=>issues[level].push({code,message,entity});
+  /** Guia: Executa uma etapa auxiliar em validação dos dados geográficos (`duplicateValues`). */
   const duplicateValues=values=>[...new Set(values.filter((value,index)=>values.indexOf(value)!==index))];
+  /** Guia: Executa uma etapa auxiliar em validação dos dados geográficos (`validCoordinates`). */
   const validCoordinates=(lat,lon)=>Number.isFinite(lat)&&Number.isFinite(lon)&&lat>=-90&&lat<=90&&lon>=-180&&lon<=180;
+  /** Guia: Executa uma etapa auxiliar em validação dos dados geográficos (`normalized`). */
   const normalized=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
   const regionIds=new Set(regions.map(region=>region.id));
   const cityIds=new Set(regions.map(region=>region.city));
@@ -64,6 +70,7 @@ function validateRoutePilotData({log=true}={}) {
     if(!validCoordinates(reference.lat,reference.lon))add('errors','invalid_reference_coordinates',`Referência com coordenadas inválidas: ${reference.id}`,reference.id);
   }
 
+  /** Guia: Executa uma etapa auxiliar em validação dos dados geográficos (`count`). */
   const count=code=>Object.values(issues).flat().filter(issue=>issue.code===code).length;
   const report={
     ...issues,

@@ -1,3 +1,4 @@
+/* Recurso RoutePilot: validação geral do RoutePilot. */
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -13,9 +14,11 @@ for(const file of ['regions.js','locations.js','routes.js','boundaries.js','map-
 }
 
 const {regions,points,boundaries,mapDetails,priorityMapAreas,verifiedAddressPoints,osmAddressSnapshot,openAddressTileIndex,localRoutingIndex}=context;
+/** Guia: Executa uma etapa auxiliar em validação geral do RoutePilot (`duplicate`). */
 const duplicate=values=>[...new Set(values.filter((value,index)=>values.indexOf(value)!==index))];
 const regionIds=new Set(regions.map(item=>item.id));
 const pointIds=new Set(points.map(item=>item.id));
+/** Guia: Executa uma etapa auxiliar em validação geral do RoutePilot (`validCoordinate`). */
 const validCoordinate=(lat,lng)=>Number.isFinite(lat)&&lat>=-90&&lat<=90&&Number.isFinite(lng)&&lng>=-180&&lng<=180;
 
 duplicate(regions.map(item=>item.id)).forEach(id=>failures.push(`duplicate region id: ${id}`));
@@ -122,7 +125,7 @@ if(manifest?.start_url!=='./')failures.push(`unexpected manifest start_url: ${ma
 const serviceWorker=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
 const shellAssets=[...serviceWorker.matchAll(/\s+'\.\/([^']+)'/g)].map(match=>match[1]);
 for(const asset of shellAssets)if(!fs.existsSync(path.resolve(root,asset)))failures.push(`missing service worker asset: ${asset}`);
-if(!serviceWorker.includes("routepilot-shell-v17"))failures.push('service worker cache is not v17');
+if(!serviceWorker.includes("routepilot-shell-v18"))failures.push('service worker cache is not v18');
 if(/tile\.openstreetmap\.org/.test(serviceWorker))failures.push('service worker must not mass-cache OSM tiles');
 
 const requiredV2=['config.js','notes-storage.js','area-inspector.js','area-intelligence.js','radius-search.js','address-radius.js','sharing.js','map-point-actions.js','notes-ui.js','data-review.js','open-address-tiles.js','local-routing.js'];
