@@ -1,4 +1,4 @@
-const CACHE_NAME='routepilot-shell-v13';
+const CACHE_NAME='routepilot-shell-v14';
 const CACHE_PREFIX='routepilot-shell-';
 const APP_SHELL=[
   './',
@@ -17,6 +17,8 @@ const APP_SHELL=[
   './data/v2-metadata.js',
   './data/priority-areas.js',
   './data/coab-duque-addresses.js',
+  './data/osm-address-snapshot.js',
+  './js/config.js',
   './js/icons.js',
   './js/data-validation.js',
   './js/app.js',

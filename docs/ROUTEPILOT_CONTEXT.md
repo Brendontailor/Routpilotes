@@ -31,6 +31,7 @@ RoutePilot is a static geographic consultation tool for locating service areas, 
 - `search.js`: normalized, partial, fuzzy, and multi-city search.
 - `navigation.js`: city, region, place, road, and panel navigation.
 - `map.js`: Leaflet map, layers, markers, focus, and visibility.
+- `config.js`: centralized map, search, Overpass, cache, and address-focus settings.
 - `references.js`: visible roads and references plus spatial filtering.
 - `comparison.js`: straight-line comparison between places or regions.
 - `streetview.js`: free Street View launcher using Google Maps URLs.
@@ -82,6 +83,8 @@ Search normalizes accents, supports partial and fuzzy matching, compares words, 
 ## Direct Map Interaction
 
 At detailed zoom, clicking the map identifies the exact coordinate and exposes the address-radius action. Right-clicking any map coordinate opens focus, share, and coordinate-copy actions. Shared coordinate text includes the operational region and up to three nearby registered localities or references when available.
+
+Point identification preserves the current zoom when it is already closer than the configured minimum. Overpass failures may reuse an expired local response for the same map section so known numbers remain visible during temporary service outages.
 
 ## Comparison
 

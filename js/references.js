@@ -69,7 +69,7 @@ function detailPopup(p) {
 }
 function cachedDetail(key,create,visible) {
   if(!detailCache.has(key))detailCache.set(key,create());
-  const layer=detailCache.get(key);sync(layer,true);visible.add(key);return layer;
+  const layer=detailCache.get(key);sincronizarCamada(layer,true);visible.add(key);return layer;
 }
 function detailLabel(key,latlon,text,kind,visible,occupied) {
   const pos=map.latLngToContainerPoint(latlon),size=map.getSize();
@@ -133,7 +133,7 @@ function updateMapDetails(occupied=[]) {
       }
     }
   }
-  visibleDetailKeys.forEach(key=>{if(!visible.has(key))sync(detailCache.get(key),false);});
+  visibleDetailKeys.forEach(key=>{if(!visible.has(key))sincronizarCamada(detailCache.get(key),false);});
   visibleDetailKeys=visible;
   const panel=$('visibleMapDetails');
   const types=[...new Set(pois.map(p=>p.type))];

@@ -91,6 +91,17 @@ RoutePilot/
 `-- .gitignore
 ```
 
+### Onde fica cada parte
+
+- `index.html`: estrutura da tela e ordem de carregamento dos módulos;
+- `js/config.js`: zoom, debounce, cache e limites das consultas;
+- `js/map.js`: inicialização do Leaflet e camadas do mapa;
+- `js/osm-addresses.js`: números, blocos, cache e consultas Overpass;
+- `data/osm-address-snapshot.js`: cópia local dos números OSM disponíveis nas regiões operacionais;
+- `data/`: regiões, localidades, contornos, vias e referências;
+- `service-worker.js`: arquivos disponíveis no modo PWA/offline;
+- `docs/GUIA-DO-CODIGO.md`: guia simples para manutenção do projeto.
+
 ## Limitações
 
 - os tiles do OpenStreetMap exigem internet;

@@ -29,9 +29,14 @@ const verifiedAddressPoints=[
   {id:'coab_duque_address_235a',label:'235A',kind:'house',lat:-31.761154,lon:-52.362332},
   {id:'coab_duque_address_240',label:'240',kind:'house',lat:-31.762228,lon:-52.362524},
   {id:'coab_duque_address_251',label:'251',kind:'house',lat:-31.762551,lon:-52.362295},
+  {id:'coab_duque_address_270',label:'270',kind:'house',lat:-31.762593,lon:-52.362693},
   {id:'coab_duque_address_271',label:'271',kind:'house',lat:-31.76277,lon:-52.362388},
+  {id:'coab_duque_address_290',label:'290',kind:'house',lat:-31.762817,lon:-52.362771},
   {id:'coab_duque_address_291',label:'291',kind:'house',lat:-31.762984,lon:-52.36232},
   {id:'coab_duque_address_330',label:'330',kind:'house',lat:-31.76329,lon:-52.362948},
+  {id:'coab_duque_address_331',label:'331',kind:'house',lat:-31.763328,lon:-52.362457},
+  {id:'coab_duque_address_341',label:'341',kind:'house',lat:-31.763453,lon:-52.362669},
+  {id:'coab_duque_address_350',label:'350',kind:'house',lat:-31.763459,lon:-52.363016},
   {id:'coab_duque_address_351',label:'351',kind:'house',lat:-31.763672,lon:-52.36275},
   {id:'coab_duque_address_370',label:'370',kind:'house',lat:-31.763774,lon:-52.36338},
   {id:'coab_duque_address_371',label:'371',kind:'house',lat:-31.763968,lon:-52.362708},
@@ -40,6 +45,8 @@ const verifiedAddressPoints=[
   {id:'coab_duque_address_619a',label:'619A',kind:'house',lat:-31.763436,lon:-52.363286},
   {id:'coab_duque_address_620',label:'620',kind:'house',lat:-31.76397,lon:-52.363473},
   {id:'coab_duque_address_620a',label:'620A',kind:'house',lat:-31.762524,lon:-52.36289},
+  {id:'coab_duque_address_641',label:'641',kind:'house',lat:-31.763053,lon:-52.36342},
+  {id:'coab_duque_address_641a',label:'641A',kind:'house',lat:-31.763255,lon:-52.363489},
   {id:'coab_duque_address_642',label:'642',kind:'house',lat:-31.763915,lon:-52.363671},
   {id:'coab_duque_address_642a',label:'642A',kind:'house',lat:-31.762485,lon:-52.363089}
 ].map(item=>({...item,areaId:'coab_duque_pelotas',source:verifiedAddressSource.name,sourceUrl:verifiedAddressSource.url}));

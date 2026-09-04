@@ -83,7 +83,11 @@ function identifyCoordinates(lat,lng,{source='search',reference=null,note=null}=
   if(map)identifiedMarker=L.marker([lat,lng],{zIndexOffset:900,title:'Ponto identificado',icon:identifiedMarkerIcon()}).addTo(map);
   render();
   if(openNoteForm){cancelAnnotatePoint();showAddNoteForm();}
-  if(map){map.flyTo([lat,lng],15,{duration:.4});identifiedMarker.bindTooltip('Ponto identificado',{direction:'top'}).openTooltip();}
+  if(map){
+    const zoomDestino=Math.max(map.getZoom(),CONFIGURACAO_MAPA.zoomPontoIdentificado);
+    map.flyTo([lat,lng],zoomDestino,{duration:.4});
+    identifiedMarker.bindTooltip('Ponto identificado',{direction:'top'}).openTooltip();
+  }
 }
 
 function renderAreaInspector() {

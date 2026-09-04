@@ -2,18 +2,6 @@
  * RoutePilot - detalhes de enderecamento OpenStreetMap.
  * Consulta somente o bbox visivel e funciona sem lista fixa de cidades.
  */
-const ADDRESS_DETAIL_MIN_ZOOM=17;
-const ADDRESS_DETAIL_DEBOUNCE_MS=500;
-const ADDRESS_DETAIL_CACHE_TTL_MS=12*60*60*1000;
-const ADDRESS_DETAIL_CACHE_MAX=40;
-const ADDRESS_DETAIL_REQUEST_TIMEOUT_MS=15000;
-const ADDRESS_DETAIL_MAX_ELEMENTS=12000;
-const ADDRESS_DETAIL_ENDPOINTS=[
-  'https://overpass-api.de/api/interpreter',
-  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
-  'https://overpass.private.coffee/api/interpreter'
-];
-
 const addressDetailLayer=L.layerGroup();
 const addressDebugLayer=L.layerGroup();
 const addressDetailMemoryCache=new Map();
@@ -33,51 +21,47 @@ function publishAddressDetailStatus(){
 
 function addressDetailsEnabled(){return Boolean($('toggleAddresses')?.checked);}
 
-function addressRenderingProfile(zoom=map?.getZoom()||ADDRESS_DETAIL_MIN_ZOOM){
-  if(zoom>=20)return {maxLabels:700,collisionPadding:0,maxAreaKm2:1.2,labelScale:'xl'};
-  if(zoom>=19)return {maxLabels:520,collisionPadding:1,maxAreaKm2:1.8,labelScale:'lg'};
-  if(zoom>=18)return {maxLabels:280,collisionPadding:3,maxAreaKm2:3,labelScale:'md'};
-  return {maxLabels:140,collisionPadding:6,maxAreaKm2:5,labelScale:'sm'};
+function obterPerfilRenderizacaoEnderecos(zoom=map?.getZoom()||CONFIGURACAO_OVERPASS.zoomMinimo){
+  return CONFIGURACAO_OVERPASS.perfisRenderizacao.find(perfil=>zoom>=perfil.zoomMinimo)||CONFIGURACAO_OVERPASS.perfisRenderizacao.at(-1);
 }
 
-function addressDetailsCacheKey(bounds,zoom){
-  const precision=zoom>=19?4:3;
+function criarChaveCacheEnderecos(bounds,zoom){
+  const precision=zoom>=CONFIGURACAO_OVERPASS.zoomCacheDetalhado?4:3;
   return [bounds.getSouth(),bounds.getWest(),bounds.getNorth(),bounds.getEast()]
-    .map(value=>value.toFixed(precision)).concat(Math.min(zoom,20),addressDetailRadiusFilter?'focus':'map').join(':');
+    .map(value=>value.toFixed(precision)).concat(Math.min(zoom,CONFIGURACAO_OVERPASS.zoomMaximoChaveCache),addressDetailRadiusFilter?'focus':'map').join(':');
 }
-function addressDetailsStorageKey(key){return `routepilot:osm-addresses:v4:${key}`;}
+function criarChaveArmazenamentoEnderecos(key){return `${CONFIGURACAO_OVERPASS.prefixoCache}${key}`;}
 
-function pruneAddressDetailsStorage(){
+function limparCachePersistenteAntigo(){
   try{
     const entries=[];
     for(let i=0;i<localStorage.length;i++){
       const key=localStorage.key(i);
-      if(!key?.startsWith('routepilot:osm-addresses:v4:'))continue;
+      if(!key?.startsWith(CONFIGURACAO_OVERPASS.prefixoCache))continue;
       try{entries.push({key,ts:Number(JSON.parse(localStorage.getItem(key))?.ts)||0});}
       catch(error){localStorage.removeItem(key);}
     }
-    entries.sort((a,b)=>b.ts-a.ts).slice(ADDRESS_DETAIL_CACHE_MAX).forEach(entry=>localStorage.removeItem(entry.key));
+    entries.sort((a,b)=>b.ts-a.ts).slice(CONFIGURACAO_OVERPASS.cacheMaximo).forEach(entry=>localStorage.removeItem(entry.key));
   }catch(error){/* armazenamento pode estar indisponivel */}
 }
-function readAddressDetailsCache(key){
+function lerCacheEnderecos(key,{aceitarExpirado=false}={}){
   const memory=addressDetailMemoryCache.get(key);
-  if(memory&&Date.now()-memory.ts<ADDRESS_DETAIL_CACHE_TTL_MS)return memory.elements;
-  if(memory)addressDetailMemoryCache.delete(key);
+  if(memory&&(aceitarExpirado||Date.now()-memory.ts<CONFIGURACAO_OVERPASS.cacheTtlMs))return memory.elements;
   try{
-    const raw=localStorage.getItem(addressDetailsStorageKey(key));
+    const raw=localStorage.getItem(criarChaveArmazenamentoEnderecos(key));
     if(!raw)return null;
     const parsed=JSON.parse(raw);
-    if(!parsed||Date.now()-Number(parsed.ts)>ADDRESS_DETAIL_CACHE_TTL_MS){localStorage.removeItem(addressDetailsStorageKey(key));return null;}
-    if(!Array.isArray(parsed.elements))return null;
+    if(!parsed||!Array.isArray(parsed.elements))return null;
+    if(!aceitarExpirado&&Date.now()-Number(parsed.ts)>CONFIGURACAO_OVERPASS.cacheTtlMs)return null;
     addressDetailMemoryCache.set(key,{ts:parsed.ts,elements:parsed.elements});
     return parsed.elements;
   }catch(error){return null;}
 }
-function writeAddressDetailsCache(key,elements){
+function gravarCacheEnderecos(key,elements){
   const entry={ts:Date.now(),elements};
   addressDetailMemoryCache.set(key,entry);
-  while(addressDetailMemoryCache.size>ADDRESS_DETAIL_CACHE_MAX)addressDetailMemoryCache.delete(addressDetailMemoryCache.keys().next().value);
-  try{localStorage.setItem(addressDetailsStorageKey(key),JSON.stringify(entry));pruneAddressDetailsStorage();}
+  while(addressDetailMemoryCache.size>CONFIGURACAO_OVERPASS.cacheMaximo)addressDetailMemoryCache.delete(addressDetailMemoryCache.keys().next().value);
+  try{localStorage.setItem(criarChaveArmazenamentoEnderecos(key),JSON.stringify(entry));limparCachePersistenteAntigo();}
   catch(error){/* cache persistente e apenas uma otimizacao */}
 }
 
@@ -151,7 +135,6 @@ function buildingRecords(elements){
     return {element,id:addressElementId(element),tags:element.tags||{},polygons,center:addressDetailPoint(element,polygons)};
   }).filter(building=>building.polygons.length&&building.center);
 }
-function spatialCell(point,size=.00055){return `${Math.floor(point[0]/size)}:${Math.floor(point[1]/size)}`;}
 function buildAddressSpatialIndex(buildings){
   const grid=new Map();
   buildings.forEach(building=>{
@@ -180,7 +163,7 @@ function nearestBuildingForAddress(point,buildings,index){
   if(!map)return null;
   let best=null,bestDistance=Infinity;
   pool.forEach(building=>{const distance=map.distance(point,building.center);if(distance<bestDistance){bestDistance=distance;best=building;}});
-  return bestDistance<=24?best:null;
+  return bestDistance<=CONFIGURACAO_OVERPASS.distanciaAssociacaoPredioMetros?best:null;
 }
 function labelBox(point,text,kind){
   const screen=map.latLngToContainerPoint(point);
@@ -225,9 +208,18 @@ function verifiedLabelCandidates(){
   }));
 }
 
+function localSnapshotCandidates(){
+  if(typeof osmAddressSnapshot==='undefined'||!map)return [];
+  const bounds=map.getBounds();
+  return osmAddressSnapshot.points.filter(item=>bounds.contains([item.lat,item.lon])).map(item=>({
+    kind:'house',label:item.label,point:[item.lat,item.lon],building:null,element:null,
+    priority:110,local:true,source:'OpenStreetMap · base local',sourceUrl:`https://www.openstreetmap.org/${item.osmId}`
+  }));
+}
+
 function mergedAddressCandidates(elements,buildings){
-  const verified=verifiedLabelCandidates(),osm=visibleLabelCandidates(elements,buildings);
-  return [...verified,...osm.filter(candidate=>!verified.some(item=>item.kind===candidate.kind&&clean(item.label)===clean(candidate.label)&&map.distance(item.point,candidate.point)<=25))]
+  const verified=verifiedLabelCandidates(),local=localSnapshotCandidates(),preferenciais=[...verified,...local],osm=visibleLabelCandidates(elements,buildings);
+  return [...preferenciais,...osm.filter(candidate=>!preferenciais.some(item=>item.kind===candidate.kind&&clean(item.label)===clean(candidate.label)&&map.distance(item.point,candidate.point)<=25))]
     .sort((a,b)=>b.priority-a.priority||a.label.localeCompare(b.label,'pt-BR',{numeric:true}));
 }
 
@@ -250,7 +242,7 @@ function osmReferenceRecords(elements){
     const point=addressDetailPoint(element),type=osmReferenceType(element.tags);
     return point?{id:addressElementId(element),name:String(element.tags.name),category:detailKinds[type]?.label||'Referência',type,point,source:'OpenStreetMap'}:null;
   }).filter(item=>item&&map.distance(item.point,addressDetailRadiusFilter.center)<=addressDetailRadiusFilter.meters)
-    .sort((a,b)=>map.distance(a.point,addressDetailRadiusFilter.center)-map.distance(b.point,addressDetailRadiusFilter.center)).slice(0,40);
+    .sort((a,b)=>map.distance(a.point,addressDetailRadiusFilter.center)-map.distance(b.point,addressDetailRadiusFilter.center)).slice(0,CONFIGURACAO_OVERPASS.limiteReferenciasConsulta);
 }
 
 function addressBuildingGeoJSON(building){
@@ -263,7 +255,7 @@ function addressBuildingGeoJSON(building){
 }
 function renderAddressDebugBuildings(buildings=addressDetailBuildings){
   addressDebugLayer.clearLayers();
-  if(!map||!addressDebugEnabled||map.getZoom()<ADDRESS_DETAIL_MIN_ZOOM){if(map?.hasLayer(addressDebugLayer))map.removeLayer(addressDebugLayer);return;}
+  if(!map||!addressDebugEnabled||map.getZoom()<CONFIGURACAO_OVERPASS.zoomMinimo){if(map?.hasLayer(addressDebugLayer))map.removeLayer(addressDebugLayer);return;}
   if(!map.hasLayer(addressDebugLayer))addressDebugLayer.addTo(map);
   buildings.forEach(building=>{
     L.polygon(building.polygons,{pane:'addressDebug',color:'#f27622',weight:2,opacity:.9,fill:true,fillColor:'#f59e0b',fillOpacity:.08})
@@ -272,9 +264,9 @@ function renderAddressDebugBuildings(buildings=addressDetailBuildings){
       .addTo(addressDebugLayer);
   });
 }
-function renderAddressDetails(elements){
+function renderAddressDetails(elements,{cacheExpirado=false}={}){
   addressDetailLayer.clearLayers();if(!map)return;
-  const profile=addressRenderingProfile(),buildings=buildingRecords(elements),allCandidates=mergedAddressCandidates(elements,buildings);
+  const profile=obterPerfilRenderizacaoEnderecos(),buildings=buildingRecords(elements),allCandidates=mergedAddressCandidates(elements,buildings);
   const candidates=addressDetailRadiusFilter?allCandidates.filter(candidate=>map.distance(candidate.point,addressDetailRadiusFilter.center)<=addressDetailRadiusFilter.meters):allCandidates;
   const references=osmReferenceRecords(elements),occupied=[],size=map.getSize();
   let rendered=0;
@@ -285,24 +277,24 @@ function renderAddressDetails(elements){
     const padding=candidate.kind==='block'?Math.max(4,profile.collisionPadding):profile.collisionPadding;
     if(candidate.kind==='house'&&occupied.some(existing=>boxesCollide(box,existing,padding))&&!(candidate.verified&&map.getZoom()>=19))return;
     if(candidate.kind==='block'&&candidate.building?.polygons)L.polygon(candidate.building.polygons,{pane:'addressDetails',interactive:false,color:'#6d28d9',weight:2.5,opacity:.88,fill:true,fillOpacity:.035,dashArray:'6 4'}).addTo(addressDetailLayer);
-    L.marker(candidate.point,{keyboard:false,interactive:false,title:candidate.verified?`${candidate.label} · ${candidate.source}`:'',zIndexOffset:candidate.kind==='block'?980:900,icon:candidate.kind==='block'?blockLabelIcon(candidate.label,profile.labelScale,candidate.verified):addressLabelIcon(candidate.label,profile.labelScale,candidate.verified)}).addTo(addressDetailLayer);
+    L.marker(candidate.point,{keyboard:false,interactive:false,title:candidate.verified||candidate.local?`${candidate.label} · ${candidate.source}`:'',zIndexOffset:candidate.kind==='block'?980:900,icon:candidate.kind==='block'?blockLabelIcon(candidate.label,profile.labelScale,candidate.verified):addressLabelIcon(candidate.label,profile.labelScale,candidate.verified)}).addTo(addressDetailLayer);
     occupied.push(box);rendered++;
   });
-  references.slice(0,24).forEach(reference=>{
+  references.slice(0,CONFIGURACAO_OVERPASS.limiteReferenciasMapa).forEach(reference=>{
     const [osmType,osmId]=reference.id.split('/'),url=`https://www.openstreetmap.org/${encodeURIComponent(osmType)}/${encodeURIComponent(osmId)}`;
     L.marker(reference.point,{title:reference.name,zIndexOffset:760,icon:L.divIcon({className:'',html:referenceIcon({type:reference.type,name:reference.name},true),iconSize:[28,28],iconAnchor:[14,14]})})
       .bindTooltip(esc(reference.name)).bindPopup(`<b>${esc(reference.name)}</b><br>${esc(reference.category)}<br><a href="${url}" target="_blank" rel="noopener noreferrer">Fonte: OpenStreetMap</a>`).addTo(addressDetailLayer);
   });
   addressDetailBuildings=buildings;
-  addressDetailStatus={...addressDetailStatus,state:'ready',elements:elements.length,addresses:candidates.filter(item=>item.kind==='house').length,blocks:candidates.filter(item=>item.kind==='block').length,verified:candidates.filter(item=>item.verified).length,references:references.map(item=>({id:item.id,name:item.name,category:item.category,type:item.type,lat:item.point[0],lng:item.point[1],source:item.source})),buildings:buildings.length,rendered,error:''};
+  addressDetailStatus={...addressDetailStatus,state:'ready',cacheExpirado,elements:elements.length,addresses:candidates.filter(item=>item.kind==='house').length,blocks:candidates.filter(item=>item.kind==='block').length,verified:candidates.filter(item=>item.verified).length,local:candidates.filter(item=>item.local).length,references:references.map(item=>({id:item.id,name:item.name,category:item.category,type:item.type,lat:item.point[0],lng:item.point[1],source:item.source})),buildings:buildings.length,rendered,error:''};
   publishAddressDetailStatus();
   renderAddressDebugBuildings(buildings);
 }
 
-function addressDetailQuery(bounds){
+function montarConsultaOverpass(bounds){
   const bbox=[bounds.getSouth(),bounds.getWest(),bounds.getNorth(),bounds.getEast()].map(value=>value.toFixed(7)).join(',');
   const references=addressDetailRadiusFilter?`nwr["amenity"]["name"](${bbox});nwr["shop"]["name"](${bbox});nwr["tourism"]["name"](${bbox});nwr["leisure"]["name"](${bbox});nwr["public_transport"]["name"](${bbox});`:'';
-  return `[out:json][timeout:18][maxsize:33554432];(
+  return `[out:json][timeout:${CONFIGURACAO_OVERPASS.timeoutConsultaSegundos}][maxsize:${CONFIGURACAO_OVERPASS.tamanhoMaximoResposta}];(
     nwr["addr:housenumber"](${bbox});
     nwr["addr:housename"](${bbox});
     way["building"](${bbox});
@@ -312,18 +304,18 @@ function addressDetailQuery(bounds){
     ${references}
   );out tags center geom qt;`;
 }
-async function fetchAddressDetails(query,signal,endpoints=ADDRESS_DETAIL_ENDPOINTS){
+async function consultarOverpass(query,signal,endpoints=CONFIGURACAO_OVERPASS.endpoints){
   let lastError=null;
   for(const endpoint of endpoints){
     let timedOut=false;
     const endpointAbort=new AbortController(),abortFromParent=()=>endpointAbort.abort();
     signal?.addEventListener('abort',abortFromParent,{once:true});
-    const timeout=setTimeout(()=>{timedOut=true;endpointAbort.abort();},ADDRESS_DETAIL_REQUEST_TIMEOUT_MS);
+    const timeout=setTimeout(()=>{timedOut=true;endpointAbort.abort();},CONFIGURACAO_OVERPASS.timeoutRequisicaoMs);
     try{
       const response=await fetch(endpoint,{method:'POST',body:new URLSearchParams({data:query}),signal:endpointAbort.signal,headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'}});
       if(!response.ok)throw new Error(`Overpass ${response.status}`);
       const data=await response.json(),elements=Array.isArray(data.elements)?data.elements:[];
-      if(elements.length>ADDRESS_DETAIL_MAX_ELEMENTS)throw new Error('Resposta Overpass excedeu o limite seguro');
+      if(elements.length>CONFIGURACAO_OVERPASS.maximoElementos)throw new Error('Resposta Overpass excedeu o limite seguro');
       return {elements,endpoint};
     }catch(error){
       if(signal?.aborted)throw new DOMException('Consulta cancelada','AbortError');
@@ -332,8 +324,8 @@ async function fetchAddressDetails(query,signal,endpoints=ADDRESS_DETAIL_ENDPOIN
   }
   throw lastError||new Error('Overpass indisponivel');
 }
-function addressDetailBounds(){return map.getBounds().pad(map.getZoom()>=19?.04:.025);}
-function addressDetailAreaKm2(bounds){
+function obterLimitesConsulta(){return map.getBounds().pad(map.getZoom()>=CONFIGURACAO_OVERPASS.zoomCacheDetalhado?CONFIGURACAO_OVERPASS.margemConsultaDetalhada:CONFIGURACAO_OVERPASS.margemConsultaPadrao);}
+function calcularAreaConsultaKm2(bounds){
   const center=bounds.getCenter(),width=map.distance([center.lat,bounds.getWest()],[center.lat,bounds.getEast()])/1000,height=map.distance([bounds.getSouth(),center.lng],[bounds.getNorth(),center.lng])/1000;
   return width*height;
 }
@@ -342,51 +334,58 @@ function cancelAddressDetailRequest(){
   if(addressDetailAbort)addressDetailAbort.abort();
   addressDetailAbort=null;addressDetailPendingKey='';addressDetailRequestToken++;
 }
-async function loadAddressDetails({force=false,endpoints=ADDRESS_DETAIL_ENDPOINTS}={}){
-  if(!map||!addressDetailsEnabled()||map.getZoom()<ADDRESS_DETAIL_MIN_ZOOM){
+/** Carrega endereços OSM do trecho visível, usando cache e fallback entre endpoints. */
+async function loadAddressDetails({force=false,endpoints=CONFIGURACAO_OVERPASS.endpoints}={}){
+  if(!map||!addressDetailsEnabled()||map.getZoom()<CONFIGURACAO_OVERPASS.zoomMinimo){
     addressDetailLayer.clearLayers();addressDebugLayer.clearLayers();
     if(map?.hasLayer(addressDetailLayer))map.removeLayer(addressDetailLayer);
     if(map?.hasLayer(addressDebugLayer))map.removeLayer(addressDebugLayer);
     return;
   }
   if(!map.hasLayer(addressDetailLayer))addressDetailLayer.addTo(map);
-  const bounds=addressDetailBounds(),profile=addressRenderingProfile(),areaKm2=addressDetailAreaKm2(bounds);
+  const bounds=obterLimitesConsulta(),profile=obterPerfilRenderizacaoEnderecos(),areaKm2=calcularAreaConsultaKm2(bounds);
   if(areaKm2>profile.maxAreaKm2){
     cancelAddressDetailRequest();addressDetailLayer.clearLayers();addressDebugLayer.clearLayers();
     addressDetailStatus={...addressDetailStatus,state:'limited',error:`Area visivel de ${areaKm2.toFixed(1)} km2 acima do limite`};publishAddressDetailStatus();return;
   }
-  const key=addressDetailsCacheKey(bounds,map.getZoom());
+  const key=criarChaveCacheEnderecos(bounds,map.getZoom());
   if(!force&&(key===addressDetailRenderedKey||key===addressDetailPendingKey))return;
   cancelAddressDetailRequest();addressDetailPendingKey=key;
   if(key!==addressDetailRenderedKey){addressDetailLayer.clearLayers();addressDebugLayer.clearLayers();}
-  const cached=force?null:readAddressDetailsCache(key);
+  const cached=force?null:lerCacheEnderecos(key);
   if(cached){addressDetailRenderedKey=key;addressDetailPendingKey='';addressDetailStatus={...addressDetailStatus,state:'cache',endpoint:'cache',error:''};renderAddressDetails(cached);return;}
+  const cacheExpirado=force?null:lerCacheEnderecos(key,{aceitarExpirado:true});
   addressDetailAbort=new AbortController();
   const token=++addressDetailRequestToken;
   renderAddressDetails([]);
   addressDetailStatus={...addressDetailStatus,state:'loading',endpoint:'',error:''};publishAddressDetailStatus();
   try{
-    const result=await fetchAddressDetails(addressDetailQuery(bounds),addressDetailAbort.signal,endpoints);
+    const result=await consultarOverpass(montarConsultaOverpass(bounds),addressDetailAbort.signal,endpoints);
     if(token!==addressDetailRequestToken)return;
-    writeAddressDetailsCache(key,result.elements);addressDetailRenderedKey=key;
+    gravarCacheEnderecos(key,result.elements);addressDetailRenderedKey=key;
     addressDetailStatus={...addressDetailStatus,state:'ready',endpoint:result.endpoint,error:''};renderAddressDetails(result.elements);
   }catch(error){
-    if(error.name!=='AbortError'){addressDetailStatus={...addressDetailStatus,state:'error',error:error.message||String(error)};publishAddressDetailStatus();console.warn('RoutePilot: numeros de imoveis indisponiveis no momento.',error);}
+    if(error.name!=='AbortError'&&cacheExpirado){addressDetailRenderedKey=key;addressDetailStatus={...addressDetailStatus,endpoint:'cache-expirado',error:''};renderAddressDetails(cacheExpirado,{cacheExpirado:true});}
+    else if(error.name!=='AbortError'){
+      const locais=localSnapshotCandidates();
+      if(locais.length){addressDetailStatus={...addressDetailStatus,state:'ready',cacheExpirado:false,local:locais.length,endpoint:'base-local',error:error.message||String(error)};publishAddressDetailStatus();}
+      else {addressDetailStatus={...addressDetailStatus,state:'error',cacheExpirado:false,error:error.message||String(error)};publishAddressDetailStatus();console.warn('RoutePilot: numeros de imoveis indisponiveis no momento.',error);}
+    }
   }finally{if(token===addressDetailRequestToken){addressDetailPendingKey='';addressDetailAbort=null;}}
 }
 function scheduleAddressDetails(){
   cancelAddressDetailRequest();
-  if(!map||!addressDetailsEnabled()||map.getZoom()<ADDRESS_DETAIL_MIN_ZOOM){
+  if(!map||!addressDetailsEnabled()||map.getZoom()<CONFIGURACAO_OVERPASS.zoomMinimo){
     addressDetailRenderedKey='';addressDetailLayer.clearLayers();addressDebugLayer.clearLayers();
     if(map?.hasLayer(addressDetailLayer))map.removeLayer(addressDetailLayer);
     if(map?.hasLayer(addressDebugLayer))map.removeLayer(addressDebugLayer);
     return;
   }
-  addressDetailTimer=setTimeout(()=>loadAddressDetails(),ADDRESS_DETAIL_DEBOUNCE_MS);
+  addressDetailTimer=setTimeout(()=>loadAddressDetails(),CONFIGURACAO_OVERPASS.debounceMs);
 }
 function updateAddressDetailLayer(){
   if(!map)return;
-  if(addressDetailsEnabled()&&map.getZoom()>=ADDRESS_DETAIL_MIN_ZOOM){if(!map.hasLayer(addressDetailLayer))addressDetailLayer.addTo(map);scheduleAddressDetails();}
+  if(addressDetailsEnabled()&&map.getZoom()>=CONFIGURACAO_OVERPASS.zoomMinimo){if(!map.hasLayer(addressDetailLayer))addressDetailLayer.addTo(map);scheduleAddressDetails();}
   else{
     cancelAddressDetailRequest();addressDetailRenderedKey='';addressDetailLayer.clearLayers();addressDebugLayer.clearLayers();
     if(map.hasLayer(addressDetailLayer))map.removeLayer(addressDetailLayer);
@@ -405,10 +404,10 @@ window.RoutePilotAddressDebug={
   reload(){addressDetailRenderedKey='';return loadAddressDetails({force:true});},
   clearCache(){
     addressDetailMemoryCache.clear();
-    try{const keys=[];for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key?.startsWith('routepilot:osm-addresses:v4:'))keys.push(key);}keys.forEach(key=>localStorage.removeItem(key));}catch(error){}
+    try{const keys=[];for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key?.startsWith(CONFIGURACAO_OVERPASS.prefixoCache))keys.push(key);}keys.forEach(key=>localStorage.removeItem(key));}catch(error){}
     addressDetailRenderedKey='';return loadAddressDetails({force:true});
   },
-  query(){return map?addressDetailQuery(addressDetailBounds()):'';},
+  query(){return map?montarConsultaOverpass(obterLimitesConsulta()):'';},
   cancel:cancelAddressDetailRequest,
   setDebug:setAddressDebugMode,
   setRadius:setAddressDetailRadius,
@@ -417,7 +416,7 @@ window.RoutePilotAddressDebug={
   status(){return {...addressDetailStatus};},
   snapshot(){return addressDetailBuildings.map(building=>({id:building.id,center:[...building.center],tags:{...building.tags},geojson:addressBuildingGeoJSON(building)}));},
   testFallback(endpoints){return loadAddressDetails({force:true,endpoints});},
-  endpoints:[...ADDRESS_DETAIL_ENDPOINTS],
+  endpoints:[...CONFIGURACAO_OVERPASS.endpoints],
   priorityAreas:typeof priorityMapAreas!=='undefined'?priorityMapAreas:[]
 };
 

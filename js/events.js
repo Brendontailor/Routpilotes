@@ -68,7 +68,7 @@ document.addEventListener('submit',event=>{
   if(event.target.id==='operationalNoteForm'){event.preventDefault();saveOperationalNote(event.target);}
   if(event.target.matches('.note-edit-form')){event.preventDefault();saveOperationalNoteEdit(event.target);}
 });
-$('q').addEventListener('input',()=>{ clearTimeout(searchTimer); doSearch(); searchTimer=setTimeout(()=>doSearch(true),350); });
+$('q').addEventListener('input',()=>{ clearTimeout(searchTimer); doSearch(); searchTimer=setTimeout(()=>doSearch(true),CONFIGURACAO_PESQUISA.debounceMs); });
 $('searchForm').addEventListener('submit',event=>{event.preventDefault();clearTimeout(searchTimer);doSearch();const coordinate=parseCoordinateQuery(state.query);if(coordinate.matched&&coordinate.valid)identifyCoordinates(coordinate.lat,coordinate.lng);else if(searchAll(state.query).length)openResult(0);});
 $('clearSearch').addEventListener('click',()=>{clearTimeout(searchTimer);$('q').value='';doSearch();$('q').focus();});
 $('reset').addEventListener('click',generalMap);

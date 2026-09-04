@@ -46,7 +46,7 @@ function generalMap() {
 function goHome() {if(typeof clearIdentifiedArea==='function')clearIdentifiedArea(false);navigate({city:null,region:null,point:null,boundary:null,road:null,query:'',searchOpen:false,overview:false});$('q').value='';}
 function sameNameChoices(entry) {
   const names=(entry.aliases||[entry.name]).map(clean);
-  return searchEntries.filter(e=>e.kind!=='road'&&(e.aliases||[e.name]).some(n=>names.includes(clean(n))));
+  return INDICE_PESQUISA.filter(e=>e.kind!=='road'&&(e.aliases||[e.name]).some(n=>names.includes(clean(n))));
 }
 function askCity(choices) {
   const cities=[...new Set(choices.map(e=>e.city))];

@@ -93,7 +93,7 @@ Ultima atualizacao: 2026-09-04
 
 ## Cache/service worker atual
 
-- `routepilot-shell-v13`
+- `routepilot-shell-v14`
 - Network-first para HTML e arquivos da mesma origem.
 - Caches antigos removidos no evento `activate`.
 
@@ -162,3 +162,25 @@ Ultima atualizacao: 2026-09-04
 - O compartilhamento inclui coordenadas, regiao operacional, ate tres localidades ou referencias proximas quando existirem e um deep link do RoutePilot.
 - No desktop, o texto e copiado para a area de transferencia; em dispositivos de toque com Web Share, o seletor nativo pode ser usado.
 - Cache do Service Worker atualizado para `routepilot-shell-v13`.
+
+## 2026-09-04 — Organização interna para desktop/web
+
+- Configurações de mapa, pesquisa, Overpass, cache e foco de endereços foram centralizadas em `js/config.js`.
+- Funções internas do mapa, pesquisa e Overpass receberam nomes mais claros em português, sem traduzir APIs ou tags externas.
+- A função espacial sem uso `spatialCell` foi removida.
+- O clique em um ponto agora mantém o zoom atual quando a tela já está aproximada; em visão distante, aproxima até o mínimo configurado.
+- O timeout por endpoint Overpass passou para 22 segundos, pois uma instância pública válida pode responder acima de 15 segundos.
+- Em falha dos endpoints, a última resposta local do mesmo trecho pode ser exibida como cache antigo.
+- `README.md` ganhou um resumo da estrutura e `docs/GUIA-DO-CODIGO.md` documenta a manutenção do projeto.
+- O trabalho desta etapa considera somente desktop/web; não foram feitas otimizações específicas para mobile.
+- Cache do Service Worker atualizado para `routepilot-shell-v14`.
+
+## 2026-09-04 — Base local de endereços e revisão da COAB Duque
+
+- Foi gerada em `data/osm-address-snapshot.js` uma base local com 1.792 números disponíveis no OpenStreetMap, limitada aos contornos operacionais já cadastrados.
+- A base local é exibida imediatamente e permanece disponível quando os endpoints públicos do Overpass estão lentos ou indisponíveis.
+- `scripts/update-osm-address-snapshot.mjs` permite atualizar essa base sem inventar números ou coordenadas.
+- A fonte KML da COAB Duque foi revisada e passou a totalizar 43 pontos verificados: 15 blocos e 28 números.
+- O número 331 do conjunto `728-7`, nas coordenadas `-31.763328, -52.362457`, foi incluído com ID interno próprio.
+- Também foram recuperados da mesma série os números 270, 290, 341, 350, 641 e 641A, que não tinham o prefixo `COHADUQUE` no nome do KML.
+- O painel de foco agora separa blocos de números e ordena cada lista do menor para o maior.

@@ -1,5 +1,5 @@
 let addressRadiusContext=null;
-let addressRadiusMeters=300;
+let addressRadiusMeters=CONFIGURACAO_FOCO_ENDERECOS.raioInicialMetros;
 let addressRadiusLayer=null;
 let addressRadiusStatus={state:'idle',addresses:0,blocks:0,rendered:0,error:''};
 
@@ -11,6 +11,7 @@ function openPriorityArea(id) {
   openAddressRadius({...currentAreaContext(),name:area.name});
 }
 
+/** Abre o foco de números e referências ao redor do contexto selecionado. */
 function openAddressRadius(context=currentAreaContext()) {
   if(!context||!map)return;
   cancelMapInteraction('addressRadius');
@@ -52,20 +53,20 @@ function addressRadiusVerifiedItems(){
   if(!addressRadiusContext||typeof verifiedAddressPoints==='undefined')return [];
   const origin=[addressRadiusContext.lat,addressRadiusContext.lng],limit=addressRadiusMeters/1000;
   return verifiedAddressPoints.map(item=>({...item,km:distanceKm(origin,[item.lat,item.lon])})).filter(item=>item.km<=limit)
-    .sort((a,b)=>a.kind.localeCompare(b.kind)||a.label.localeCompare(b.label,'pt-BR',{numeric:true}));
+    .sort((a,b)=>a.label.localeCompare(b.label,'pt-BR',{numeric:true,sensitivity:'base'}));
 }
 
 function focusVerifiedAddress(id){
   const item=(typeof verifiedAddressPoints!=='undefined'?verifiedAddressPoints:[]).find(entry=>entry.id===id);
   if(!item||!map)return;
-  map.flyTo([item.lat,item.lon],20,{duration:.35});
+  map.flyTo([item.lat,item.lon],CONFIGURACAO_FOCO_ENDERECOS.zoomNumeroVerificado,{duration:.35});
   L.popup().setLatLng([item.lat,item.lon]).setContent(`<b>${item.kind==='block'?'Bloco ':''}${esc(item.label)}</b><br><small>${esc(item.source)}</small><br><a href="${esc(item.sourceUrl)}" target="_blank" rel="noopener noreferrer">Abrir fonte</a>`).openOn(map);
 }
 
 function focusAddressReference(key){
   const item=addressRadiusReferences().find(reference=>reference.key===key);
   if(!item||!map)return;
-  map.flyTo([item.lat,item.lng],19,{duration:.35});
+  map.flyTo([item.lat,item.lng],CONFIGURACAO_FOCO_ENDERECOS.zoomReferencia,{duration:.35});
   L.popup().setLatLng([item.lat,item.lng]).setContent(`<b>${esc(item.name)}</b><br>${esc(item.category)}<br><small>${esc(item.source)}</small>`).openOn(map);
 }
 
@@ -73,6 +74,8 @@ function addressRadiusStatusText() {
   if(addressRadiusStatus.state==='loading')return 'Consultando números no OpenStreetMap...';
   if(addressRadiusStatus.state==='error')return 'Os números estão temporariamente indisponíveis. O mapa e as referências continuam funcionando.';
   if(addressRadiusStatus.state==='limited')return 'A área visível é grande demais. Escolha um raio menor.';
+  if(addressRadiusStatus.state==='ready'&&addressRadiusStatus.cacheExpirado)return 'Exibindo a última consulta salva porque o OpenStreetMap está temporariamente indisponível.';
+  if(addressRadiusStatus.state==='ready'&&addressRadiusStatus.endpoint==='base-local')return `${addressRadiusStatus.local||0} números da base local. A atualização do OpenStreetMap está temporariamente indisponível.`;
   if(addressRadiusStatus.state==='ready')return `${addressRadiusStatus.addresses||0} números e ${addressRadiusStatus.blocks||0} blocos encontrados neste trecho${addressRadiusStatus.verified?`, incluindo ${addressRadiusStatus.verified} do mapa verificado`:''}.`;
   return 'Os números disponíveis aparecem sobre as construções.';
 }
@@ -80,13 +83,17 @@ function addressRadiusStatusText() {
 function renderAddressRadiusPanel(panel=$('areaInspector')) {
   if(areaPanelMode!=='addressRadius'||!addressRadiusContext)return false;
   const references=addressRadiusReferences(),verified=addressRadiusVerifiedItems();
+  const verifiedBlocks=verified.filter(item=>item.kind==='block');
+  const verifiedNumbers=verified.filter(item=>item.kind!=='block');
   const rows=references.slice(0,24).map((item,index)=>`<button type="button" class="radius-row" data-action="focusAddressReference" data-value="${esc(item.key)}"><span>${index+1}</span><b>${esc(item.name)}</b><small>${esc(item.category)}</small><strong>${distanceLabel(item.km)}</strong></button>`).join('');
-  const verifiedButtons=verified.map(item=>`<button type="button" data-action="focusVerifiedAddress" data-value="${esc(item.id)}" title="${esc(item.source)}">${item.kind==='block'?'Bloco ':''}${esc(item.label)}</button>`).join('');
+  const verifiedButtons=items=>items.map(item=>`<button type="button" data-action="focusVerifiedAddress" data-value="${esc(item.id)}" title="${esc(item.source)}">${esc(item.label)}</button>`).join('');
   panel.hidden=false;
   panel.innerHTML=`<p class="panel-intro">Foco em <b>${esc(addressRadiusContext.name)}</b>. Exibe números disponíveis no OpenStreetMap e referências cadastradas dentro do círculo.</p>
-    <div class="radius-options address-radius-options" role="group" aria-label="Raio dos números">${[100,200,300,500].map(meters=>`<button type="button" data-action="setAddressRadius" data-value="${meters}" aria-pressed="${addressRadiusMeters===meters}">${meters} m</button>`).join('')}</div>
+    <div class="radius-options address-radius-options" role="group" aria-label="Raio dos números">${CONFIGURACAO_FOCO_ENDERECOS.raiosDisponiveisMetros.map(meters=>`<button type="button" data-action="setAddressRadius" data-value="${meters}" aria-pressed="${addressRadiusMeters===meters}">${meters} m</button>`).join('')}</div>
     <div class="address-radius-status" aria-live="polite">${esc(addressRadiusStatusText())}</div>
-    ${verified.length?`<div class="section-title">NÚMEROS VERIFICADOS <span>${verified.length}</span></div><div class="verified-number-grid">${verifiedButtons}</div><p class="straight-line-note">Fonte: Google My Maps fornecido. Clique em um número para aproximar.</p>`:''}
+    ${verifiedBlocks.length?`<div class="section-title">BLOCOS VERIFICADOS <span>${verifiedBlocks.length}</span></div><div class="verified-number-grid">${verifiedButtons(verifiedBlocks)}</div>`:''}
+    ${verifiedNumbers.length?`<div class="section-title">NÚMEROS VERIFICADOS <span>${verifiedNumbers.length}</span></div><div class="verified-number-grid">${verifiedButtons(verifiedNumbers)}</div>`:''}
+    ${verified.length?'<p class="straight-line-note">Fonte: Google My Maps fornecido. Clique em um item para aproximar.</p>':''}
     <div class="section-title">REFERÊNCIAS NO RAIO <span>${references.length}</span></div>
     <div class="radius-results">${rows||'<p class="empty">Nenhuma referência cadastrada dentro deste raio.</p>'}</div>
     <div class="inspector-actions"><button type="button" data-action="refreshAddressRadius">Atualizar números</button><button type="button" data-action="clearAddressRadius">Encerrar foco</button></div>`;
@@ -95,11 +102,11 @@ function renderAddressRadiusPanel(panel=$('areaInspector')) {
 
 function applyAddressRadius(meters) {
   if(!addressRadiusContext||!map)return;
-  addressRadiusMeters=Math.max(100,Math.min(500,Number(meters)||200));
+  addressRadiusMeters=Math.max(CONFIGURACAO_FOCO_ENDERECOS.raioMinimoMetros,Math.min(CONFIGURACAO_FOCO_ENDERECOS.raioMaximoMetros,Number(meters)||CONFIGURACAO_FOCO_ENDERECOS.raioInicialMetros));
   if(addressRadiusLayer)map.removeLayer(addressRadiusLayer);
   addressRadiusLayer=L.circle([addressRadiusContext.lat,addressRadiusContext.lng],{radius:addressRadiusMeters,color:'#f27622',weight:2.5,fillColor:'#f59e0b',fillOpacity:.07,dashArray:'8 5'}).addTo(map);
   const fitZoom=map.getBoundsZoom(addressRadiusLayer.getBounds().pad(.12));
-  map.flyTo([addressRadiusContext.lat,addressRadiusContext.lng],Math.max(17,Math.min(19,fitZoom)),{duration:.4});
+  map.flyTo([addressRadiusContext.lat,addressRadiusContext.lng],Math.max(CONFIGURACAO_FOCO_ENDERECOS.zoomMinimo,Math.min(CONFIGURACAO_FOCO_ENDERECOS.zoomMaximo,fitZoom)),{duration:.4});
   setAddressDetailRadius([addressRadiusContext.lat,addressRadiusContext.lng],addressRadiusMeters);
   updateLayers();renderAddressRadiusPanel();
   if(window.matchMedia('(max-width:900px)').matches)document.querySelector('.map-stage').scrollIntoView({behavior:'smooth',block:'start'});

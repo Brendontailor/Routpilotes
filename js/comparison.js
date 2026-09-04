@@ -21,7 +21,7 @@ function toggleCompareRegion(id) {
 }
 function compareCatalog() {
   if(compareCatalogCache)return compareCatalogCache;
-  compareCatalogCache=searchEntries.filter(e=>['region','point','boundary'].includes(e.kind)&&!(e.kind==='point'&&pointFor(e.id)?.kind==='referencia')).map(e=>{
+  compareCatalogCache=INDICE_PESQUISA.filter(e=>['region','point','boundary'].includes(e.kind)&&!(e.kind==='point'&&pointFor(e.id)?.kind==='referencia')).map(e=>{
     const p=e.kind==='point'?pointFor(e.id):null;
     const boundary=e.kind==='boundary'?boundaryById[e.id]:p?boundaryForPoint(p):null;
     const center=boundary?boundaryLayers[boundary.properties.id]?.getBounds().getCenter():null;
@@ -37,7 +37,7 @@ function comparisonRegionIds() {
 }
 function comparePlaceMatches(query) {
   if(!clean(query))return [];
-  return compareCatalog().map(e=>({...e,score:Math.max(...(e.aliases||[e.name]).map(name=>scoreText(name,e.context,query)))}))
+  return compareCatalog().map(e=>({...e,score:Math.max(...(e.aliases||[e.name]).map(name=>pontuarTexto(name,e.context,query)))}))
     .filter(e=>e.score).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name,'pt-BR')).slice(0,16);
 }
 function switchCompareMode(mode) {
@@ -152,7 +152,7 @@ function renderComparisonOverlay() {
   if(!map)return;
   const key=placeComparison()?JSON.stringify([state.compareStops,state.compareReady]):'';
   if(key===compareOverlayKey)return;
-  compareOverlay.forEach(layer=>sync(layer,false));compareOverlay=[];compareOverlayKey=key;
+  compareOverlay.forEach(layer=>sincronizarCamada(layer,false));compareOverlay=[];compareOverlayKey=key;
   if(!placeComparison())return;
   const stops=comparisonStops();
   if(state.compareReady&&stops.every(Boolean)){

@@ -1,4 +1,4 @@
-function editDistance(a,b) {
+function calcularDistanciaEdicao(a,b) {
   let previous = Array.from({length:b.length+1}, (_,i) => i);
   for(let i=1;i<=a.length;i++) {
     const row = [i];
@@ -7,21 +7,21 @@ function editDistance(a,b) {
   }
   return previous[b.length];
 }
-function scoreText(name, context, query) {
+function pontuarTexto(name, context, query) {
   const q = clean(query), n = clean(name), full = clean(name+' '+context);
   if(!q) return 0;
   if(n === q) return 120;
   if(n.startsWith(q)) return 108;
   if(n.includes(q)) return 100;
   const terms = q.split(' '), words = full.split(' '), nameWords=n.split(' ');
-  const fuzzyMatch=(term,word)=>word===term||(term.length>=4&&editDistance(term,word)<=(term.length>=8?2:1));
+  const correspondenciaAproximada=(termo,palavra)=>palavra===termo||(termo.length>=4&&calcularDistanciaEdicao(termo,palavra)<=(termo.length>=8?2:1));
   if(terms.every(t=>nameWords.some(w=>w.startsWith(t)))) return 96;
-  if(terms.every(t=>nameWords.some(w=>fuzzyMatch(t,w)))) return 90;
+  if(terms.every(t=>nameWords.some(w=>correspondenciaAproximada(t,w)))) return 90;
   if(terms.every(t => words.some(w => w.startsWith(t)))) return 85;
-  if(terms.every(t => words.some(w => fuzzyMatch(t,w)))) return 65;
+  if(terms.every(t => words.some(w => correspondenciaAproximada(t,w)))) return 65;
   return 0;
 }
-const searchEntries = [
+const INDICE_PESQUISA = [
   ...(typeof priorityMapAreas!=='undefined'?priorityMapAreas.map(area=>({kind:'priority',id:area.id,name:area.name,city:area.city,region:null,context:`${area.city} área verificada`,sub:'Área com números verificados'})):[]),
   ...regions.map(r => ({kind:'region', id:r.id, name:r.name, city:r.city, region:r.id, context:r.city, sub:'Região '+regionCode(r)})),
   ...points.map(p => ({kind:'point', id:p.id, name:p.name, aliases:pointAliases(p), city:p.city, region:p.region, context:p.city+' '+byRegion[p.region].name, sub:p.kind === 'referencia' ? 'Referência' : 'Bairro / localidade'})),
@@ -29,13 +29,14 @@ const searchEntries = [
   ...points.flatMap(p => streetNames(p).map(road => ({kind:'road', id:p.id, name:road, city:p.city, region:p.region, context:p.city+' '+p.name, sub:'Via / acesso · '+p.name}))),
   ...regions.flatMap(r => r.roads.map(road => ({kind:'road', id:'', name:road, city:r.city, region:r.id, context:r.city+' '+r.name, sub:'Via / acesso · '+r.name})))
 ];
+/** Pesquisa cidades, regiões, localidades e vias com tolerância a pequenas diferenças. */
 function searchAll(query) {
   const seen = new Set();
-  return searchEntries.map(e => ({...e,score:Math.max(...(e.aliases||[e.name]).map(n=>scoreText(n,e.context,query)))})).filter(e => {
+  return INDICE_PESQUISA.map(e => ({...e,score:Math.max(...(e.aliases||[e.name]).map(n=>pontuarTexto(n,e.context,query)))})).filter(e => {
     const key = [e.kind,e.name,e.id,e.region].join('|');
     if(!e.score || seen.has(key)) return false;
     seen.add(key); return true;
-  }).sort((a,b) => b.score-a.score || (a.kind==='road')-(b.kind==='road') || a.name.length-b.name.length || a.name.localeCompare(b.name,'pt-BR')).slice(0,40);
+  }).sort((a,b) => b.score-a.score || (a.kind==='road')-(b.kind==='road') || a.name.length-b.name.length || a.name.localeCompare(b.name,'pt-BR')).slice(0,CONFIGURACAO_PESQUISA.limiteResultados);
 }
 function actionButton(action, value, title, subtitle='', extra='') {
   const city=action==='city'?cityStyles[value]:null;
