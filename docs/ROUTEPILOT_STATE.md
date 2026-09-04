@@ -93,7 +93,7 @@ Ultima atualizacao: 2026-09-04
 
 ## Cache/service worker atual
 
-- `routepilot-shell-v11`
+- `routepilot-shell-v13`
 - Network-first para HTML e arquivos da mesma origem.
 - Caches antigos removidos no evento `activate`.
 
@@ -150,3 +150,15 @@ Ultima atualizacao: 2026-09-04
 - O ponto chamado `COHADUQUE` no KML de referencia fica aproximadamente em `-31.7642812, -52.3638874`, diferente da coordenada prioritaria. O OSM nao retornou footprints de edificios nessa segunda area durante a validacao; por isso nenhum bloco foi criado manualmente.
 - Uma area residencial de Porto Alegre foi usada como validacao fora das cidades cadastradas, confirmando que a camada e global.
 - Corrigida a grade responsiva que comprimia o mapa em telas de ate 900 px.
+
+## 2026-09-04 — Foco de enderecos e compartilhamento de pontos
+
+- A busca por `COAB Duque` abre o foco de enderecos com raio de 300 m, ajustavel para 100, 200, 300 ou 500 m.
+- Foram incorporados 36 marcadores numerados do KML fornecido pelo usuario: 21 numeros de endereco e 15 marcadores de bloco, preservando coordenadas e identificadores internos independentes.
+- O centro de foco da COAB Duque e a media calculada dos 36 marcadores; nenhuma geometria ou numeracao foi inventada.
+- A consulta combina os marcadores verificados com numeros, blocos e referencias nomeadas disponiveis no OpenStreetMap/Overpass.
+- Clique em um ponto livre do mapa identifica a coordenada e oferece `Ver numeros no raio`; em zoom 17+, o mesmo vale sobre contornos de regiao e bairro.
+- Clique direito abre um menu no mapa para focar numeros, compartilhar a localizacao ou copiar somente as coordenadas.
+- O compartilhamento inclui coordenadas, regiao operacional, ate tres localidades ou referencias proximas quando existirem e um deep link do RoutePilot.
+- No desktop, o texto e copiado para a area de transferencia; em dispositivos de toque com Web Share, o seletor nativo pode ser usado.
+- Cache do Service Worker atualizado para `routepilot-shell-v13`.

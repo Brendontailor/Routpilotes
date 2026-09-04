@@ -23,6 +23,12 @@ document.addEventListener('click',event=>{
   if(action==='compareCoordinates')compareIdentifiedCoordinates();
   if(action==='understandArea')openUnderstandArea();
   if(action==='aroundArea')openAroundArea();
+  if(action==='addressRadius')openAddressRadius();
+  if(action==='setAddressRadius')applyAddressRadius(value);
+  if(action==='refreshAddressRadius')refreshAddressRadius();
+  if(action==='clearAddressRadius')clearAddressRadius({close:true});
+  if(action==='focusVerifiedAddress')focusVerifiedAddress(value);
+  if(action==='focusAddressReference')focusAddressReference(value);
   if(action==='closeAreaTool')closeAreaTool();
   if(action==='setRadius')setRadius(value);
   if(action==='customRadius')applyCustomRadius();
@@ -30,6 +36,9 @@ document.addEventListener('click',event=>{
   if(action==='clearRadiusClose')clearRadiusSearch({close:true});
   if(action==='radiusResult')openRadiusResult(button.dataset.kind,value);
   if(action==='shareArea')shareArea();
+  if(action==='focusMapCoordinates')focusMapCoordinates(Number(button.dataset.lat),Number(button.dataset.lng));
+  if(action==='shareMapCoordinates')shareMapCoordinates(Number(button.dataset.lat),Number(button.dataset.lng));
+  if(action==='copyMapCoordinates')copyMapCoordinates(Number(button.dataset.lat),Number(button.dataset.lng));
   if(action==='streetViewContext')streetViewContext();
   if(action==='showAddNote')showAddNoteForm();
   if(action==='cancelAddNote')cancelAddNote();
@@ -90,6 +99,7 @@ document.addEventListener('keydown',event=>{
   }
   if(plainEscape&&layersOpen){event.preventDefault();closeLayers();return;}
   if(event.key==='Escape'&&areaPanelMode==='radius'&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){event.preventDefault();clearRadiusSearch({close:true});return;}
+  if(event.key==='Escape'&&areaPanelMode==='addressRadius'&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){event.preventDefault();clearAddressRadius({close:true});return;}
   if(event.key==='Escape'&&areaPanelMode==='understand'&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){event.preventDefault();closeAreaTool();return;}
   if(event.key==='Escape'&&toolsOpen&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){event.preventDefault();closeTools();return;}
   if(event.key==='Escape'&&identifiedArea&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){event.preventDefault();clearIdentifiedArea();return;}

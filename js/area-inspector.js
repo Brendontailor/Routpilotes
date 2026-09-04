@@ -88,6 +88,7 @@ function identifyCoordinates(lat,lng,{source='search',reference=null,note=null}=
 
 function renderAreaInspector() {
   const panel=$('areaInspector');
+  if(typeof renderAddressRadiusPanel==='function'&&renderAddressRadiusPanel(panel))return;
   if(typeof renderRadiusPanel==='function'&&renderRadiusPanel(panel))return;
   if(typeof renderAreaIntelligencePanel==='function'&&renderAreaIntelligencePanel(panel))return;
   panel.hidden=!identifiedArea;
@@ -104,7 +105,7 @@ function renderAreaInspector() {
     </dl>`:`<div class="coverage-warning"><b>Fora da cobertura</b><p>Este ponto está fora da cobertura cadastrada do RoutePilot.</p></div><dl class="inspection-grid"><div><dt>Latitude</dt><dd>${item.lat.toFixed(6)}</dd></div><div><dt>Longitude</dt><dd>${item.lng.toFixed(6)}</dd></div></dl>`;
   const note=item.note;
   const noteCard=note?`<article class="review-note selected-note" data-note-id="${esc(note.id)}"><div class="note-state is-${esc(note.status)}">${esc(noteStatusLabel(note.status))}</div><h3>${esc(note.text)}</h3><p><b>Tipo:</b> ${esc(noteTypeLabel(note.type))}</p><p><b>Coordenadas:</b> ${item.lat.toFixed(6)}, ${item.lng.toFixed(6)}</p><div class="review-actions">${note.status==='pending'?`<button data-action="validateOperationalNote" data-id="${esc(note.id)}">Validar</button><button data-action="editOperationalNote" data-id="${esc(note.id)}">Editar</button><button data-action="rejectOperationalNote" data-id="${esc(note.id)}">Rejeitar</button>`:'<button data-action="editOperationalNote" data-id="'+esc(note.id)+'">Editar</button>'}</div><div class="note-edit-host"></div></article>`:'';
-  const actions=`<div class="inspector-actions" aria-label="Ações para este ponto"><button type="button" data-action="understandArea">${iconSvg('crosshair')}Entender área</button><button type="button" data-action="aroundArea">${iconSvg('radius')}Ver ao redor</button><button type="button" data-action="streetViewCoordinates">${iconSvg('pin')}Street View</button><a href="${mapsUrl}" target="_blank" rel="noopener noreferrer">${iconSvg('pin')}Google Maps</a>${item.insideCoverage?`<button type="button" data-action="compareCoordinates">${iconSvg('road')}Comparar</button>`:''}<button type="button" data-action="shareArea">${iconSvg('link')}Compartilhar</button></div>`;
+  const actions=`<div class="inspector-actions" aria-label="Ações para este ponto"><button type="button" data-action="understandArea">${iconSvg('crosshair')}Entender área</button><button type="button" data-action="aroundArea">${iconSvg('radius')}Ver ao redor</button><button type="button" data-action="addressRadius">${iconSvg('home')}Ver números no raio</button><button type="button" data-action="streetViewCoordinates">${iconSvg('pin')}Street View</button><a href="${mapsUrl}" target="_blank" rel="noopener noreferrer">${iconSvg('pin')}Google Maps</a>${item.insideCoverage?`<button type="button" data-action="compareCoordinates">${iconSvg('road')}Comparar</button>`:''}<button type="button" data-action="shareArea">${iconSvg('link')}Compartilhar</button></div>`;
   panel.innerHTML=`${noteCard||rows}${actions}${note?'':addNoteSection(item.lat,item.lng)}`;
   renderNearbyOperationalNotes(item.lat,item.lng);
 }

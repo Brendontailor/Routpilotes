@@ -87,7 +87,7 @@ function initMap() {
   boundaries.features.forEach(feature=>{
     const b=feature.properties;
     const layer=addLayer(L.geoJSON(feature,{pane:'neighborhoodAreas',bubblingMouseEvents:false,style:{color:b.color,weight:2,fill:true,fillOpacity:0}}),{city:b.city,region:b.region,kind:'neighborhood',boundary:b.id,color:b.color});
-    layer.bindTooltip(`${esc(b.name)} · ${esc(cityName(b.city))}<br>${b.category} · ${esc(b.source)}`,{sticky:true}).on('click',event=>identifyPointMode?identifyCoordinates(event.latlng.lat,event.latlng.lng,{source:'map'}):mapBoundaryClick(b.id));
+    layer.bindTooltip(`${esc(b.name)} · ${esc(cityName(b.city))}<br>${b.category} · ${esc(b.source)}`,{sticky:true}).on('click',event=>identifyPointMode||map.getZoom()>=17?identifyCoordinates(event.latlng.lat,event.latlng.lng,{source:'map'}):mapBoundaryClick(b.id));
     boundaryLayers[b.id]=layer;
     if(!linkedPoint(feature)){
       const center=layer.getBounds().getCenter();
@@ -97,7 +97,7 @@ function initMap() {
     }
   });
   regions.forEach(r=>{
-    regionLayers[r.id]=addLayer(L.polygon(r.polygon,{pane:'regionAreas',bubblingMouseEvents:false,color:r.color,weight:2,fill:true,fillOpacity:0}),{city:r.city,region:r.id,kind:'outline'}).bindTooltip(esc(r.name),{sticky:true}).on('click',event=>identifyPointMode?identifyCoordinates(event.latlng.lat,event.latlng.lng,{source:'map'}):selectRegion(r.id));
+    regionLayers[r.id]=addLayer(L.polygon(r.polygon,{pane:'regionAreas',bubblingMouseEvents:false,color:r.color,weight:2,fill:true,fillOpacity:0}),{city:r.city,region:r.id,kind:'outline'}).bindTooltip(esc(r.name),{sticky:true}).on('click',event=>identifyPointMode||map.getZoom()>=17?identifyCoordinates(event.latlng.lat,event.latlng.lng,{source:'map'}):selectRegion(r.id));
     addLayer(L.marker(r.center,{title:r.name,icon:L.divIcon({className:'',html:`<div class="region-number" style="background:${r.color}">${regionCode(r)}</div>`,iconSize:[28,28],iconAnchor:[14,14]})}),{city:r.city,region:r.id,kind:'regionNumber'}).bindTooltip(esc(r.name)).on('click',()=>selectRegion(r.id));
   });
   points.forEach(p=>{
@@ -107,7 +107,11 @@ function initMap() {
     const label=L.marker([p.lat,p.lon],{keyboard:false,icon:L.divIcon({className:'',html:`<span class="point-label">${esc(p.name)}</span>`,iconSize:[180,26],iconAnchor:[-14,12]})}).on('click',()=>mapPointClick(p.id));
     labelRecords.push({p,layer:label});
   });
-  map.on('click',event=>{if(identifyPointMode)identifyCoordinates(event.latlng.lat,event.latlng.lng,{source:'map'});});
+  map.on('click',event=>identifyCoordinates(event.latlng.lat,event.latlng.lng,{source:'map'}));
+  map.on('contextmenu',event=>{
+    event.originalEvent?.preventDefault();
+    openMapPointMenu(event.latlng.lat,event.latlng.lng);
+  });
   map.on('movestart zoomstart',cancelAddressDetailRequest);
   map.on('zoomend moveend resize',updateLayers);
   new ResizeObserver(()=>{if(!$('mapStage').hidden)map.invalidateSize();}).observe($('map'));

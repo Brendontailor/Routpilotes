@@ -24,7 +24,12 @@ let addressDetailPendingKey='';
 let addressDetailRequestToken=0;
 let addressDetailBuildings=[];
 let addressDebugEnabled=false;
-let addressDetailStatus={state:'idle',endpoint:'',elements:0,addresses:0,buildings:0,rendered:0,error:''};
+let addressDetailRadiusFilter=null;
+let addressDetailStatus={state:'idle',endpoint:'',elements:0,addresses:0,blocks:0,buildings:0,rendered:0,error:''};
+
+function publishAddressDetailStatus(){
+  window.dispatchEvent(new CustomEvent('routepilot:address-status',{detail:{...addressDetailStatus}}));
+}
 
 function addressDetailsEnabled(){return Boolean($('toggleAddresses')?.checked);}
 
@@ -38,7 +43,7 @@ function addressRenderingProfile(zoom=map?.getZoom()||ADDRESS_DETAIL_MIN_ZOOM){
 function addressDetailsCacheKey(bounds,zoom){
   const precision=zoom>=19?4:3;
   return [bounds.getSouth(),bounds.getWest(),bounds.getNorth(),bounds.getEast()]
-    .map(value=>value.toFixed(precision)).concat(Math.min(zoom,20)).join(':');
+    .map(value=>value.toFixed(precision)).concat(Math.min(zoom,20),addressDetailRadiusFilter?'focus':'map').join(':');
 }
 function addressDetailsStorageKey(key){return `routepilot:osm-addresses:v4:${key}`;}
 
@@ -134,11 +139,11 @@ function explicitBlockLabel(tags={}){
   return '';
 }
 
-function addressLabelIcon(number,scale){
-  return L.divIcon({className:`address-number-icon address-label-${scale}`,html:`<span class="house-number">${esc(number)}</span>`,iconSize:[64,26],iconAnchor:[32,13]});
+function addressLabelIcon(number,scale,verified=false){
+  return L.divIcon({className:`address-number-icon address-label-${scale}${verified?' verified-address-icon':''}`,html:`<span class="house-number">${esc(number)}</span>`,iconSize:[64,26],iconAnchor:[32,13]});
 }
-function blockLabelIcon(label,scale){
-  return L.divIcon({className:`block-number-icon address-label-${scale}`,html:`<span class="block-number">${esc(label)}</span>`,iconSize:[132,30],iconAnchor:[66,15]});
+function blockLabelIcon(label,scale,verified=false){
+  return L.divIcon({className:`block-number-icon address-label-${scale}${verified?' verified-address-icon':''}`,html:`<span class="block-number">${esc(label)}</span>`,iconSize:[132,30],iconAnchor:[66,15]});
 }
 function buildingRecords(elements){
   return elements.filter(element=>['way','relation'].includes(element.type)&&element.tags?.building).map(element=>{
@@ -211,6 +216,43 @@ function visibleLabelCandidates(elements,buildings){
   return candidates.sort((a,b)=>b.priority-a.priority||a.label.localeCompare(b.label,'pt-BR',{numeric:true}));
 }
 
+function verifiedLabelCandidates(){
+  if(typeof verifiedAddressPoints==='undefined'||!map)return [];
+  const bounds=map.getBounds();
+  return verifiedAddressPoints.filter(item=>bounds.contains([item.lat,item.lon])).map(item=>({
+    kind:item.kind,label:item.kind==='block'?`Bloco ${item.label}`:item.label,point:[item.lat,item.lon],building:null,
+    element:null,priority:130,verified:true,source:item.source,sourceUrl:item.sourceUrl
+  }));
+}
+
+function mergedAddressCandidates(elements,buildings){
+  const verified=verifiedLabelCandidates(),osm=visibleLabelCandidates(elements,buildings);
+  return [...verified,...osm.filter(candidate=>!verified.some(item=>item.kind===candidate.kind&&clean(item.label)===clean(candidate.label)&&map.distance(item.point,candidate.point)<=25))]
+    .sort((a,b)=>b.priority-a.priority||a.label.localeCompare(b.label,'pt-BR',{numeric:true}));
+}
+
+function osmReferenceType(tags={}){
+  if(['hospital','clinic','doctors','pharmacy'].includes(tags.amenity))return 'health';
+  if(['school','college','university','kindergarten'].includes(tags.amenity))return 'school';
+  if(tags.amenity==='fuel')return 'fuel';
+  if(tags.amenity==='place_of_worship')return 'church';
+  if(['townhall','police','fire_station','post_office'].includes(tags.amenity))return 'civic';
+  if(['community_centre','social_centre'].includes(tags.amenity))return 'community';
+  if(tags.shop)return 'shop';
+  if(tags.public_transport||tags.highway==='bus_stop'||tags.amenity==='bus_station')return 'bus';
+  return 'landmark';
+}
+
+function osmReferenceRecords(elements){
+  if(!addressDetailRadiusFilter||!map||!$('toggleRefs')?.checked)return [];
+  const keys=['amenity','shop','tourism','leisure','public_transport'];
+  return elements.filter(element=>element.tags?.name&&keys.some(key=>element.tags[key])).map(element=>{
+    const point=addressDetailPoint(element),type=osmReferenceType(element.tags);
+    return point?{id:addressElementId(element),name:String(element.tags.name),category:detailKinds[type]?.label||'Referência',type,point,source:'OpenStreetMap'}:null;
+  }).filter(item=>item&&map.distance(item.point,addressDetailRadiusFilter.center)<=addressDetailRadiusFilter.meters)
+    .sort((a,b)=>map.distance(a.point,addressDetailRadiusFilter.center)-map.distance(b.point,addressDetailRadiusFilter.center)).slice(0,40);
+}
+
 function addressBuildingGeoJSON(building){
   const rings=building.polygons.map(ring=>{
     const coordinates=ring.map(([lat,lon])=>[lon,lat]),first=coordinates[0],last=coordinates[coordinates.length-1];
@@ -232,25 +274,34 @@ function renderAddressDebugBuildings(buildings=addressDetailBuildings){
 }
 function renderAddressDetails(elements){
   addressDetailLayer.clearLayers();if(!map)return;
-  const profile=addressRenderingProfile(),buildings=buildingRecords(elements),candidates=visibleLabelCandidates(elements,buildings),occupied=[],size=map.getSize();
+  const profile=addressRenderingProfile(),buildings=buildingRecords(elements),allCandidates=mergedAddressCandidates(elements,buildings);
+  const candidates=addressDetailRadiusFilter?allCandidates.filter(candidate=>map.distance(candidate.point,addressDetailRadiusFilter.center)<=addressDetailRadiusFilter.meters):allCandidates;
+  const references=osmReferenceRecords(elements),occupied=[],size=map.getSize();
   let rendered=0;
   candidates.forEach(candidate=>{
     if(rendered>=profile.maxLabels)return;
     const box=labelBox(candidate.point,candidate.label,candidate.kind);
     if(box.x< -12||box.y< -12||box.x+box.w>size.x+12||box.y+box.h>size.y+12)return;
     const padding=candidate.kind==='block'?Math.max(4,profile.collisionPadding):profile.collisionPadding;
-    if(candidate.kind==='house'&&occupied.some(existing=>boxesCollide(box,existing,padding)))return;
+    if(candidate.kind==='house'&&occupied.some(existing=>boxesCollide(box,existing,padding))&&!(candidate.verified&&map.getZoom()>=19))return;
     if(candidate.kind==='block'&&candidate.building?.polygons)L.polygon(candidate.building.polygons,{pane:'addressDetails',interactive:false,color:'#6d28d9',weight:2.5,opacity:.88,fill:true,fillOpacity:.035,dashArray:'6 4'}).addTo(addressDetailLayer);
-    L.marker(candidate.point,{keyboard:false,interactive:false,zIndexOffset:candidate.kind==='block'?980:900,icon:candidate.kind==='block'?blockLabelIcon(candidate.label,profile.labelScale):addressLabelIcon(candidate.label,profile.labelScale)}).addTo(addressDetailLayer);
+    L.marker(candidate.point,{keyboard:false,interactive:false,title:candidate.verified?`${candidate.label} · ${candidate.source}`:'',zIndexOffset:candidate.kind==='block'?980:900,icon:candidate.kind==='block'?blockLabelIcon(candidate.label,profile.labelScale,candidate.verified):addressLabelIcon(candidate.label,profile.labelScale,candidate.verified)}).addTo(addressDetailLayer);
     occupied.push(box);rendered++;
   });
+  references.slice(0,24).forEach(reference=>{
+    const [osmType,osmId]=reference.id.split('/'),url=`https://www.openstreetmap.org/${encodeURIComponent(osmType)}/${encodeURIComponent(osmId)}`;
+    L.marker(reference.point,{title:reference.name,zIndexOffset:760,icon:L.divIcon({className:'',html:referenceIcon({type:reference.type,name:reference.name},true),iconSize:[28,28],iconAnchor:[14,14]})})
+      .bindTooltip(esc(reference.name)).bindPopup(`<b>${esc(reference.name)}</b><br>${esc(reference.category)}<br><a href="${url}" target="_blank" rel="noopener noreferrer">Fonte: OpenStreetMap</a>`).addTo(addressDetailLayer);
+  });
   addressDetailBuildings=buildings;
-  addressDetailStatus={...addressDetailStatus,state:'ready',elements:elements.length,addresses:candidates.filter(item=>item.kind==='house').length,buildings:buildings.length,rendered,error:''};
+  addressDetailStatus={...addressDetailStatus,state:'ready',elements:elements.length,addresses:candidates.filter(item=>item.kind==='house').length,blocks:candidates.filter(item=>item.kind==='block').length,verified:candidates.filter(item=>item.verified).length,references:references.map(item=>({id:item.id,name:item.name,category:item.category,type:item.type,lat:item.point[0],lng:item.point[1],source:item.source})),buildings:buildings.length,rendered,error:''};
+  publishAddressDetailStatus();
   renderAddressDebugBuildings(buildings);
 }
 
 function addressDetailQuery(bounds){
   const bbox=[bounds.getSouth(),bounds.getWest(),bounds.getNorth(),bounds.getEast()].map(value=>value.toFixed(7)).join(',');
+  const references=addressDetailRadiusFilter?`nwr["amenity"]["name"](${bbox});nwr["shop"]["name"](${bbox});nwr["tourism"]["name"](${bbox});nwr["leisure"]["name"](${bbox});nwr["public_transport"]["name"](${bbox});`:'';
   return `[out:json][timeout:18][maxsize:33554432];(
     nwr["addr:housenumber"](${bbox});
     nwr["addr:housename"](${bbox});
@@ -258,6 +309,7 @@ function addressDetailQuery(bounds){
     relation["building"](${bbox});
     nwr["addr:block"](${bbox});
     nwr["building:block"](${bbox});
+    ${references}
   );out tags center geom qt;`;
 }
 async function fetchAddressDetails(query,signal,endpoints=ADDRESS_DETAIL_ENDPOINTS){
@@ -301,7 +353,7 @@ async function loadAddressDetails({force=false,endpoints=ADDRESS_DETAIL_ENDPOINT
   const bounds=addressDetailBounds(),profile=addressRenderingProfile(),areaKm2=addressDetailAreaKm2(bounds);
   if(areaKm2>profile.maxAreaKm2){
     cancelAddressDetailRequest();addressDetailLayer.clearLayers();addressDebugLayer.clearLayers();
-    addressDetailStatus={...addressDetailStatus,state:'limited',error:`Area visivel de ${areaKm2.toFixed(1)} km2 acima do limite`};return;
+    addressDetailStatus={...addressDetailStatus,state:'limited',error:`Area visivel de ${areaKm2.toFixed(1)} km2 acima do limite`};publishAddressDetailStatus();return;
   }
   const key=addressDetailsCacheKey(bounds,map.getZoom());
   if(!force&&(key===addressDetailRenderedKey||key===addressDetailPendingKey))return;
@@ -311,14 +363,15 @@ async function loadAddressDetails({force=false,endpoints=ADDRESS_DETAIL_ENDPOINT
   if(cached){addressDetailRenderedKey=key;addressDetailPendingKey='';addressDetailStatus={...addressDetailStatus,state:'cache',endpoint:'cache',error:''};renderAddressDetails(cached);return;}
   addressDetailAbort=new AbortController();
   const token=++addressDetailRequestToken;
-  addressDetailStatus={...addressDetailStatus,state:'loading',endpoint:'',error:''};
+  renderAddressDetails([]);
+  addressDetailStatus={...addressDetailStatus,state:'loading',endpoint:'',error:''};publishAddressDetailStatus();
   try{
     const result=await fetchAddressDetails(addressDetailQuery(bounds),addressDetailAbort.signal,endpoints);
     if(token!==addressDetailRequestToken)return;
     writeAddressDetailsCache(key,result.elements);addressDetailRenderedKey=key;
     addressDetailStatus={...addressDetailStatus,state:'ready',endpoint:result.endpoint,error:''};renderAddressDetails(result.elements);
   }catch(error){
-    if(error.name!=='AbortError'){addressDetailStatus={...addressDetailStatus,state:'error',error:error.message||String(error)};console.warn('RoutePilot: numeros de imoveis indisponiveis no momento.',error);}
+    if(error.name!=='AbortError'){addressDetailStatus={...addressDetailStatus,state:'error',error:error.message||String(error)};publishAddressDetailStatus();console.warn('RoutePilot: numeros de imoveis indisponiveis no momento.',error);}
   }finally{if(token===addressDetailRequestToken){addressDetailPendingKey='';addressDetailAbort=null;}}
 }
 function scheduleAddressDetails(){
@@ -341,6 +394,12 @@ function updateAddressDetailLayer(){
   }
 }
 function setAddressDebugMode(enabled){addressDebugEnabled=Boolean(enabled);renderAddressDebugBuildings();if(!addressDebugEnabled)window.RoutePilotAddressInspector?.close();}
+function setAddressDetailRadius(center,meters){
+  const lat=Number(center?.[0]),lng=Number(center?.[1]),radius=Number(meters);
+  addressDetailRadiusFilter=Number.isFinite(lat)&&Number.isFinite(lng)&&Number.isFinite(radius)&&radius>0?{center:[lat,lng],meters:radius}:null;
+  addressDetailRenderedKey='';addressDetailLayer.clearLayers();scheduleAddressDetails();
+}
+function clearAddressDetailRadius(){setAddressDetailRadius(null,0);}
 
 window.RoutePilotAddressDebug={
   reload(){addressDetailRenderedKey='';return loadAddressDetails({force:true});},
@@ -352,6 +411,8 @@ window.RoutePilotAddressDebug={
   query(){return map?addressDetailQuery(addressDetailBounds()):'';},
   cancel:cancelAddressDetailRequest,
   setDebug:setAddressDebugMode,
+  setRadius:setAddressDetailRadius,
+  clearRadius:clearAddressDetailRadius,
   isDebug(){return addressDebugEnabled;},
   status(){return {...addressDetailStatus};},
   snapshot(){return addressDetailBuildings.map(building=>({id:building.id,center:[...building.center],tags:{...building.tags},geojson:addressBuildingGeoJSON(building)}));},
@@ -359,3 +420,6 @@ window.RoutePilotAddressDebug={
   endpoints:[...ADDRESS_DETAIL_ENDPOINTS],
   priorityAreas:typeof priorityMapAreas!=='undefined'?priorityMapAreas:[]
 };
+
+const addressLayerSourceHint=$('toggleAddresses')?.closest('label')?.querySelector('small');
+if(addressLayerSourceHint)addressLayerSourceHint.textContent='(OSM + fontes verificadas · zoom 17+)';

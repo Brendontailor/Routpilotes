@@ -22,6 +22,7 @@ function scoreText(name, context, query) {
   return 0;
 }
 const searchEntries = [
+  ...(typeof priorityMapAreas!=='undefined'?priorityMapAreas.map(area=>({kind:'priority',id:area.id,name:area.name,city:area.city,region:null,context:`${area.city} área verificada`,sub:'Área com números verificados'})):[]),
   ...regions.map(r => ({kind:'region', id:r.id, name:r.name, city:r.city, region:r.id, context:r.city, sub:'Região '+regionCode(r)})),
   ...points.map(p => ({kind:'point', id:p.id, name:p.name, aliases:pointAliases(p), city:p.city, region:p.region, context:p.city+' '+byRegion[p.region].name, sub:p.kind === 'referencia' ? 'Referência' : 'Bairro / localidade'})),
   ...boundaries.features.filter(f=>!linkedPoint(f)).map(f=>({kind:'boundary',id:f.properties.id,name:f.properties.name,city:f.properties.city,region:f.properties.region,context:f.properties.city,sub:'Contorno · '+f.properties.category+' · '+f.properties.source})),

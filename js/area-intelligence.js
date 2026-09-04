@@ -9,7 +9,7 @@ const accessLabels={
 };
 
 function currentAreaContext() {
-  if(identifiedArea)return {kind:identifiedArea.note?'note':identifiedArea.reference?'reference':'coordinate',lat:identifiedArea.lat,lng:identifiedArea.lng,city:identifiedArea.city,region:identifiedArea.region,point:identifiedArea.nearestPoint?.item||null,name:identifiedArea.note?'Anotação operacional':identifiedArea.reference?.name||identifiedArea.region?.name||'Ponto identificado'};
+  if(identifiedArea)return {kind:identifiedArea.note?'note':identifiedArea.reference?'reference':'coordinate',lat:identifiedArea.lat,lng:identifiedArea.lng,city:identifiedArea.city,region:identifiedArea.region,point:identifiedArea.nearestPoint?.item||null,name:identifiedArea.note?'Anotação operacional':identifiedArea.priorityArea?.name||identifiedArea.reference?.name||identifiedArea.region?.name||'Ponto identificado'};
   const point=pointFor(state.point),region=byRegion[state.region];
   if(point)return {kind:'point',lat:point.lat,lng:point.lon,city:point.city,region,point,name:point.name};
   if(region)return {kind:'region',lat:region.center[0],lng:region.center[1],city:region.city,region,point:null,name:region.name};
@@ -104,7 +104,7 @@ function renderAreaIntelligencePanel(panel) {
     <div class="knowledge-section"><h3>Referências próximas</h3>${refs.length?refs.map(item=>`<button class="reference-row" data-action="detailPoi" data-value="${esc(item.id)}">${referenceIcon(item)}<span>${esc(item.name)}<small>${distanceLabel(item._km)}</small></span></button>`).join(''):'<p>Não informado</p>'}</div>
     <div class="knowledge-section"><h3>Observações</h3>${notes.length?notes.map(note=>`<p><b>${esc(note.type||'general')}:</b> ${esc(note.text)}</p>`).join(''):'<p>Não informado</p>'}</div>
     <div id="areaValidatedKnowledge" class="knowledge-section"></div>
-    <div class="inspector-actions"><button type="button" data-action="aroundArea">Ver ao redor</button><button type="button" data-action="streetViewContext">Street View</button><a href="${googleMapsPointUrl(context.lat,context.lng)}" target="_blank" rel="noopener noreferrer">Google Maps</a><button type="button" data-action="shareArea">Compartilhar</button></div>`;
+    <div class="inspector-actions"><button type="button" data-action="aroundArea">Ver ao redor</button><button type="button" data-action="addressRadius">Ver números no raio</button><button type="button" data-action="streetViewContext">Street View</button><a href="${googleMapsPointUrl(context.lat,context.lng)}" target="_blank" rel="noopener noreferrer">Google Maps</a><button type="button" data-action="shareArea">Compartilhar</button></div>`;
   loadValidatedAreaKnowledge(context);
   return true;
 }

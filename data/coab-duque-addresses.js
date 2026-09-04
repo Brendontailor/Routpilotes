@@ -1,0 +1,45 @@
+/* Pontos exportados do Google My Maps fornecido pelo usuario em 2026-09-04. */
+const verifiedAddressSource={
+  name:'COAB Duque - Google My Maps',
+  url:'https://www.google.com/maps/d/viewer?mid=1magOvp7KOB5IVGFVID5kfyEqWcs',
+  retrievedAt:'2026-09-04'
+};
+
+const verifiedAddressPoints=[
+  {id:'coab_duque_block_237',label:'237',kind:'block',lat:-31.7608317,lon:-52.3623878},
+  {id:'coab_duque_block_650a',label:'650 A',kind:'block',lat:-31.7615101,lon:-52.3627401},
+  {id:'coab_duque_block_650',label:'650',kind:'block',lat:-31.7613219,lon:-52.3626683},
+  {id:'coab_duque_block_220',label:'220',kind:'block',lat:-31.7620346,lon:-52.3624149},
+  {id:'coab_duque_block_240',label:'240',kind:'block',lat:-31.7622523,lon:-52.36251},
+  {id:'coab_duque_block_620',label:'620',kind:'block',lat:-31.76399,lon:-52.3634455},
+  {id:'coab_duque_block_620a',label:'620 A',kind:'block',lat:-31.7637905,lon:-52.3633435},
+  {id:'coab_duque_block_440',label:'440',kind:'block',lat:-31.7644171,lon:-52.3636236},
+  {id:'coab_duque_block_350_north',label:'350',kind:'block',lat:-31.7621569,lon:-52.3627008},
+  {id:'coab_duque_block_330',label:'330',kind:'block',lat:-31.7633152,lon:-52.3629219},
+  {id:'coab_duque_block_350_south',label:'350',kind:'block',lat:-31.76348,lon:-52.3629841},
+  {id:'coab_duque_block_619',label:'619',kind:'block',lat:-31.7634907,lon:-52.3632482},
+  {id:'coab_duque_block_235',label:'235',kind:'block',lat:-31.760979,lon:-52.3622238},
+  {id:'coab_duque_block_235a',label:'235 A',kind:'block',lat:-31.7611737,lon:-52.3622989},
+  {id:'coab_duque_block_231',label:'231',kind:'block',lat:-31.7622276,lon:-52.3620119},
+  {id:'coab_duque_address_120',label:'120',kind:'house',lat:-31.76103,lon:-52.36205},
+  {id:'coab_duque_address_121',label:'121',kind:'house',lat:-31.761198,lon:-52.361743},
+  {id:'coab_duque_address_140',label:'140',kind:'house',lat:-31.761248,lon:-52.362151},
+  {id:'coab_duque_address_181',label:'181',kind:'house',lat:-31.76178,lon:-52.361976},
+  {id:'coab_duque_address_221',label:'221',kind:'house',lat:-31.762001,lon:-52.362069},
+  {id:'coab_duque_address_235a',label:'235A',kind:'house',lat:-31.761154,lon:-52.362332},
+  {id:'coab_duque_address_240',label:'240',kind:'house',lat:-31.762228,lon:-52.362524},
+  {id:'coab_duque_address_251',label:'251',kind:'house',lat:-31.762551,lon:-52.362295},
+  {id:'coab_duque_address_271',label:'271',kind:'house',lat:-31.76277,lon:-52.362388},
+  {id:'coab_duque_address_291',label:'291',kind:'house',lat:-31.762984,lon:-52.36232},
+  {id:'coab_duque_address_330',label:'330',kind:'house',lat:-31.76329,lon:-52.362948},
+  {id:'coab_duque_address_351',label:'351',kind:'house',lat:-31.763672,lon:-52.36275},
+  {id:'coab_duque_address_370',label:'370',kind:'house',lat:-31.763774,lon:-52.36338},
+  {id:'coab_duque_address_371',label:'371',kind:'house',lat:-31.763968,lon:-52.362708},
+  {id:'coab_duque_address_401',label:'401',kind:'house',lat:-31.764425,lon:-52.3629},
+  {id:'coab_duque_address_619',label:'619',kind:'house',lat:-31.763155,lon:-52.36322},
+  {id:'coab_duque_address_619a',label:'619A',kind:'house',lat:-31.763436,lon:-52.363286},
+  {id:'coab_duque_address_620',label:'620',kind:'house',lat:-31.76397,lon:-52.363473},
+  {id:'coab_duque_address_620a',label:'620A',kind:'house',lat:-31.762524,lon:-52.36289},
+  {id:'coab_duque_address_642',label:'642',kind:'house',lat:-31.763915,lon:-52.363671},
+  {id:'coab_duque_address_642a',label:'642A',kind:'house',lat:-31.762485,lon:-52.363089}
+].map(item=>({...item,areaId:'coab_duque_pelotas',source:verifiedAddressSource.name,sourceUrl:verifiedAddressSource.url}));

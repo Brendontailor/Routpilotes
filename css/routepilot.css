@@ -499,6 +499,14 @@ header p { font-size:11px;color:#66808a; }
 .review-issue ul { margin:0 0 8px;padding-left:18px;color:#657a81;font-size:9px;line-height:1.5; }
 .review-facts p { margin:4px 0;color:#5e737b;font-size:10px; }
 .copy-fallback { width:100%;margin:5px 0;padding:9px;font-size:11px; }
+.map-point-action-popup .leaflet-popup-content{margin:13px 14px;min-width:250px}
+.map-point-menu{display:grid;gap:4px;color:#244953}
+.map-point-menu>small{color:#0a8299;font-size:9px;font-weight:800;letter-spacing:.06em}
+.map-point-menu>b{font-size:12px}.map-point-menu>span{color:#667d84;font-size:10px}
+.map-point-menu-actions{display:grid;gap:6px;margin-top:7px}
+.map-point-menu-actions button{display:flex;align-items:center;gap:7px;width:100%;min-height:34px;padding:7px 9px;border:1px solid #c6dce1;border-radius:7px;background:#f7fbfc;color:#176377;font-size:10px;font-weight:700;text-align:left}
+.map-point-menu-actions button:first-child{border-color:#edb787;background:#fff7ed;color:#974915}
+.map-point-menu-actions .app-icon{width:15px;height:15px;flex:0 0 auto}
 .app-toast { position:fixed;z-index:2000;right:20px;bottom:20px;padding:10px 13px;border-radius:7px;background:#103946;color:#fff;box-shadow:0 8px 24px #10203344;font-size:12px;font-weight:650; }
 @media(max-width:560px) { .identify-point-tool span { display:none; }.identify-point-tool { left:48px;padding:8px; }.inspection-grid { grid-template-columns:1fr; } }
 @media print { .tools-button,.tools-panel,.area-inspector,.identify-point-tool,.identify-point-hint,.app-toast { display:none!important; } }
@@ -667,6 +675,13 @@ header p { font-size:11px;color:#66808a; }
 .address-label-sm .house-number{font-size:10px;min-width:22px;height:19px;padding-inline:4px}
 .address-label-lg .house-number,.address-label-xl .house-number{font-size:12px;min-width:27px;height:22px}
 .address-label-xl .block-number{font-size:12px;height:26px}
+.verified-address-icon .house-number{border-color:#d65f0d;color:#8c3f08;box-shadow:0 0 0 2px rgba(242,118,34,.13),0 1px 5px rgba(15,23,42,.25)}
+.verified-address-icon .block-number{border-color:#d65f0d;color:#8c3f08;background:#fff8f1;box-shadow:0 0 0 2px rgba(242,118,34,.13),0 1px 5px rgba(15,23,42,.25)}
+.address-radius-status{margin:10px 0 12px;padding:9px 10px;border-left:3px solid var(--orange);border-radius:5px;background:#fff7ed;color:#74421c;font-size:10px;line-height:1.45}
+.address-radius-options{margin-bottom:8px}
+.verified-number-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;max-height:150px;margin:6px 0 8px;overflow:auto}
+.verified-number-grid button{min-width:0;padding:6px 4px;border:1px solid #efbd96;border-radius:6px;background:#fff8f1;color:#8c3f08;font-size:9px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.verified-number-grid button:hover{border-color:#d65f0d;background:#fff1e4;color:#713000}
 
 .address-debug-controls{margin-top:3px;padding-top:5px;border-top:1px solid #e1ebed}
 .address-debug-controls>summary{padding:6px;color:#6d7f86;font-size:10px;font-weight:750;cursor:pointer}

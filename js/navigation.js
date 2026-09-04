@@ -8,7 +8,7 @@ function navigate(patch, save=true) {
   Object.assign(state,patch);
   render(); focusMap();
 }
-function prepareAreaNavigation() { if(typeof clearIdentifiedArea==='function'&&identifiedArea)clearIdentifiedArea(false);if(typeof clearRadiusSearch==='function')clearRadiusSearch();areaPanelMode='identify'; }
+function prepareAreaNavigation() { if(typeof clearIdentifiedArea==='function'&&identifiedArea)clearIdentifiedArea(false);if(typeof clearRadiusSearch==='function')clearRadiusSearch();if(typeof clearAddressRadius==='function')clearAddressRadius();areaPanelMode='identify'; }
 function selectCity(city) { prepareAreaNavigation();navigate({city, region:null,point:null,boundary:null,road:null,searchOpen:false,overview:false}); }
 function selectRegion(id) { if(comparisonActive()){toggleCompareRegion(id);return;}const r=byRegion[id]; if(r) {prepareAreaNavigation();$('toggleRegions').checked=true;navigate({city:r.city,region:id,point:null,boundary:null,road:null,searchOpen:false,overview:false});} }
 function selectPoint(id) { const p=pointFor(id); if(p) {prepareAreaNavigation();if(boundaryForPoint(p))$('toggleNeighborhoods').checked=true;else if(ruralPoint(p))$('toggleRegions').checked=true;navigate({city:p.city,region:p.region,point:p.id,boundary:boundaryForPoint(p)?.properties.id||null,road:null,searchOpen:false,overview:false});} }
@@ -57,6 +57,7 @@ function openEntry(e) {
   if(e.kind==='region') selectRegion(e.id);
   else if(e.kind==='point') selectPoint(e.id);
   else if(e.kind==='boundary') selectBoundary(e.id);
+  else if(e.kind==='priority') openPriorityArea(e.id);
   else selectRoad(e.name,e.id,e.region);
 }
 function openResult(index) {
@@ -78,7 +79,7 @@ function renderSearch() {
   const mapsUrl='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(state.query+', RS, Brasil');
   $('results').innerHTML=`<div class="section-title">Resultados em todas as cidades <span>${matches.length === 40 ? '40+' : matches.length}</span></div>`+
     (matches.length ? matches.map((e,i) => actionButton('result',i,e.name,`${cityName(e.city)} · ${e.sub}`)).join('') : '<p class="empty">Nenhum local cadastrado com esse nome.</p>')+
-    `<p class="address-note">Número de imóvel não é localizado nesta base. <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Conferir endereço no Google Maps</a></p>`;
+    `<p class="address-note">Os números disponíveis aparecem no mapa em zoom 17+ ou pelo botão “Ver números no raio”. <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Conferir endereço no Google Maps</a></p>`;
 }
 function renderNavigation() {
   const r=byRegion[state.region], p=pointFor(state.point);
@@ -102,7 +103,7 @@ function renderDetails() {
   const boundary=boundaryById[state.boundary]?.properties;
   const context=currentAreaContext();
   const mapsUrl=context?googleMapsPointUrl(context.lat,context.lng):'';
-  const pointActions=p?`<button data-action="understandArea">${iconSvg('crosshair')}Entender área</button><button data-action="aroundArea">${iconSvg('radius')}Ver ao redor</button><button data-action="compareCurrent">${iconSvg('road')}Comparar</button><button data-action="showAddNote">${iconSvg('note')}Anotar</button><button data-action="streetViewContext">${iconSvg('pin')}Street View</button><a href="${mapsUrl}" target="_blank" rel="noopener noreferrer">${iconSvg('pin')}Google Maps</a>`:`<button data-action="understandArea">${iconSvg('crosshair')}Entender região</button><button data-action="aroundArea">${iconSvg('radius')}Ver ao redor</button><button data-action="compareCurrent">${iconSvg('road')}Comparar</button>`;
+  const pointActions=p?`<button data-action="understandArea">${iconSvg('crosshair')}Entender área</button><button data-action="aroundArea">${iconSvg('radius')}Ver ao redor</button><button data-action="addressRadius">${iconSvg('home')}Ver números no raio</button><button data-action="compareCurrent">${iconSvg('road')}Comparar</button><button data-action="showAddNote">${iconSvg('note')}Anotar</button><button data-action="streetViewContext">${iconSvg('pin')}Street View</button><a href="${mapsUrl}" target="_blank" rel="noopener noreferrer">${iconSvg('pin')}Google Maps</a>`:`<button data-action="understandArea">${iconSvg('crosshair')}Entender região</button><button data-action="aroundArea">${iconSvg('radius')}Ver ao redor</button><button data-action="addressRadius">${iconSvg('home')}Ver números no raio</button><button data-action="compareCurrent">${iconSvg('road')}Comparar</button>`;
   const source=boundary?`Contorno de <b>${esc(boundary.name)}</b> (${esc(boundary.category)}). <a href="${boundary.sourceUrl}" target="_blank" rel="noopener noreferrer">${esc(boundary.source)}</a>`:p&&p.kind!=='referencia'?`Contorno próprio indisponível na base consultada. ${ruralPoint(p)?'Zoom na localidade; o contorno operacional aproximado da região permanece ativo.':'Exibindo o ponto da localidade.'}`:'Região de atendimento com limite operacional aproximado.';
   const nearbyPlaces=p?`<details class="context-section" open><summary>Bairros e localidades próximos</summary><div class="near-buttons">${nearButtons(p.nearby,p.nearbyText)||'<span class="near-unmapped">Nenhuma proximidade cadastrada.</span>'}</div></details>`:'';
   const references=referenceRows(detailedRefs.slice(0,10))+(refs.length?refs.map(ref=>`<button class="reference-row" data-action="point" data-value="${esc(ref.id)}">${referenceIcon(ref)}<span>${esc(ref.name)}</span></button>`).join(''):detailedRefs.length?'':'<p class="empty">Nenhuma referência cadastrada nesta região.</p>');

@@ -37,11 +37,13 @@ RoutePilot is a static geographic consultation tool for locating service areas, 
 - `data-validation.js`: development/runtime data validation.
 - `area-inspector.js` and `area-intelligence.js`: coordinate identification and contextual area knowledge.
 - `radius-search.js`: on-demand Haversine radius consultation and map circle.
+- `address-radius.js`: focused 100-500 m address and reference consultation.
 - `notes-storage.js` and `notes-ui.js`: isolated local operational-note storage and validation workflow.
 - `ui-shell.js`: desktop workspace shell, contextual-panel header, toolbar state, and Layers popover.
 - `osm-addresses.js`: bounded Overpass requests, address/building association, labels, cache, and request cancellation.
 - `osm-address-debug.js`: optional building inspection panel and copy tools for OSM diagnostics.
-- `sharing.js`: validated deep links and clipboard sharing.
+- `sharing.js`: validated deep links, clipboard sharing, and concise nearby-place summaries.
+- `map-point-actions.js`: left-click point focus and right-click coordinate/share actions.
 - `data-review.js`: secondary data-quality interface.
 - `events.js`: UI event wiring and application startup.
 
@@ -76,6 +78,10 @@ Location IDs use normalized city and place names, for example `pelotas_cascata` 
 ## Search
 
 Search normalizes accents, supports partial and fuzzy matching, compares words, searches across cities, and covers regions, neighborhoods, rural locations, roads, and references. Duplicate display names prompt for the city.
+
+## Direct Map Interaction
+
+At detailed zoom, clicking the map identifies the exact coordinate and exposes the address-radius action. Right-clicking any map coordinate opens focus, share, and coordinate-copy actions. Shared coordinate text includes the operational region and up to three nearby registered localities or references when available.
 
 ## Comparison
 

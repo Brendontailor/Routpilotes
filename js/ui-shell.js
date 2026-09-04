@@ -7,7 +7,8 @@ const toolbarLabels={
   compare:'Comparar',
   layers:'Camadas',
   tools:'Ferramentas',
-  streetview:'Street View'
+  streetview:'Street View',
+  addressRadius:'Números no raio'
 };
 
 function initDesktopShell() {
@@ -22,6 +23,7 @@ function activeToolbarMode() {
   if(typeof identifyPointMode!=='undefined'&&identifyPointMode)return 'identify';
   if(typeof streetViewMode!=='undefined'&&streetViewMode)return 'streetview';
   if(typeof areaPanelMode!=='undefined'&&areaPanelMode==='radius')return 'around';
+  if(typeof areaPanelMode!=='undefined'&&areaPanelMode==='addressRadius')return 'addressRadius';
   if(typeof comparisonActive==='function'&&comparisonActive())return 'compare';
   if(layersOpen)return 'layers';
   if(typeof toolsOpen!=='undefined'&&toolsOpen)return 'tools';
@@ -56,6 +58,7 @@ function cancelMapInteraction(except=null) {
   if(except!=='layers')closeLayers(false);
   if(except!=='tools'&&typeof closeTools==='function')closeTools(false);
   if(except!=='around'&&typeof areaPanelMode!=='undefined'&&areaPanelMode==='radius')clearRadiusSearch({close:true});
+  if(except!=='addressRadius'&&typeof areaPanelMode!=='undefined'&&areaPanelMode==='addressRadius')clearAddressRadius({close:true});
   if(except!=='understand'&&typeof areaPanelMode!=='undefined'&&areaPanelMode==='understand')closeAreaTool();
 }
 
@@ -104,6 +107,7 @@ function breadcrumbHtml(descriptor) {
 function panelBackAction(descriptor) {
   if(descriptor.kind==='tools')return 'closeTools';
   if(typeof areaPanelMode!=='undefined'&&areaPanelMode==='radius')return 'clearRadiusClose';
+  if(typeof areaPanelMode!=='undefined'&&areaPanelMode==='addressRadius')return 'clearAddressRadius';
   if(typeof areaPanelMode!=='undefined'&&areaPanelMode==='understand')return 'closeAreaTool';
   if(['coordinate','reference','note'].includes(descriptor.kind))return 'clearIdentifiedArea';
   return 'back';
@@ -130,8 +134,8 @@ function renderDesktopShell() {
   const around=$('aroundToolButton');
   if(around)around.disabled=!currentAreaContext();
   const sidebar=$('contextSidebar');
-  const focused=(typeof toolsOpen!=='undefined'&&toolsOpen)||(typeof comparisonActive==='function'&&comparisonActive())||(typeof identifiedArea!=='undefined'&&Boolean(identifiedArea))||(typeof areaPanelMode!=='undefined'&&['understand','radius'].includes(areaPanelMode));
+  const focused=(typeof toolsOpen!=='undefined'&&toolsOpen)||(typeof comparisonActive==='function'&&comparisonActive())||(typeof identifiedArea!=='undefined'&&Boolean(identifiedArea))||(typeof areaPanelMode!=='undefined'&&['understand','radius','addressRadius'].includes(areaPanelMode));
   sidebar.classList.toggle('is-focused-context',Boolean(focused));
-  sidebar.dataset.panel=typeof toolsOpen!=='undefined'&&toolsOpen?'tools':typeof comparisonActive==='function'&&comparisonActive()?'comparison':typeof identifiedArea!=='undefined'&&identifiedArea?'area':typeof areaPanelMode!=='undefined'&&['understand','radius'].includes(areaPanelMode)?'area':'navigation';
+  sidebar.dataset.panel=typeof toolsOpen!=='undefined'&&toolsOpen?'tools':typeof comparisonActive==='function'&&comparisonActive()?'comparison':typeof identifiedArea!=='undefined'&&identifiedArea?'area':typeof areaPanelMode!=='undefined'&&['understand','radius','addressRadius'].includes(areaPanelMode)?'area':'navigation';
   renderContextHeader();
 }

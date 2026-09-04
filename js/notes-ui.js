@@ -137,4 +137,5 @@ function refreshOperationalKnowledge() {
   if(identifiedArea)renderNearbyOperationalNotes(identifiedArea.lat,identifiedArea.lng);
   if(areaPanelMode==='understand'&&areaUnderstandingContext)loadValidatedAreaKnowledge(areaUnderstandingContext);
   if(areaPanelMode==='radius'&&radiusSearchContext)calculateAroundArea(radiusSearchKm);
+  if(areaPanelMode==='addressRadius'&&addressRadiusContext)applyAddressRadius(addressRadiusMeters);
 }
