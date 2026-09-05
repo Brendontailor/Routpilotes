@@ -6,6 +6,7 @@ const toolbarLabels={
   annotate:'Anotar ponto',
   around:'Ver ao redor',
   compare:'Comparar',
+  planner:'Planejar rota',
   layers:'Camadas',
   tools:'Ferramentas',
   streetview:'Street View',
@@ -30,6 +31,7 @@ function activeToolbarMode() {
   if(typeof comparisonActive==='function'&&comparisonActive())return 'compare';
   if(layersOpen)return 'layers';
   if(typeof toolsOpen!=='undefined'&&toolsOpen)return 'tools';
+  if(typeof routePlannerActive==='function'&&routePlannerActive())return 'planner';
   return null;
 }
 
@@ -49,6 +51,7 @@ function toggleLayers() {
 /** Guia: Executa uma etapa auxiliar em estrutura principal da interface (`focusGlobalSearch`). */
 function focusGlobalSearch() {
   if(typeof comparisonActive==='function'&&comparisonActive())goBack();
+  if(typeof routePlannerActive==='function'&&routePlannerActive())closeRoutePlanner();
   if(typeof closeTools==='function')closeTools(false);
   closeLayers(false);
   renderDesktopShell();
@@ -67,6 +70,7 @@ function cancelMapInteraction(except=null) {
   if(except!=='around'&&typeof areaPanelMode!=='undefined'&&areaPanelMode==='radius')clearRadiusSearch({close:true});
   if(except!=='addressRadius'&&typeof areaPanelMode!=='undefined'&&areaPanelMode==='addressRadius')clearAddressRadius({close:true});
   if(except!=='understand'&&typeof areaPanelMode!=='undefined'&&areaPanelMode==='understand')closeAreaTool();
+  if(except!=='planner'&&typeof routePlannerActive==='function'&&routePlannerActive())closeRoutePlanner();
 }
 
 /** Guia: Executa uma etapa auxiliar em estrutura principal da interface (`contextDescriptor`). */
@@ -77,7 +81,8 @@ function contextDescriptor() {
   const point=pointFor(state.point);
   const boundary=boundaryById[state.boundary]?.properties;
   if(typeof toolsOpen!=='undefined'&&toolsOpen)return {eyebrow:'CENTRAL DE FERRAMENTAS',title:'Ferramentas',kind:'tools',region,point};
-  if(compare)return {eyebrow:'PLANEJAMENTO DE VISITAS',title:placeComparison()?'Comparar dois locais':'Comparar regiões',kind:'compare',region:null,point:null};
+  if(typeof routePlannerActive==='function'&&routePlannerActive())return {eyebrow:'PLANEJAMENTO DE VISITAS',title:'Rota de atendimentos',kind:'planner',region:null,point:null};
+  if(compare)return {eyebrow:'PLANEJAMENTO DE VISITAS',title:placeComparison()?'Comparar locais':'Comparar regiões',kind:'compare',region:null,point:null};
   if(area?.note)return {eyebrow:'CONHECIMENTO OPERACIONAL',title:'Anotação operacional',kind:'note',region:area.region,point:null};
   if(area?.reference)return {eyebrow:'PONTO DE REFERÊNCIA',title:area.reference.name,kind:'reference',region:area.region,point:null};
   if(area)return {eyebrow:'COORDENADA CONSULTADA',title:area.insideCoverage?(area.nearestPoint?.item?.name||'Ponto identificado'):'Ponto fora da cobertura',kind:'coordinate',region:area.region,point:null};
@@ -99,6 +104,7 @@ function breadcrumbHtml(descriptor) {
   const parts=['<button type="button" data-action="home">Cidades</button>'];
   if(descriptor.kind==='overview')parts.push('<span aria-hidden="true">›</span><span aria-current="page">Mapa geral</span>');
   if(descriptor.kind==='compare')parts.push('<span aria-hidden="true">›</span><button type="button" data-action="general">Mapa geral</button><span aria-hidden="true">›</span><span aria-current="page">Comparação</span>');
+  if(descriptor.kind==='planner')parts.push('<span aria-hidden="true">›</span><button type="button" data-action="general">Mapa geral</button><span aria-hidden="true">›</span><span aria-current="page">Planejar rota</span>');
   if(descriptor.kind==='tools')parts.push('<span aria-hidden="true">›</span><span aria-current="page">Ferramentas</span>');
   if(city){
     const current=descriptor.kind==='city';
@@ -116,6 +122,7 @@ function breadcrumbHtml(descriptor) {
 /** Guia: Executa uma etapa auxiliar em estrutura principal da interface (`panelBackAction`). */
 function panelBackAction(descriptor) {
   if(descriptor.kind==='tools')return 'closeTools';
+  if(descriptor.kind==='planner')return 'closeRoutePlanner';
   if(typeof areaPanelMode!=='undefined'&&areaPanelMode==='radius')return 'clearRadiusClose';
   if(typeof areaPanelMode!=='undefined'&&areaPanelMode==='addressRadius')return 'clearAddressRadius';
   if(typeof areaPanelMode!=='undefined'&&areaPanelMode==='understand')return 'closeAreaTool';
@@ -126,7 +133,7 @@ function panelBackAction(descriptor) {
 /** Guia: Renderiza a parte correspondente da interface em estrutura principal da interface (`renderContextHeader`). */
 function renderContextHeader() {
   const target=$('mapContext'),descriptor=contextDescriptor();
-  const start=!state.city&&!state.region&&!state.overview&&!(typeof comparisonActive==='function'&&comparisonActive())&&!(typeof toolsOpen!=='undefined'&&toolsOpen)&&!(typeof identifiedArea!=='undefined'&&identifiedArea);
+  const start=!state.city&&!state.region&&!state.overview&&!(typeof comparisonActive==='function'&&comparisonActive())&&!(typeof routePlannerActive==='function'&&routePlannerActive())&&!(typeof toolsOpen!=='undefined'&&toolsOpen)&&!(typeof identifiedArea!=='undefined'&&identifiedArea);
   target.hidden=start||!descriptor;
   if(target.hidden){target.innerHTML='';return;}
   const active=activeToolbarMode();
@@ -137,7 +144,7 @@ function renderContextHeader() {
 /** Guia: Renderiza a parte correspondente da interface em estrutura principal da interface (`renderDesktopShell`). */
 function renderDesktopShell() {
   const active=activeToolbarMode();
-  const pressed={identify:'identifyPointButton',annotate:'annotatePointButton',around:'aroundToolButton',compare:'compareButton',layers:'layersButton',tools:'toolsButton'};
+  const pressed={identify:'identifyPointButton',annotate:'annotatePointButton',around:'aroundToolButton',compare:'compareButton',planner:'routePlannerButton',layers:'layersButton',tools:'toolsButton'};
   Object.entries(pressed).forEach(([mode,id])=>{
     const button=$(id);if(button)button.setAttribute('aria-pressed',String(active===mode));
   });
@@ -146,8 +153,8 @@ function renderDesktopShell() {
   const around=$('aroundToolButton');
   if(around)around.disabled=!currentAreaContext();
   const sidebar=$('contextSidebar');
-  const focused=(typeof toolsOpen!=='undefined'&&toolsOpen)||(typeof comparisonActive==='function'&&comparisonActive())||(typeof identifiedArea!=='undefined'&&Boolean(identifiedArea))||(typeof areaPanelMode!=='undefined'&&['understand','radius','addressRadius'].includes(areaPanelMode));
+  const focused=(typeof toolsOpen!=='undefined'&&toolsOpen)||(typeof comparisonActive==='function'&&comparisonActive())||(typeof routePlannerActive==='function'&&routePlannerActive())||(typeof identifiedArea!=='undefined'&&Boolean(identifiedArea))||(typeof areaPanelMode!=='undefined'&&['understand','radius','addressRadius'].includes(areaPanelMode));
   sidebar.classList.toggle('is-focused-context',Boolean(focused));
-  sidebar.dataset.panel=typeof toolsOpen!=='undefined'&&toolsOpen?'tools':typeof comparisonActive==='function'&&comparisonActive()?'comparison':typeof identifiedArea!=='undefined'&&identifiedArea?'area':typeof areaPanelMode!=='undefined'&&['understand','radius','addressRadius'].includes(areaPanelMode)?'area':'navigation';
+  sidebar.dataset.panel=typeof toolsOpen!=='undefined'&&toolsOpen?'tools':typeof routePlannerActive==='function'&&routePlannerActive()?'planner':typeof comparisonActive==='function'&&comparisonActive()?'comparison':typeof identifiedArea!=='undefined'&&identifiedArea?'area':typeof areaPanelMode!=='undefined'&&['understand','radius','addressRadius'].includes(areaPanelMode)?'area':'navigation';
   renderContextHeader();
 }

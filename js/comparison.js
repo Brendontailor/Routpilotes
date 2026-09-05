@@ -1,5 +1,8 @@
 /* Recurso RoutePilot: comparação de locais e regiões. */
 let compareRadiusKm=15;
+const MAX_COMPARE_LOCATIONS=24;
+/** Mantém a comparação múltipla restrita ao workspace desktop. */
+const desktopMultiComparison=()=>window.matchMedia('(min-width:901px)').matches;
 /** Guia: Executa uma etapa auxiliar em comparação de locais e regiões (`comparisonActive`). */
 const comparisonActive=()=>Array.isArray(state.compare);
 /** Guia: Executa uma etapa auxiliar em comparação de locais e regiões (`placeComparison`). */
@@ -9,10 +12,10 @@ let compareCatalogCache;
 let compareOverlayKey='',compareOverlay=[];
 let transientComparePlaces=[];
 let compareRequestToken=0;
-let compareRoadStatus={state:'idle',key:'',route:null,error:''};
+let compareRoadStatus={state:'idle',key:'',route:null,matrix:null,error:''};
 
 /** Guia: Limpa dados ou estados temporários em comparação de locais e regiões (`resetCompareRoadStatus`). */
-function resetCompareRoadStatus(){compareRequestToken++;compareRoadStatus={state:'idle',key:'',route:null,error:''};}
+function resetCompareRoadStatus(){compareRequestToken++;compareRoadStatus={state:'idle',key:'',route:null,matrix:null,error:''};}
 /** Guia: Executa uma etapa auxiliar em comparação de locais e regiões (`comparisonRouteKey`). */
 function comparisonRouteKey(stops=comparisonStops()){return stops.every(Boolean)?stops.map(item=>item.key).join('|'):'';}
 
@@ -67,21 +70,41 @@ function switchCompareMode(mode) {
 }
 /** Guia: Executa uma etapa auxiliar em comparação de locais e regiões (`chooseComparePlace`). */
 function chooseComparePlace(slot,key) {
-  if(!placeComparison()||![0,1].includes(slot)||!comparePlace(key))return;
+  if(!placeComparison()||!Number.isInteger(slot)||slot<0||slot>=compareDrafts.length||!comparePlace(key))return;
+  const selected=comparePlace(key);
+  if((state.compareStops||[]).some((item,index)=>index!==slot&&item===key)){showToast('Este local já está na comparação');return;}
   resetCompareRoadStatus();
   const stops=[...state.compareStops];stops[slot]=key;
-  compareDrafts[slot]=comparePlace(key).name;compareActiveSlot=slot===0?1:0;
+  compareDrafts[slot]=selected.name;compareActiveSlot=Math.min(slot+1,compareDrafts.length-1);
   navigate({compare:state.compare,compareStops:stops,compareReady:false},false);
 }
 /** Guia: Atualiza o estado e a interface em comparação de locais e regiões (`updateCompareDraft`). */
 function updateCompareDraft(slot,value) {
-  if(!placeComparison()||![0,1].includes(slot))return;
+  if(!placeComparison()||!Number.isInteger(slot)||slot<0||slot>=compareDrafts.length)return;
   resetCompareRoadStatus();
   compareActiveSlot=slot;compareDrafts[slot]=value;
   const stops=[...state.compareStops];stops[slot]=null;
   Object.assign(state,{compareStops:stops,compareReady:false});
   $('compareSelected'+slot).innerHTML='';
   renderCompareSuggestions(slot);renderCompareResults();updateCompareButton();renderContext();updateLayers();
+}
+
+/** Adiciona um campo de local sem criar entradas fixas no HTML. */
+function addCompareStop() {
+  if(!desktopMultiComparison())return;
+  if(compareDrafts.length>=MAX_COMPARE_LOCATIONS){showToast(`Limite de ${MAX_COMPARE_LOCATIONS} locais`);return;}
+  resetCompareRoadStatus();compareDrafts.push('');compareActiveSlot=compareDrafts.length-1;
+  const stops=[...(state.compareStops||[])];stops.push(null);
+  navigate({compare:state.compare,compareStops:stops,compareReady:false},false);
+  requestAnimationFrame(()=>$(`compareInput${compareActiveSlot}`)?.focus());
+}
+
+/** Remove um local e mantém pelo menos dois campos disponíveis. */
+function removeCompareStop(slot) {
+  if(compareDrafts.length<=2)return;
+  resetCompareRoadStatus();compareDrafts.splice(slot,1);
+  const stops=[...(state.compareStops||[])];stops.splice(slot,1);compareActiveSlot=Math.min(compareActiveSlot,compareDrafts.length-1);
+  navigate({compare:state.compare,compareStops:stops,compareReady:false},false);
 }
 /** Guia: Renderiza a parte correspondente da interface em comparação de locais e regiões (`renderCompareSuggestions`). */
 function renderCompareSuggestions(slot) {
@@ -96,9 +119,8 @@ function renderCompareSuggestions(slot) {
 }
 /** Guia: Atualiza o estado e a interface em comparação de locais e regiões (`updateCompareButton`). */
 function updateCompareButton() {
-  const [a,b]=comparisonStops();
-  const hasA=Boolean(a||clean(compareDrafts[0])),hasB=Boolean(b||clean(compareDrafts[1]));
-  $('compareCalculate').disabled=compareRoadStatus.state==='loading'||!hasA||!hasB||(a&&b&&a.key===b.key);
+  const available=compareDrafts.filter((draft,index)=>Boolean(comparisonStops()[index]||clean(draft)));
+  $('compareCalculate').disabled=compareRoadStatus.state==='loading'||available.length<2||available.length!==compareDrafts.length;
 }
 /** Guia: Registra um novo item em comparação de locais e regiões (`addTransientComparePlace`). */
 function addTransientComparePlace(entry){
@@ -112,22 +134,30 @@ async function calculatePlaceComparison() {
   compareRoadStatus={state:'loading',key:'',route:null,error:''};renderCompareResults();updateCompareButton();
   try{
     const stopKeys=[...(state.compareStops||[null,null])];
-    for(let slot=0;slot<2;slot++){
+    for(let slot=0;slot<compareDrafts.length;slot++){
       if(comparePlace(stopKeys[slot]))continue;
       const entry=await resolveLocalRouteAddress(compareDrafts[slot]);
       if(token!==compareRequestToken)return;
       addTransientComparePlace(entry);stopKeys[slot]=entry.key;compareDrafts[slot]=entry.name;
     }
     Object.assign(state,{compareStops:stopKeys});
-    const [a,b]=comparisonStops();
-    if(!a||!b||a.key===b.key)throw new Error('Escolha dois endereços ou locais diferentes.');
-    const key=comparisonRouteKey([a,b]),route=await calculateLocalRoadRoute(a.coords,b.coords);
+    const stops=comparisonStops();
+    if(stops.length<2||stops.some(stop=>!stop))throw new Error('Escolha pelo menos dois endereços ou locais.');
+    const duplicate=RoutePilotRouteOptimizer.findDuplicatePoint(stops,.015,(a,b)=>distanceKm(a.coords,b.coords));
+    if(duplicate)throw new Error(`O local ${duplicate.point.name} está duplicado ou muito próximo de outro ponto.`);
+    const key=comparisonRouteKey(stops);
+    let route=null,matrix=null;
+    if(stops.length===2)route=await calculateLocalRoadRoute(stops[0].coords,stops[1].coords);
+    else{
+      const provider=RoutePilotDistance.createDistanceProvider();
+      matrix=await new RoutePilotDistance.DistanceMatrix(stops,provider,{mode:'straight'}).build();
+    }
     if(token!==compareRequestToken)return;
-    compareRoadStatus={state:'ready',key,route,error:''};
+    compareRoadStatus={state:'ready',key,route,matrix,error:''};
     navigate({compare:state.compare,compareStops:stopKeys,compareReady:true},false);
   }catch(error){
     if(token!==compareRequestToken)return;
-    compareRoadStatus={state:'error',key:comparisonRouteKey(),route:null,error:error.message||String(error)};
+    compareRoadStatus={state:'error',key:comparisonRouteKey(),route:null,matrix:null,error:error.message||String(error)};
     Object.assign(state,{compareReady:Boolean(comparisonStops().every(Boolean))});
     renderComparison();renderComparisonOverlay();
   }
@@ -138,15 +168,37 @@ function clearComparison() {
   compareDrafts=['',''];compareActiveSlot=0;
   navigate({compare:[],compareStops:[null,null],compareReady:false},false);
 }
+
+/** Envia os locais resolvidos ao planejador sem exigir nova pesquisa. */
+function planComparedLocations() {
+  const stops=comparisonStops().filter(Boolean);
+  if(stops.length<2){showToast('Selecione pelo menos dois locais');return;}
+  startRoutePlanner(stops);
+}
 /** Guia: Executa uma etapa auxiliar em comparação de locais e regiões (`placeComparisonResult`). */
 function placeComparisonResult() {
-  const [a,b]=comparisonStops();
+  const stops=comparisonStops();
+  if(stops.length!==2)return null;
+  const [a,b]=stops;
   if(!a||!b||a.key===b.key)return null;
   const straightKm=distanceKm(a.coords,b.coords);
   const route=compareRoadStatus.state==='ready'&&compareRoadStatus.key===comparisonRouteKey([a,b])?compareRoadStatus.route:null;
   // A linha reta é usada somente como contingência quando não há rota local válida.
   const km=route?.distanceKm||straightKm;
   return {a,b,km,straightKm,route,near:km<=compareRadiusKm,sameRegion:a.region===b.region};
+}
+
+/** Retorna a distância em cache da comparação ou calcula a estimativa direta. */
+function comparisonDistanceBetween(a,b) {
+  return compareRoadStatus.matrix?.[a.id]?.[b.id]??distanceKm(a.coords,b.coords);
+}
+
+/** Encontra o vizinho mais próximo de cada local sem repetir cálculos. */
+function comparisonNearestItems(stops) {
+  return stops.map(point=>{
+    const nearest=stops.filter(other=>other.id!==point.id).map(other=>({point:other,km:comparisonDistanceBetween(point,other)})).sort((a,b)=>a.km-b.km)[0];
+    return {point,nearest:nearest.point,km:nearest.km};
+  });
 }
 /** Guia: Calcula o resultado solicitado em comparação de locais e regiões (`distanceKm`). */
 function distanceKm(a,b) {
@@ -176,12 +228,13 @@ function renderComparison() {
   const tooltip=$('compareButton').querySelector('.tool-tooltip');if(tooltip)tooltip.textContent=active?'Sair da comparação':'Comparar';
   if(!active)return;
   $('navigation').hidden=true;$('results').hidden=true;$('details').hidden=true;
-  const modes=`<div class="compare-modes" role="group" aria-label="Modo de comparação"><button data-action="compareMode" data-value="places" aria-pressed="${placeComparison()}">Dois locais</button><button data-action="compareMode" data-value="regions" aria-pressed="${!placeComparison()}">Várias regiões</button></div>`;
+  const dynamic=desktopMultiComparison();
+  const modes=`<div class="compare-modes" role="group" aria-label="Modo de comparação"><button data-action="compareMode" data-value="places" aria-pressed="${placeComparison()}">${dynamic?'Locais':'Dois locais'}</button><button data-action="compareMode" data-value="regions" aria-pressed="${!placeComparison()}">Várias regiões</button></div>`;
   if(placeComparison()){
     const stops=comparisonStops();
     $('comparison').innerHTML='<div class="nav-top"><h2>Comparar locais</h2></div>'+modes+
-      [0,1].map(i=>`<div class="compare-stop"><label for="compareInput${i}"><span class="stop-letter stop-${i}">${i?'B':'A'}</span>${i?'Destino':'Origem'}</label><input id="compareInput${i}" data-compare-slot="${i}" value="${esc(compareDrafts[i])}" placeholder="Bairro, região ou rua, número, cidade" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="compareSuggestions${i}" aria-expanded="false"><div id="compareSelected${i}" class="compare-selected">${stops[i]?`${esc(cityName(stops[i].city))} · ${esc(byRegion[stops[i].region].name)}`:''}</div><div id="compareSuggestions${i}" class="compare-suggestions" hidden></div></div>`).join('')+
-      '<p class="compare-address-hint">Para um endereço exato, informe rua, número e cidade. A consulta usa somente a base local.</p><button type="button" class="compare-calculate" id="compareCalculate" data-action="compareCalculate">Calcular por estradas</button>'+
+      compareDrafts.map((draft,i)=>`<div class="compare-stop"><label for="compareInput${i}"><span class="stop-letter stop-${i%6}">${dynamic?i+1:(i?'B':'A')}</span>${dynamic?`Local ${i+1}`:(i?'Destino':'Origem')}${dynamic&&compareDrafts.length>2?`<button type="button" class="compare-remove" data-action="compareRemoveStop" data-slot="${i}" aria-label="Remover local ${i+1}">&times;</button>`:''}</label><input id="compareInput${i}" data-compare-slot="${i}" value="${esc(draft)}" placeholder="Bairro, região ou rua, número, cidade" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="compareSuggestions${i}" aria-expanded="false"><div id="compareSelected${i}" class="compare-selected">${stops[i]?`${esc(cityName(stops[i].city))} · ${esc(byRegion[stops[i].region].name)}`:''}</div><div id="compareSuggestions${i}" class="compare-suggestions" hidden></div></div>`).join('')+
+      `${dynamic?`<button type="button" class="compare-add" data-action="compareAddStop" ${compareDrafts.length>=MAX_COMPARE_LOCATIONS?'disabled':''}>+ Adicionar local</button>`:''}<p class="compare-address-hint">Para endereço exato, informe rua, número e cidade.${dynamic?` Até ${MAX_COMPARE_LOCATIONS} locais.`:''}</p><button type="button" class="compare-calculate" id="compareCalculate" data-action="compareCalculate">${dynamic?'Calcular proximidade':'Calcular por estradas'}</button>`+
       `<div class="compare-controls"><label for="compareRadius">Perto até <input id="compareRadius" type="number" min="1" max="100" step="1" value="${compareRadiusKm}"> km</label><button data-action="compareClear">Limpar</button></div><div id="compareResults" aria-live="polite"></div>`;
     updateCompareButton();renderCompareResults();return;
   }
@@ -195,17 +248,23 @@ function renderComparison() {
 /** Guia: Renderiza a parte correspondente da interface em comparação de locais e regiões (`renderCompareResults`). */
 function renderCompareResults() {
   if(placeComparison()){
-    const [a,b]=comparisonStops(),result=placeComparisonResult();
+    const stops=comparisonStops(),[a,b]=stops,result=placeComparisonResult();
     if(compareRoadStatus.state==='loading'){
       $('compareResults').innerHTML='<div class="compare-route-status is-loading"><strong>Calculando pela malha viária local...</strong><span>Nenhum endereço é enviado para serviços externos.</span></div>';return;
     }
-    if(!state.compareReady||!result){
-      $('compareResults').innerHTML=compareRoadStatus.state==='error'?`<div class="compare-route-status is-error"><strong>Não foi possível calcular</strong><span>${esc(compareRoadStatus.error)}</span></div>`:a&&b&&a.key===b.key?'<p class="empty">Escolha dois locais diferentes.</p>':'';return;
+    if(!state.compareReady||stops.some(stop=>!stop)){
+      $('compareResults').innerHTML=compareRoadStatus.state==='error'?`<div class="compare-route-status is-error"><strong>Não foi possível calcular</strong><span>${esc(compareRoadStatus.error)}</span></div>`:'';return;
+    }
+    if(stops.length>2){
+      const nearest=comparisonNearestItems(stops);
+      const rows=nearest.map(({point,nearest:next,km},index)=>`<li><span><b>${index+1}</b>${esc(point.name)}</span><small>mais próximo de ${esc(next.name)} · <strong>${km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km</strong></small></li>`).join('');
+      const matrix=stops.length<=10?`<details class="compare-matrix"><summary>Matriz de distâncias</summary><div class="matrix-scroll"><table><thead><tr><th></th>${stops.map((_,index)=>`<th>${index+1}</th>`).join('')}</tr></thead><tbody>${stops.map((point,row)=>`<tr><th>${row+1}</th>${stops.map(other=>`<td>${point.id===other.id?'—':comparisonDistanceBetween(point,other).toLocaleString('pt-BR',{maximumFractionDigits:1})}</td>`).join('')}</tr>`).join('')}</tbody></table></div></details>`:'';
+      $('compareResults').innerHTML=`<section class="multi-comparison-result"><h3>Proximidade entre ${stops.length} locais</h3><ol>${rows}</ol>${matrix}<button type="button" class="planner-primary" data-action="planCompared">Planejar rota com estes locais</button><p class="map-caution">Estimativa direta para análise rápida. O planejador calcula a sequência usando a malha viária local.</p></section>`;return;
     }
     const mapsUrl='https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(a.coords.join(','))+'&destination='+encodeURIComponent(b.coords.join(','))+'&travelmode=driving';
     const routeWarning=compareRoadStatus.state==='error'?`<div class="compare-route-status is-error"><strong>Rota local indisponível</strong><span>${esc(compareRoadStatus.error)} Exibindo a distância em linha reta.</span></div>`:'';
     const snapText=result.route&&result.route.snapMeters>100?` Os pontos foram ajustados às vias mais próximas (${Math.round(result.route.snapMeters)} m no total).`:'';
-    $('compareResults').innerHTML=`${routeWarning}<section class="place-comparison-result"><div class="compare-distance"><strong>${result.km.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})} <small>km</small></strong><span>${result.route?'por estradas':'em linha reta · contingência'}</span><b class="proximity-badge ${result.near?'is-near':''}">${result.near?'Perto':'Longe'} · limite de ${compareRadiusKm} km</b></div><p class="region-verdict ${result.sameRegion?'same-region':''}">${result.sameRegion?'Mesma região de atendimento':'Regiões de atendimento diferentes'}</p><div class="compare-region-summary"><span><b>A</b> ${esc(a.name)}<small>${esc(byRegion[a.region].name)} · ${esc(cityName(a.city))}</small></span><span><b>B</b> ${esc(b.name)}<small>${esc(byRegion[b.region].name)} · ${esc(cityName(b.city))}</small></span></div><a class="maps-route-link" href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Abrir os pontos no Google Maps ↗</a><p class="map-caution">${result.route?'Trajeto calculado no próprio RoutePilot sobre a malha viária local do Overture Maps.':'Não foi possível usar a malha local; o valor acima é apenas uma estimativa direta.'}${snapText} Confirme bloqueios e condições atuais da estrada.</p></section>`;
+    $('compareResults').innerHTML=`${routeWarning}<section class="place-comparison-result"><div class="compare-distance"><strong>${result.km.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})} <small>km</small></strong><span>${result.route?'por estradas':'em linha reta · contingência'}</span><b class="proximity-badge ${result.near?'is-near':''}">${result.near?'Perto':'Longe'} · limite de ${compareRadiusKm} km</b></div><p class="region-verdict ${result.sameRegion?'same-region':''}">${result.sameRegion?'Mesma região de atendimento':'Regiões de atendimento diferentes'}</p><div class="compare-region-summary"><span><b>1</b> ${esc(a.name)}<small>${esc(byRegion[a.region].name)} · ${esc(cityName(a.city))}</small></span><span><b>2</b> ${esc(b.name)}<small>${esc(byRegion[b.region].name)} · ${esc(cityName(b.city))}</small></span></div><button type="button" class="planner-primary" data-action="planCompared">Planejar rota com estes locais</button><a class="maps-route-link" href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Abrir os pontos no Google Maps ↗</a><p class="map-caution">${result.route?'Trajeto calculado no próprio RoutePilot sobre a malha viária local do Overture Maps.':'Não foi possível usar a malha local; o valor acima é apenas uma estimativa direta.'}${snapText} Confirme bloqueios e condições atuais da estrada.</p></section>`;
     return;
   }
   const pairs=comparePairs();
@@ -230,11 +289,13 @@ function renderComparisonOverlay() {
   if(!placeComparison())return;
   const stops=comparisonStops();
   if(state.compareReady&&stops.every(Boolean)){
-    compareOverlay.push(L.polyline(route?.geometry||stops.map(e=>e.coords),{color:'#008aa7',weight:route?5:3,dashArray:route?null:'7 8',opacity:.88,interactive:false}).addTo(map));
+    if(stops.length===2)compareOverlay.push(L.polyline(route?.geometry||stops.map(e=>e.coords),{color:'#008aa7',weight:route?5:3,dashArray:route?null:'7 8',opacity:.88,interactive:false}).addTo(map));
+    else comparisonNearestItems(stops).forEach(({point,nearest})=>compareOverlay.push(L.polyline([point.coords,nearest.coords],{color:'#38a6b9',weight:2,dashArray:'5 7',opacity:.42,interactive:false}).addTo(map)));
   }
   stops.forEach((e,i)=>{
-    if(!e||(i===1&&e.key===stops[0]?.key))return;
-    compareOverlay.push(L.marker(e.coords,{zIndexOffset:700,title:`${i?'B':'A'}: ${e.name}`,icon:L.divIcon({className:'',html:`<span class="compare-endpoint stop-${i}">${i?'B':'A'}</span>`,iconSize:[28,28],iconAnchor:[14,14]})}).bindTooltip(`${i?'B':'A'}: ${esc(e.name)} · ${esc(cityName(e.city))}`).addTo(map));
+    if(!e)return;
+    const label=desktopMultiComparison()?String(i+1):(i?'B':'A');
+    compareOverlay.push(L.marker(e.coords,{zIndexOffset:700,title:`${label}: ${e.name}`,icon:L.divIcon({className:'',html:`<span class="compare-endpoint stop-${i%6}">${label}</span>`,iconSize:[28,28],iconAnchor:[14,14]})}).bindTooltip(`${label}: ${esc(e.name)} · ${esc(cityName(e.city))}`).addTo(map));
   });
 }
 

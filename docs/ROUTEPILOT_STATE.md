@@ -223,3 +223,15 @@ Ultima atualizacao: 2026-09-04
 - Eventos anônimos foram documentados por blocos para manter a leitura clara sem poluir cada linha.
 - Bibliotecas de `vendor/` e dados gerados não foram alterados.
 - Cache do Service Worker atualizado para `routepilot-shell-v18`.
+
+## 2026-09-05 — Comparação dinâmica e planejador de rota
+
+- A comparação de locais no desktop passou a aceitar de 2 a 24 bairros, regiões, localidades ou endereços locais, com matriz de proximidade em cache.
+- Foi adicionado um planejador desktop com origem separada, até 24 atendimentos, matriz rodoviária local, fallback identificado em linha reta e camada própria no mapa.
+- A sequência recomendada usa vizinho mais próximo e melhoria 2-opt; o usuário pode arrastar cartões, recalcular a ordem manual, restaurar a recomendação e desfazer uma alteração.
+- Não existem níveis automáticos de prioridade. O primeiro item da lista é o primeiro atendimento; `Posição fixa` apenas impede que a reotimização mova aquele item.
+- O compartilhamento foi centralizado em mensagens rápida, detalhada ou somente localização, contendo apenas dados geográficos e até três referências úteis.
+- O fluxo mobile existente de comparação entre dois locais foi preservado e o planejador novo permanece exclusivo do desktop.
+- Validação em 1366x768, 1600x900 e 390x844 confirmou comparação, rota de 62,3 km pela malha local, compartilhamento, Esc e ausência de estouro horizontal.
+- Corrigida a perda do estado da comparação ao adicionar ou remover o terceiro local em diante.
+- Cache do Service Worker atualizado para `routepilot-shell-v19`.

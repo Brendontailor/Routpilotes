@@ -19,6 +19,20 @@ document.addEventListener('click',event=>{
   if(action==='compareMode')switchCompareMode(value);
   if(action==='comparePlace')chooseComparePlace(Number(button.dataset.slot),value);
   if(action==='compareCalculate')calculatePlaceComparison();
+  if(action==='compareAddStop')addCompareStop();
+  if(action==='compareRemoveStop')removeCompareStop(Number(button.dataset.slot));
+  if(action==='planCompared')planComparedLocations();
+  if(action==='openRoutePlanner')routePlannerActive()?closeRoutePlanner():startRoutePlanner();
+  if(action==='closeRoutePlanner')closeRoutePlanner();
+  if(action==='routeAddStop')addRoutePlannerStop();
+  if(action==='routeRemoveStop')removeRoutePlannerStop(Number(button.dataset.index));
+  if(action==='routeChoosePlace')chooseRoutePlannerPlace(button.dataset.kind,Number(button.dataset.index),value);
+  if(action==='routeCalculate')calculateBestRoute();
+  if(action==='routeReoptimize')reoptimizeRoute();
+  if(action==='routeRestore')restoreRecommendedRoute();
+  if(action==='routeUndo')undoRoutePlannerOrder();
+  if(action==='routeFocusStop')focusRoutePlannerStop(value);
+  if(action==='routeShareStop')shareRoutePlannerStop(value);
   if(action==='identifyCoordinates')identifyCoordinates(Number(button.dataset.lat),Number(button.dataset.lng));
   if(action==='clearIdentifiedArea')clearIdentifiedArea();
   if(action==='streetViewCoordinates'&&identifiedArea)openStreetViewAt(L.latLng(identifiedArea.lat,identifiedArea.lng));
@@ -38,6 +52,10 @@ document.addEventListener('click',event=>{
   if(action==='clearRadiusClose')clearRadiusSearch({close:true});
   if(action==='radiusResult')openRadiusResult(button.dataset.kind,value);
   if(action==='shareArea')shareArea();
+  if(action==='shareMode')setLocationShareMode(value);
+  if(action==='shareWhatsApp')shareLocationToWhatsApp();
+  if(action==='copyLocationMessage')copyLocationMessage();
+  if(action==='closeSharePanel')closeLocationShare();
   if(action==='focusMapCoordinates')focusMapCoordinates(Number(button.dataset.lat),Number(button.dataset.lng));
   if(action==='shareMapCoordinates')shareMapCoordinates(Number(button.dataset.lat),Number(button.dataset.lng));
   if(action==='copyMapCoordinates')copyMapCoordinates(Number(button.dataset.lat),Number(button.dataset.lng));
@@ -84,6 +102,12 @@ document.addEventListener('change',event=>{if(event.target.id==='compareRadius')
 document.addEventListener('input',event=>{
   const slot=event.target.dataset?.compareSlot;
   if(slot!==undefined)updateCompareDraft(Number(slot),event.target.value);
+  const routeKind=event.target.dataset?.routeKind;
+  if(routeKind)updateRoutePlannerDraft(routeKind,Number(event.target.dataset.routeIndex),event.target.value);
+});
+document.addEventListener('change',event=>{
+  if(event.target.dataset?.routeConstraint)setRoutePlannerConstraint(event.target.dataset.routeConstraint,event.target.value);
+  if(event.target.dataset?.routeFixed)setRoutePlannerConstraint(event.target.dataset.routeFixed,'fixed',event.target.value);
 });
 document.addEventListener('focusin',event=>{
   const slot=event.target.dataset?.compareSlot;
@@ -92,6 +116,17 @@ document.addEventListener('focusin',event=>{
 ['toggleRegions','toggleNeighborhoods','toggleLabels','toggleRefs','toggleRoads'].forEach(id=>$(id).addEventListener('change',updateLayers));
 $('toggleAddresses').addEventListener('change',updateAddressDetailLayer);
 $('toggleAddressDebug').addEventListener('change',event=>toggleAddressDebugMode(event.target.checked));
+// O planejador recalcula apenas quando o cartão é solto, não durante o movimento.
+document.addEventListener('dragstart',event=>{
+  const card=event.target.closest('[data-route-drag-index]');if(!card)return;
+  routePlannerState.dragIndex=Number(card.dataset.routeDragIndex);card.classList.add('is-dragging');event.dataTransfer.effectAllowed='move';
+});
+document.addEventListener('dragover',event=>{if(event.target.closest('[data-route-drag-index]')){event.preventDefault();event.dataTransfer.dropEffect='move';}});
+document.addEventListener('drop',event=>{
+  const card=event.target.closest('[data-route-drag-index]');if(!card||routePlannerState.dragIndex===null)return;
+  event.preventDefault();const from=routePlannerState.dragIndex,to=Number(card.dataset.routeDragIndex);routePlannerState.dragIndex=null;reorderRoutePlannerStop(from,to);
+});
+document.addEventListener('dragend',event=>{event.target.closest('[data-route-drag-index]')?.classList.remove('is-dragging');routePlannerState.dragIndex=null;});
 // Trata o Esc por prioridade e confirma escolhas da comparação com Enter.
 document.addEventListener('keydown',event=>{
   const plainEscape=event.key==='Escape'&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing;
@@ -108,6 +143,7 @@ document.addEventListener('keydown',event=>{
   if(event.key==='Escape'&&areaPanelMode==='addressRadius'&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){event.preventDefault();clearAddressRadius({close:true});return;}
   if(event.key==='Escape'&&areaPanelMode==='understand'&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){event.preventDefault();closeAreaTool();return;}
   if(event.key==='Escape'&&toolsOpen&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){event.preventDefault();closeTools();return;}
+  if(plainEscape&&routePlannerActive()){event.preventDefault();closeRoutePlanner();return;}
   if(event.key==='Escape'&&identifiedArea&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.repeat&&!event.isComposing){event.preventDefault();clearIdentifiedArea();return;}
   if(event.key==='Enter'&&placeComparison()&&event.target?.dataset?.compareSlot!==undefined){
     event.preventDefault();const slot=Number(event.target.dataset.compareSlot),matches=comparePlaceMatches(compareDrafts[slot]);

@@ -2,7 +2,7 @@
 
 ## Objective
 
-RoutePilot is a static geographic consultation tool for locating service areas, understanding nearby places, and assisting manual planning of technical visits. It is not an automatic route optimizer.
+RoutePilot is a static geographic consultation tool for locating service areas, understanding nearby places, comparing appointments, and planning multi-stop technical visits locally in the browser.
 
 ## Architecture
 
@@ -33,8 +33,13 @@ RoutePilot is a static geographic consultation tool for locating service areas, 
 - `map.js`: Leaflet map, layers, markers, focus, and visibility.
 - `config.js`: centralized map, search, Overpass, cache, and address-focus settings.
 - `references.js`: visible roads and references plus spatial filtering.
-- `comparison.js`: comparison workflow, road-distance result, fallback, and route overlay.
+- `comparison.js`: dynamic comparison of 2-24 places on desktop, two-place mobile flow, proximity result, and overlay.
 - `local-routing.js`: lazy local address lookup and in-browser shortest-path calculation.
+- `route-distance.js`: reusable distance provider and cached matrix.
+- `route-optimizer.js`: nearest-neighbor and 2-opt ordering with fixed-position constraints.
+- `route-planner.js`: isolated multi-stop planner state, manual ordering, recalculation, restore, and undo.
+- `route-map.js`: dedicated Leaflet layer for the planned route.
+- `location-share-core.js` and `landmark-ranking.js`: geographic-only messages and nearby-reference selection.
 - `streetview.js`: free Street View launcher using Google Maps URLs.
 - `data-validation.js`: development/runtime data validation.
 - `area-inspector.js` and `area-intelligence.js`: coordinate identification and contextual area knowledge.
@@ -77,7 +82,7 @@ Location IDs use normalized city and place names, for example `pelotas_cascata` 
 
 - Region membership uses point-in-polygon when a valid polygon exists.
 - Bounds are fallback only when no valid polygon exists.
-- Two-place comparison uses the embedded road graph. Multiple-region comparison remains a straight-line estimate between operational centers.
+- Two-place comparison uses the embedded road graph. Desktop place comparison accepts 2-24 stops and uses a cached straight-line matrix for quick proximity analysis. The route planner then uses the embedded graph when available, with a clearly identified straight-line fallback.
 - Unknown or uncertain geographic data is preserved as informational text and is not geocoded by assumption.
 
 ## Search
@@ -92,7 +97,15 @@ Point identification preserves the current zoom when it is already closer than t
 
 ## Comparison
 
-The application compares two registered places or exact local addresses using an embedded Overture road graph and an A* shortest-path calculation in the browser. Address resolution uses the sharded local copy of the 122,919 integrated addresses. No address or route is sent to a geocoding or routing service. If the graph is unavailable or disconnected, the interface explicitly falls back to straight-line distance. Multiple-region comparison remains a straight-line estimate.
+The application compares registered places or exact local addresses using local data. Address resolution uses the sharded copy of the 122,919 integrated addresses. Two-place comparison and the multi-stop planner can use the embedded Overture road graph; no address or route is sent to a geocoding or routing service. If the graph is unavailable or disconnected, the interface explicitly falls back to straight-line distance. Multiple-region comparison remains a straight-line estimate.
+
+## Route Planner
+
+The desktop planner accepts a separate origin and up to 24 appointments. It builds a cached distance matrix, suggests an order with nearest-neighbor plus 2-opt, and keeps the route layer separate from structural map layers. The user can drag appointments, recalculate the exact manual order, restore the recommendation, undo one change, and lock positions before reoptimizing. There are no automatic priority levels: list order is authoritative.
+
+## Geographic Sharing
+
+The sharing panel creates quick, detailed, or location-only messages from sanitized geographic fields. It can include up to three ranked nearby landmarks and open WhatsApp Web without selecting a recipient. Customer data is neither requested nor stored.
 
 ## Street View
 
@@ -119,7 +132,7 @@ The desktop workspace keeps map actions in one compact toolbar and keeps the con
 ## Known Limitations
 
 - OpenStreetMap tiles, Google Maps, and Street View require internet access.
-- Road distances are not calculated locally.
+- The local graph does not model every temporary closure, complex turn restriction, traffic condition, or travel time.
 - Operational polygons may be approximate and must be labelled as such.
 - Fifteen nearby relationships remain informational because no safe target point is registered.
 - Unknown access, source, confidence, or review data must not be inferred.

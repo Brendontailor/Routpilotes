@@ -58,13 +58,26 @@ Cada lugar deve manter um ID interno único. O nome mostrado ao usuário não po
 
 ## Comparação e rotas locais
 
-- `js/comparison.js` controla os campos de origem/destino, o resultado e o traçado exibido no mapa.
+- `js/comparison.js` controla a comparação de 2 a 24 locais no desktop e mantém o fluxo de dois locais no mobile.
 - `js/local-routing.js` procura rua e número na base local, carrega a malha somente no primeiro cálculo e executa o menor caminho no navegador.
+- `js/route-planner.js` mantém a origem, os atendimentos, a ordem atual, a ordem recomendada e o histórico de uma alteração.
+- `js/route-distance.js` cria e reutiliza a matriz de distâncias sem repetir cálculos.
+- `js/route-optimizer.js` usa vizinho mais próximo e 2-opt para sugerir uma sequência; posições marcadas como fixas não mudam na reotimização.
+- `js/route-map.js` desenha origem, paradas e segmentos em uma camada Leaflet separada.
 - `data/routing/road-network.json` contém nós e conexões dirigidas; `address-streets.json` e os fragmentos `addresses-*.json` resolvem endereços sem geocodificação externa.
 - `data/routing-index.js` registra versão, origem e contagens da base.
 - `scripts/generate-local-routing-data.mjs` regenera esses arquivos a partir de um recorte GeoJSONSeq do tema `transportation` da Overture.
 
 O RoutePilot não envia endereços para serviços de rota. O Service Worker guarda a malha depois do primeiro uso, sem incluí-la no app shell inicial.
+
+A ordem manual tem precedência: arraste um atendimento para a posição desejada e use `Posição fixa` quando uma nova otimização não puder movê-lo. Não existe prioridade automática alta, média ou baixa.
+
+## Compartilhamento geográfico
+
+- `js/sharing.js` abre a central de compartilhamento a partir de coordenadas, áreas e paradas do planejador.
+- `js/location-share-core.js` elimina campos não geográficos e monta os três formatos de mensagem.
+- `js/landmark-ranking.js` escolhe até três referências próximas, úteis e sem duplicidade.
+- O WhatsApp Web é aberto sem contato predefinido; nenhum dado de cliente é armazenado ou incluído.
 
 ## Pesquisa e navegação
 
@@ -95,6 +108,8 @@ O RoutePilot não envia endereços para serviços de rota. O Service Worker guar
 | Regiões e localidades | `data/regions.js`, `data/locations.js` |
 | Contornos | `data/boundaries.js` |
 | Comparação e cálculo por estradas | `js/comparison.js`, `js/local-routing.js` |
+| Planejador de vários atendimentos | `js/route-planner.js`, `js/route-optimizer.js`, `js/route-distance.js`, `js/route-map.js` |
+| Compartilhamento e referências | `js/sharing.js`, `js/location-share-core.js`, `js/landmark-ranking.js` |
 | Gerar malha e índice local | `scripts/generate-local-routing-data.mjs` |
 | Street View | `js/streetview.js` |
 | Anotações | `js/notes-storage.js`, `js/notes-ui.js` |

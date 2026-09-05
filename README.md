@@ -33,11 +33,14 @@ O RoutePilot atende Pelotas, Capão do Leão, Morro Redondo, Canguçu e Cerrito.
 - identificação de região com point-in-polygon;
 - consulta de regiões e localidades próximas;
 - comparação entre endereços ou locais com trajeto pela malha viária local;
+- comparação dinâmica de 2 a 24 locais no desktop;
+- planejamento de rota com origem separada, ordem sugerida, reordenação manual e posições fixas;
 - comparação múltipla de regiões em linha reta;
 - painel **Entender esta área**;
 - consulta **Ver ao redor** com Haversine e raios configuráveis;
 - Street View gratuito por URL do Google Maps;
 - compartilhamento por deep link;
+- central de compartilhamento geográfico com mensagem rápida, detalhada ou somente localização;
 - anotações operacionais locais com estados pendente, validada e rejeitada;
 - revisão e validação das anotações sem alterar o mapa automaticamente;
 - ferramenta de revisão da qualidade dos dados;
@@ -102,6 +105,11 @@ RoutePilot/
 - `data/open-address-tiles-index.js`: índice leve das células de endereços abertos;
 - `data/open-address-tiles/`: arquivos compactos carregados conforme o mapa visível;
 - `js/local-routing.js`: busca de endereços e cálculo de menor caminho sem serviço externo;
+- `js/route-planner.js`: estado e interface do planejador de vários atendimentos;
+- `js/route-optimizer.js`: ordem sugerida e melhoria 2-opt, respeitando posições fixas;
+- `js/route-distance.js`: matriz de distâncias e cache dos cálculos;
+- `js/route-map.js`: camada independente da rota planejada no Leaflet;
+- `js/location-share-core.js` e `js/landmark-ranking.js`: mensagens geográficas e referências úteis;
 - `data/routing/`: malha viária e índice fragmentado de ruas e números, carregados sob demanda;
 - `data/`: regiões, localidades, contornos, vias e referências;
 - `service-worker.js`: arquivos disponíveis no modo PWA/offline;

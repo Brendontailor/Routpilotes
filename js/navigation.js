@@ -12,7 +12,7 @@ function navigate(patch, save=true) {
   render(); focusMap();
 }
 /** Guia: Monta a estrutura necessária em navegação entre cidades, regiões e locais (`prepareAreaNavigation`). */
-function prepareAreaNavigation() { if(typeof clearIdentifiedArea==='function'&&identifiedArea)clearIdentifiedArea(false);if(typeof clearRadiusSearch==='function')clearRadiusSearch();if(typeof clearAddressRadius==='function')clearAddressRadius();areaPanelMode='identify'; }
+function prepareAreaNavigation() { if(typeof routePlannerActive==='function'&&routePlannerActive())closeRoutePlanner();if(typeof clearIdentifiedArea==='function'&&identifiedArea)clearIdentifiedArea(false);if(typeof clearRadiusSearch==='function')clearRadiusSearch();if(typeof clearAddressRadius==='function')clearAddressRadius();areaPanelMode='identify'; }
 /** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`selectCity`). */
 function selectCity(city) { prepareAreaNavigation();navigate({city, region:null,point:null,boundary:null,road:null,searchOpen:false,overview:false}); }
 /** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`selectRegion`). */
@@ -52,12 +52,13 @@ function goBack() {
 }
 /** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`generalMap`). */
 function generalMap() {
+  if(typeof routePlannerActive==='function'&&routePlannerActive())closeRoutePlanner();
   if(typeof clearIdentifiedArea==='function')clearIdentifiedArea(false);
   navigate({city:null,region:null,point:null,boundary:null,road:null,query:'',searchOpen:false,overview:true});
   $('q').value='';
 }
 /** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`goHome`). */
-function goHome() {if(typeof clearIdentifiedArea==='function')clearIdentifiedArea(false);navigate({city:null,region:null,point:null,boundary:null,road:null,query:'',searchOpen:false,overview:false});$('q').value='';}
+function goHome() {if(typeof routePlannerActive==='function'&&routePlannerActive())closeRoutePlanner();if(typeof clearIdentifiedArea==='function')clearIdentifiedArea(false);navigate({city:null,region:null,point:null,boundary:null,road:null,query:'',searchOpen:false,overview:false});$('q').value='';}
 /** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`sameNameChoices`). */
 function sameNameChoices(entry) {
   const names=(entry.aliases||[entry.name]).map(clean);
@@ -132,7 +133,7 @@ function renderDetails() {
 }
 /** Guia: Renderiza a parte correspondente da interface em navegação entre cidades, regiões e locais (`renderContext`). */
 function renderContext() {
-  if(comparisonActive()){
+  if(comparisonActive()||(typeof routePlannerActive==='function'&&routePlannerActive())){
     $('mapGuide').hidden=true;
     return;
   }
@@ -167,10 +168,11 @@ function toggleMapVisibility() {
   if(!mapHidden&&map){map.invalidateSize();updateLayers();}
 }
 /** Guia: Renderiza a parte correspondente da interface em navegação entre cidades, regiões e locais (`render`). */
-function render() { renderLayout(); renderSearch(); renderNavigation(); renderDetails(); renderAreaInspector(); renderComparison(); renderContext(); updateLayers();if(typeof renderDesktopShell==='function')renderDesktopShell(); }
+function render() { renderLayout(); renderSearch(); renderNavigation(); renderDetails(); renderAreaInspector(); renderComparison();if(typeof renderRoutePlanner==='function')renderRoutePlanner(); renderContext(); updateLayers();if(typeof renderDesktopShell==='function')renderDesktopShell(); }
 /** Guia: Executa uma etapa auxiliar em navegação entre cidades, regiões e locais (`doSearch`). */
 function doSearch(autoOpen=false) {
   const leavingComparison=comparisonActive();
+  if(typeof routePlannerActive==='function'&&routePlannerActive())closeRoutePlanner();
   if(leavingComparison)Object.assign(state,{compare:null,overview:true});
   state.query=$('q').value; state.searchOpen=Boolean(clean(state.query));
   pendingCityChoice=null;

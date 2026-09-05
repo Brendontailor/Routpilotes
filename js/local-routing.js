@@ -3,6 +3,7 @@ let localRoadNetworkPromise=null;
 let localStreetCatalogPromise=null;
 const localAddressShardPromises=new Map();
 const localRouteCache=new Map();
+const localDistanceCache=new Map();
 
 /** Guia: Executa uma etapa auxiliar em roteamento local (`localRoutingFetch`). */
 function localRoutingFetch(path){
@@ -172,6 +173,59 @@ function shortestLocalRoadPath(network,start,target){
 /** Guia: Executa uma etapa auxiliar em roteamento local (`localRouteCacheKey`). */
 function localRouteCacheKey(origin,destination){return [...origin,...destination].map(value=>Number(value).toFixed(5)).join(':');}
 
+/** Cria uma chave estável para reaproveitar distâncias direcionadas entre dois pontos. */
+function localDistanceCacheKey(origin,destination){return `${localRouteCacheKey(origin,destination)}:distance`;}
+
+/** Calcula de uma origem até vários destinos e encerra quando todos forem encontrados. */
+function shortestDistancesToTargets(network,start,targetIndexes){
+  const targets=new Set(targetIndexes),found=new Map(),distances=new Float64Array(network.nodes.length),visited=new Uint8Array(network.nodes.length);
+  distances.fill(Infinity);distances[start]=0;
+  const heap=new RoutingMinHeap();heap.push([0,start]);
+  while(heap.length&&found.size<targets.size){
+    const [cost,current]=heap.pop();
+    if(visited[current])continue;
+    visited[current]=1;
+    if(targets.has(current))found.set(current,cost);
+    for(const [next,meters] of network.adjacency[current]){
+      if(visited[next])continue;
+      const candidate=cost+meters;
+      if(candidate>=distances[next])continue;
+      distances[next]=candidate;heap.push([candidate,next]);
+    }
+  }
+  return found;
+}
+
+/** Monta a matriz viária de uma lista sem recalcular pares já armazenados. */
+async function calculateLocalRoadDistanceMatrix(points){
+  if(!Array.isArray(points)||points.length<2)throw new Error('A matriz local precisa de pelo menos dois pontos.');
+  const network=await loadLocalRoadNetwork();
+  const snapped=points.map(point=>({...point,snap:nearestRoutingNode(network,point.coords)}));
+  const distant=snapped.find(point=>point.snap.meters>CONFIGURACAO_ROTAS_LOCAIS.distanciaMaximaAjusteMetros);
+  if(distant)throw new Error(`${distant.name||'Um ponto'} está distante demais da malha viária local.`);
+  const matrix=Object.fromEntries(points.map(point=>[point.id,{[point.id]:0}]));
+  for(let sourceIndex=0;sourceIndex<snapped.length;sourceIndex++){
+    const source=snapped[sourceIndex],missing=[];
+    for(let targetIndex=0;targetIndex<snapped.length;targetIndex++){
+      if(sourceIndex===targetIndex)continue;
+      const target=snapped[targetIndex],key=localDistanceCacheKey(source.coords,target.coords);
+      if(localDistanceCache.has(key))matrix[source.id][target.id]=localDistanceCache.get(key);
+      else missing.push(targetIndex);
+    }
+    if(missing.length){
+      const distances=shortestDistancesToTargets(network,source.snap.index,missing.map(index=>snapped[index].snap.index));
+      for(const targetIndex of missing){
+        const target=snapped[targetIndex],meters=distances.get(target.snap.index);
+        if(!Number.isFinite(meters))throw new Error(`Não existe ligação viária local entre ${source.name||source.id} e ${target.name||target.id}.`);
+        const km=meters/1000;
+        matrix[source.id][target.id]=km;localDistanceCache.set(localDistanceCacheKey(source.coords,target.coords),km);
+      }
+    }
+    if(sourceIndex%2===1)await new Promise(resolve=>setTimeout(resolve,0));
+  }
+  return {matrix,snapMeters:snapped.reduce((sum,point)=>sum+point.snap.meters,0),source:'RoutePilot · malha Overture Maps'};
+}
+
 /** Calcula a menor distância na malha viária embutida, sem serviço externo. */
 async function calculateLocalRoadRoute(origin,destination){
   const key=localRouteCacheKey(origin,destination);
@@ -182,12 +236,14 @@ async function calculateLocalRoadRoute(origin,destination){
   if(!route)throw new Error('Não foi encontrada uma ligação por estrada entre os dois pontos.');
   const result={distanceKm:route.meters/1000,snapMeters:start.meters+end.meters,geometry:route.path.map(index=>routingNodeCoordinates(network,index)),source:'RoutePilot · malha Overture Maps'};
   localRouteCache.set(key,result);
+  localDistanceCache.set(localDistanceCacheKey(origin,destination),result.distanceKm);
   if(localRouteCache.size>CONFIGURACAO_ROTAS_LOCAIS.maximoRotasCache)localRouteCache.delete(localRouteCache.keys().next().value);
   return result;
 }
 
 window.RoutePilotLocalRouting={
-  status:()=>({networkLoaded:Boolean(localRoadNetworkPromise),streetCatalogLoaded:Boolean(localStreetCatalogPromise),addressShardsLoaded:localAddressShardPromises.size,cachedRoutes:localRouteCache.size}),
+  status:()=>({networkLoaded:Boolean(localRoadNetworkPromise),streetCatalogLoaded:Boolean(localStreetCatalogPromise),addressShardsLoaded:localAddressShardPromises.size,cachedRoutes:localRouteCache.size,cachedDistances:localDistanceCache.size}),
   calculate:calculateLocalRoadRoute,
+  calculateMatrix:calculateLocalRoadDistanceMatrix,
   resolveAddress:resolveLocalRouteAddress
 };
