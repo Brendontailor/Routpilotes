@@ -32,6 +32,11 @@ test('horário exato e janela são respeitados',()=>{
   assert.equal(window.start,540);
 });
 
+test('janela iniciada de manhã pode terminar após meio-dia',()=>{
+  const result=core.placeInTimeline(order(8,'maintenance',{shift:'morning',timeConstraint:{type:'window',start:'11:30',end:'12:45'}}),8*60,config.SHIFTS.morning);
+  assert.equal(result.valid,true);assert.equal(result.start,690);assert.equal(result.end,735);
+});
+
 test('técnico obrigatório indisponível produz motivo específico',()=>{
   const orders=[order(1,'maintenance',{requiredTechnicianId:'ausente'})];
   const result=core.allocateWorkOrders(orders,[technician()],{matrix:matrixFor(orders)});
@@ -57,6 +62,11 @@ test('outra cidade gera lembrete, mas continua permitida',()=>{
   assert.equal(result.unallocated.length,0);
 });
 
+test('técnico inicial é preferência e não bloqueio',()=>{
+  const first=technician('t1',{displayOrder:0}),preferred=technician('t2',{displayOrder:1}),visit=order(9,'maintenance',{preferredTechnicianId:'t2'}),result=core.allocateWorkOrders([visit],[first,preferred],{matrix:matrixFor([visit])});
+  assert.equal(result.schedules[0].technician.id,'t2');
+});
+
 test('atendimento na cidade-base não gera lembrete',()=>{
   const tech=technician('t1',{serviceArea:'Pelotas'}),local=order(1);
   const result=core.allocateWorkOrders([local],[tech],{matrix:matrixFor([local])});
@@ -70,6 +80,57 @@ test('agenda existente pode ser preservada ao encaixar novas OS',()=>{
   const result=core.allocateWorkOrders([next],[tech],{matrix,initialSchedules:[initial]});
   assert.deepEqual(result.schedules[0].items.map(item=>item.order.number),['1','2']);
   assert.ok(result.schedules[0].items[1].start>=540);
+});
+
+test('OS pode mudar de técnico com recálculo das duas rotas',()=>{
+  const first=technician('t1',{name:'Origem'}),second=technician('t2',{name:'Destino',serviceArea:'Morro Redondo'});
+  const firstOrder=order(1),movedOrder=order(2,'maintenance',{city:'Morro Redondo',locality:'Centro de Morro Redondo'}),targetOrder=order(3),matrix=matrixFor([firstOrder,movedOrder,targetOrder]);
+  const source=core.recalculateSchedule([firstOrder,movedOrder],first,'morning',{matrix}).schedule,target=core.recalculateSchedule([targetOrder],second,'morning',{matrix}).schedule;
+  const result=core.moveWorkOrderBetweenSchedules(source,target,movedOrder.id,1,{matrix});
+  assert.equal(result.valid,true);
+  assert.deepEqual(result.sourceSchedule.items.map(item=>item.order.id),[firstOrder.id]);
+  assert.deepEqual(result.targetSchedule.items.map(item=>item.order.id),[targetOrder.id,movedOrder.id]);
+  assert.equal(result.targetSchedule.items[1].areaReminder,'');
+});
+
+test('mudança de técnico respeita capacidade e não altera as rotas originais',()=>{
+  const first=technician('t1'),second=technician('t2'),moved=order(10),fullOrders=[order(11),order(12),order(13),order(14)],matrix=matrixFor([moved,...fullOrders]);
+  const source=core.recalculateSchedule([moved],first,'morning',{matrix}).schedule,target=core.recalculateSchedule(fullOrders,second,'morning',{matrix}).schedule;
+  const result=core.moveWorkOrderBetweenSchedules(source,target,moved.id,4,{matrix});
+  assert.equal(result.valid,false);assert.equal(result.reason,'CAPACITY_EXCEEDED');
+  assert.equal(source.items.length,1);assert.equal(target.items.length,4);
+});
+
+test('técnico obrigatório impede mudança para outro técnico',()=>{
+  const first=technician('t1'),second=technician('t2'),moved=order(20,'maintenance',{requiredTechnicianId:'t1'}),matrix=matrixFor([moved]);
+  const source=core.recalculateSchedule([moved],first,'morning',{matrix}).schedule,target={technician:second,shiftId:'morning',items:[],load:0,distanceKm:0};
+  const result=core.moveWorkOrderBetweenSchedules(source,target,moved.id,0,{matrix});
+  assert.equal(result.valid,false);assert.equal(result.reason,'FIXED_TECH_UNAVAILABLE');
+});
+
+test('OS não agendada pode ser encaixada em uma rota válida',()=>{
+  const tech=technician('t1'),existing=order(25),unassigned=order(26),matrix=matrixFor([existing,unassigned]);
+  const target=core.recalculateSchedule([existing],tech,'morning',{matrix}).schedule;
+  const result=core.assignWorkOrderToSchedule(unassigned,target,0,{matrix});
+  assert.equal(result.valid,true);
+  assert.deepEqual(result.schedule.items.map(item=>item.order.id),[unassigned.id,existing.id]);
+});
+
+test('sugestão de técnico considera distância, área, turno e capacidade',()=>{
+  const pelotas=technician('pelotas',{serviceArea:'Pelotas',displayOrder:0}),morro=technician('morro',{serviceArea:'Morro Redondo',displayOrder:1});
+  const current=order(30),candidate=order(31,'maintenance',{city:'Morro Redondo',locality:'Morro Redondo'}),matrix=matrixFor([current,candidate]);
+  matrix[current.id][candidate.id]=20;matrix[candidate.id][current.id]=20;
+  const schedule=core.recalculateSchedule([current],pelotas,'morning',{matrix}).schedule;
+  const suggestions=core.recommendWorkOrderAssignments(candidate,[schedule],[pelotas,morro],{matrix});
+  assert.equal(suggestions[0].technician.id,'morro');
+  assert.equal(suggestions[0].shiftId,'morning');
+  assert.equal(suggestions[0].areaReminder,'');
+});
+
+test('sugestão respeita técnico obrigatório e ignora encaixes lotados',()=>{
+  const first=technician('t1'),required=technician('t2'),full=[order(40),order(41),order(42),order(43)],candidate=order(44,'maintenance',{requiredTechnicianId:'t2'}),matrix=matrixFor([...full,candidate]);
+  const fullSchedule=core.recalculateSchedule(full,required,'morning',{matrix}).schedule;
+  assert.deepEqual(core.recommendWorkOrderAssignments(candidate,[fullSchedule],[first,required],{matrix}),[]);
 });
 
 test('duplicata de OS é detectada pelo número',()=>{

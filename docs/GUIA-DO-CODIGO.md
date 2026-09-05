@@ -115,9 +115,12 @@ O cache híbrido fica somente em memória, usa consulta normalizada + contexto +
 - `js/agenda-ui.js`: formulário, distribuição, prévia, grade diária e gerenciamento da equipe no desktop.
 - `js/agenda-map.js`: desenha marcadores e uma camada de rota separada por técnico e turno.
 - `js/work-order-search.js`: corrige abreviações somente para comparação, pontua candidatos locais e evita que respostas antigas substituam buscas novas.
+- `js/work-order-import.js`: extrai cliente, assunto, técnico, data, horário, endereço e bairro do texto externo; login e campos sem uso são descartados.
 - `js/agenda-filters.js`: mantém seleção, padrão e vínculos dos filtros pelos IDs dos técnicos.
 
 A base do técnico orienta a distribuição, mas nunca bloqueia outra cidade. O aviso de deslocamento é informativo e a OS permanece alocada quando as demais regras forem válidas.
+
+Na Agenda, OS não agendadas ficam na gaveta lateral recolhível. Ao arrastar uma OS para outro técnico, `js/agenda-ui.js` pede confirmação e `js/scheduling-core.js` recalcula as rotas afetadas antes de salvar. A ação `Sugerir técnico ideal` compara apenas encaixes válidos e mantém a decisão final com o usuário.
 
 ## Onde alterar
 
@@ -137,6 +140,7 @@ A base do técnico orienta a distribuição, mas nunca bloqueia outra cidade. O 
 | Planejador de vários atendimentos | `js/route-planner.js`, `js/route-optimizer.js`, `js/route-distance.js`, `js/route-map.js` |
 | Ordens de serviço e agenda diária | `js/scheduling-config.js`, `js/scheduling-core.js`, `js/agenda-storage.js`, `js/agenda-ui.js`, `js/agenda-map.js` |
 | Busca tolerante de uma OS | `js/work-order-search.js`, `js/local-routing.js` |
+| Importação de texto de uma OS | `js/work-order-import.js`, `js/agenda-ui.js` |
 | Providers e ranking geográfico | `js/geocoding-core.js`, `js/geocoding-providers.js`, `js/geocoding-service.js` |
 | Configuração opcional do Geoapify | `js/runtime-config.js`, `netlify/functions/geocode.mjs`, `netlify.toml` |
 | Filtros visuais da Agenda | `js/agenda-filters.js`, `js/agenda-storage.js`, `js/agenda-ui.js` |

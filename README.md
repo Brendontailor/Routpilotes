@@ -118,13 +118,14 @@ RoutePilot/
 - `js/route-map.js`: camada independente da rota planejada no Leaflet;
 - `js/scheduling-config.js` e `js/scheduling-core.js`: tipos de serviço, capacidade por turno, horários e distribuição das OS;
 - `js/work-order-search.js`: normalização, ranking tolerante, cache e controle de respostas antigas na busca de OS;
+- `js/work-order-import.js`: tratamento dos textos de OS copiados do sistema externo, sem guardar login ou campos extras;
 - `js/geocoding-core.js`: modelo interno, ranking e deduplicação entre fontes;
 - `js/geocoding-providers.js`: adaptadores independentes do Photon e Geoapify;
 - `js/geocoding-service.js`: ordem local → Photon → Geoapify e fallback manual;
 - `netlify/functions/geocode.mjs`: proxy opcional que mantém a chave Geoapify fora do cliente;
 - `js/agenda-filters.js`: regras puras dos filtros visuais de técnicos;
 - `js/agenda-storage.js`: persistência local de técnicos, OS e agendas no IndexedDB;
-- `js/agenda-ui.js` e `js/agenda-map.js`: fluxo desktop de criação de rotas, prévia e agenda diária;
+- `js/agenda-ui.js` e `js/agenda-map.js`: fluxo desktop de criação de rotas, gaveta de pendências, transferência entre técnicos, recomendação e agenda diária;
 - `js/location-share-core.js` e `js/landmark-ranking.js`: mensagens geográficas e referências úteis;
 - `data/routing/`: malha viária e índice fragmentado de ruas e números, carregados sob demanda;
 - `data/`: regiões, localidades, contornos, vias e referências;

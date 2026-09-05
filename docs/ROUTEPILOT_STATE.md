@@ -291,3 +291,18 @@ Ultima atualizacao: 2026-09-04
 - A sugestão continua sendo apenas uma prévia até o usuário confirmar a localização.
 - O mapa da distribuição detecta quando a tela recria seu contêiner e remonta o Leaflet, evitando o painel vazio após cadastrar, gerar ou reorganizar atendimentos.
 - Cache do Service Worker atualizado para `routepilot-shell-v25`.
+
+## 2026-09-05 — Importação e distribuição interativa de OS
+
+- A lista de técnicos da criação de rota inicia minimizada e pode ser expandida sem perder a seleção atual.
+- O filtro da Agenda foi reorganizado em linhas compactas e não produz mais rolagem horizontal.
+- OS não agendadas ficam em uma gaveta lateral recolhível e podem ser arrastadas para a coluna de um técnico.
+- OS já agendadas podem ser arrastadas entre técnicos; antes de salvar, o RoutePilot pede confirmação e recalcula as duas rotas afetadas.
+- Capacidade, turno, janela de horário, bloqueio e técnico obrigatório continuam sendo validados em toda transferência.
+- A ação `Sugerir técnico ideal` compara encaixes válidos usando distância da rota, cidade-base e restrições, mas só aplica a opção escolhida após confirmação.
+- A criação de rota passou a listar apenas OS pendentes; uma OS enviada à Agenda deixa de aparecer na caixa de entrada e não é distribuída novamente.
+- Textos de OS do sistema externo podem preencher cliente, serviço, técnico inicial, data, horário, endereço e bairro. Login, identificador externo e campos sem uso não são armazenados.
+- O horário inicial define o turno: antes de 12h é manhã; a partir de 12h é tarde. Uma janela iniciada de manhã pode terminar após meio-dia dentro do limite informado.
+- O técnico do texto é identificado pelo cadastro local com tolerância a acentos e pequenas diferenças, como preferência não bloqueante.
+- A busca tenta primeiro o endereço completo na cidade informada e, quando necessário, usa bairro/região e cidade como fallback, sempre exigindo confirmação do ponto.
+- Cache do Service Worker atualizado para `routepilot-shell-v26`.

@@ -134,10 +134,10 @@ if(manifest?.start_url!=='./')failures.push(`unexpected manifest start_url: ${ma
 const serviceWorker=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
 const shellAssets=[...serviceWorker.matchAll(/\s+'\.\/([^']+)'/g)].map(match=>match[1]);
 for(const asset of shellAssets)if(!fs.existsSync(path.resolve(root,asset)))failures.push(`missing service worker asset: ${asset}`);
-if(!serviceWorker.includes("routepilot-shell-v25"))failures.push('service worker cache is not v25');
+if(!serviceWorker.includes("routepilot-shell-v26"))failures.push('service worker cache is not v26');
 if(/tile\.openstreetmap\.org/.test(serviceWorker))failures.push('service worker must not mass-cache OSM tiles');
 
-const requiredV2=['runtime-config.js','config.js','notes-storage.js','area-inspector.js','area-intelligence.js','radius-search.js','address-radius.js','sharing.js','map-point-actions.js','notes-ui.js','data-review.js','open-address-tiles.js','local-routing.js','route-distance.js','route-optimizer.js','landmark-ranking.js','location-share-core.js','route-map.js','route-planner.js','scheduling-config.js','scheduling-core.js','work-order-search.js','geocoding-core.js','geocoding-providers.js','geocoding-service.js','agenda-filters.js','agenda-storage.js','agenda-map.js','agenda-ui.js'];
+const requiredV2=['runtime-config.js','config.js','notes-storage.js','area-inspector.js','area-intelligence.js','radius-search.js','address-radius.js','sharing.js','map-point-actions.js','notes-ui.js','data-review.js','open-address-tiles.js','local-routing.js','route-distance.js','route-optimizer.js','landmark-ranking.js','location-share-core.js','route-map.js','route-planner.js','scheduling-config.js','scheduling-core.js','work-order-search.js','work-order-import.js','geocoding-core.js','geocoding-providers.js','geocoding-service.js','agenda-filters.js','agenda-storage.js','agenda-map.js','agenda-ui.js'];
 for(const file of requiredV2)if(!index.includes(`js/${file}`))failures.push(`V2 script not loaded: ${file}`);
 
 const runtimeConfig=fs.readFileSync(path.join(root,'js','runtime-config.js'),'utf8');

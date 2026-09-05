@@ -48,8 +48,8 @@
       if(constraint.start===null||constraint.end===null)return {valid:false,reason:'TIME_WINDOW_CONFLICT'};
       start=Math.max(start,constraint.start);if(start>constraint.end)return {valid:false,reason:'TIME_WINDOW_CONFLICT'};
     }
-    const duration=SERVICE_TYPES[order.serviceType]?.durationMinutes;
-    if(!Number.isFinite(duration)||start+duration>shiftEnd)return {valid:false,reason:'SHIFT_CONFLICT'};
+    const duration=SERVICE_TYPES[order.serviceType]?.durationMinutes,allowedEnd=constraint.type==='window'&&constraint.start<shiftEnd?Math.max(shiftEnd,constraint.end):shiftEnd;
+    if(!Number.isFinite(duration)||start+duration>allowedEnd)return {valid:false,reason:'SHIFT_CONFLICT'};
     return {valid:true,start,end:start+duration};
   }
   /** Ordena primeiro restrições obrigatórias, depois prioridade e localização. */
@@ -95,8 +95,8 @@
         if(!placement.valid){timeBlocked=true;continue;}
         const destination=workOrderArea(order),sameArea=String(schedule.technician.serviceArea||'').toLowerCase()===String(destination).toLowerCase();
         const balancePenalty=schedule.load*8,areaPenalty=sameArea?0:12;
-        const priorityBonus=order.highPriority?-2:0;
-        options.push({schedule,placement,score:placement.travelKm+balancePenalty+areaPenalty+priorityBonus});
+        const priorityBonus=order.highPriority?-2:0,preferredTechnicianBonus=order.preferredTechnicianId===schedule.technician.id?-10:0;
+        options.push({schedule,placement,score:placement.travelKm+balancePenalty+areaPenalty+priorityBonus+preferredTechnicianBonus});
       }
       if(!options.length){const reason=capacityBlocked?'CAPACITY_EXCEEDED':timeBlocked?'TIME_WINDOW_CONFLICT':'SHIFT_CONFLICT';unallocated.push({order,reason,message:UNALLOCATED_REASONS[reason]});continue;}
       const chosen=options.sort((a,b)=>a.score-b.score||a.schedule.technician.displayOrder-b.schedule.technician.displayOrder)[0];
@@ -116,5 +116,57 @@
     }
     return {valid:true,schedule};
   }
-  return {timeToMinutes,minutesToTime,workOrderLoad,calculateLoad,hasCapacity,findDuplicateWorkOrder,matrixDistance,travelMinutes,normalizeTimeConstraint,allowedShiftIds,placeInTimeline,operationalOrder,workOrderArea,assignmentReminder,evaluateAppend,allocateWorkOrders,recalculateSchedule};
+  /** Tenta inserir uma OS em uma rota sem alterar a rota recebida. */
+  function assignWorkOrderToSchedule(order,targetSchedule,targetIndex,{matrix={},settings=OPERATIONAL_SETTINGS}={}){
+    if(!order||!targetSchedule)return {valid:false,reason:'INVALID_MOVE'};
+    if(order.requiredTechnicianId&&order.requiredTechnicianId!==targetSchedule.technician.id)return {valid:false,reason:'FIXED_TECH_UNAVAILABLE'};
+    if(!allowedShiftIds(order).includes(targetSchedule.shiftId))return {valid:false,reason:'SHIFT_CONFLICT'};
+    const orders=targetSchedule.items.map(item=>item.order).filter(item=>item.id!==order.id),safeIndex=Math.max(0,Math.min(Number.isInteger(targetIndex)?targetIndex:orders.length,orders.length));orders.splice(safeIndex,0,order);
+    const result=recalculateSchedule(orders,targetSchedule.technician,targetSchedule.shiftId,{matrix,settings});
+    return result.valid?{...result,order,targetIndex:safeIndex}:result;
+  }
+  /** Move uma OS entre técnicos e só devolve a alteração se as duas rotas forem válidas. */
+  function moveWorkOrderBetweenSchedules(sourceSchedule,targetSchedule,orderId,targetIndex,{matrix={},settings=OPERATIONAL_SETTINGS}={}){
+    if(!sourceSchedule||!targetSchedule||sourceSchedule===targetSchedule)return {valid:false,reason:'INVALID_MOVE'};
+    const sourceOrders=sourceSchedule.items.map(item=>item.order),sourceIndex=sourceOrders.findIndex(order=>order.id===orderId),order=sourceOrders[sourceIndex];
+    if(!order)return {valid:false,reason:'INVALID_MOVE'};
+    if(order.locked)return {valid:false,reason:'LOCKED_WORK_ORDER'};
+    if(order.requiredTechnicianId&&order.requiredTechnicianId!==targetSchedule.technician.id)return {valid:false,reason:'FIXED_TECH_UNAVAILABLE'};
+    if(!allowedShiftIds(order).includes(targetSchedule.shiftId))return {valid:false,reason:'SHIFT_CONFLICT'};
+    sourceOrders.splice(sourceIndex,1);
+    const targetOrders=targetSchedule.items.map(item=>item.order),safeIndex=Math.max(0,Math.min(Number.isInteger(targetIndex)?targetIndex:targetOrders.length,targetOrders.length));targetOrders.splice(safeIndex,0,order);
+    const sourceResult=recalculateSchedule(sourceOrders,sourceSchedule.technician,sourceSchedule.shiftId,{matrix,settings});if(!sourceResult.valid)return sourceResult;
+    const targetResult=recalculateSchedule(targetOrders,targetSchedule.technician,targetSchedule.shiftId,{matrix,settings});if(!targetResult.valid)return targetResult;
+    return {valid:true,order,sourceSchedule:sourceResult.schedule,targetSchedule:targetResult.schedule};
+  }
+  /** Compara todos os encaixes válidos e ordena técnicos pela rota resultante. */
+  function recommendWorkOrderAssignments(order,schedules,technicians,{matrix={},settings=OPERATIONAL_SETTINGS}={}){
+    if(!order||order.locked)return [];
+    const currentSchedules=Array.isArray(schedules)?schedules:[],source=currentSchedules.find(schedule=>schedule.items.some(item=>item.order.id===order.id))||null;
+    const sourceKey=source?`${source.technician.id}:${source.shiftId}`:null,sourceOrders=source?.items.map(item=>item.order).filter(item=>item.id!==order.id)||[];
+    const sourceResult=source?recalculateSchedule(sourceOrders,source.technician,source.shiftId,{matrix,settings}):null;
+    if(sourceResult&&!sourceResult.valid)return [];
+    const validShifts=new Set(allowedShiftIds(order)),destination=workOrderArea(order),options=[];
+    for(const technician of technicians.filter(item=>item.active!==false)){
+      if(order.requiredTechnicianId&&order.requiredTechnicianId!==technician.id)continue;
+      for(const shiftId of technician.defaultShifts||[]){
+        if(!validShifts.has(shiftId))continue;
+        const targetKey=`${technician.id}:${shiftId}`,target=currentSchedules.find(schedule=>`${schedule.technician.id}:${schedule.shiftId}`===targetKey);
+        const targetOrders=(target?.items||[]).map(item=>item.order).filter(item=>item.id!==order.id);
+        const untouchedDistance=currentSchedules.reduce((sum,schedule)=>{
+          const key=`${schedule.technician.id}:${schedule.shiftId}`;return key===sourceKey||key===targetKey?sum:sum+(Number(schedule.distanceKm)||0);
+        },0);
+        for(let index=0;index<=targetOrders.length;index++){
+          const candidateOrders=[...targetOrders];candidateOrders.splice(index,0,order);
+          const targetResult=recalculateSchedule(candidateOrders,technician,shiftId,{matrix,settings});if(!targetResult.valid)continue;
+          const sourceDistance=sourceKey&&sourceKey!==targetKey?(Number(sourceResult.schedule.distanceKm)||0):0;
+          const totalDistance=untouchedDistance+sourceDistance+(Number(targetResult.schedule.distanceKm)||0);
+          const areaPenalty=String(technician.serviceArea||'').toLowerCase()===String(destination).toLowerCase()?0:12;
+          options.push({technician,shiftId,index,schedule:targetResult.schedule,sourceSchedule:sourceKey===targetKey?null:sourceResult?.schedule||null,sourceKey,targetKey,totalDistance,score:totalDistance+areaPenalty,areaReminder:assignmentReminder(technician,order)});
+        }
+      }
+    }
+    return options.sort((a,b)=>a.score-b.score||a.totalDistance-b.totalDistance||a.technician.displayOrder-b.technician.displayOrder);
+  }
+  return {timeToMinutes,minutesToTime,workOrderLoad,calculateLoad,hasCapacity,findDuplicateWorkOrder,matrixDistance,travelMinutes,normalizeTimeConstraint,allowedShiftIds,placeInTimeline,operationalOrder,workOrderArea,assignmentReminder,evaluateAppend,allocateWorkOrders,recalculateSchedule,assignWorkOrderToSchedule,moveWorkOrderBetweenSchedules,recommendWorkOrderAssignments};
 });
