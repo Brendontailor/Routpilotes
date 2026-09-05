@@ -29,6 +29,7 @@ O RoutePilot atende Pelotas, Capão do Leão, Morro Redondo, Canguçu e Cerrito.
 - mapa interativo com Leaflet e OpenStreetMap;
 - navegação por cidade, região, bairro e localidade rural;
 - busca inteligente, fuzzy e sem dependência de acentos;
+- geocodificação híbrida com base local primeiro, Photon como ampliação e Geoapify opcional;
 - consulta local dos 122.919 endereços integrados, com conferência opcional no Google Maps por link;
 - busca e identificação por coordenadas;
 - identificação de região com point-in-polygon;
@@ -58,7 +59,7 @@ O RoutePilot atende Pelotas, Capão do Leão, Morro Redondo, Canguçu e Cerrito.
 - Service Worker;
 - Netlify.
 
-O projeto não exige framework, backend, chave de API ou serviço pago.
+O projeto não exige framework, banco de dados, chave de API ou serviço pago. A função serverless do Netlify é opcional e serve apenas para proteger a chave do Geoapify quando esse complemento estiver habilitado.
 
 ## Execução local
 
@@ -74,7 +75,11 @@ O uso por servidor HTTP é recomendado para que o Service Worker, a PWA e os dem
 
 ## Deploy
 
-O RoutePilot pode ser publicado como site estático no Netlify. A raiz de publicação deve conter diretamente `index.html`, `manifest.webmanifest`, `service-worker.js` e as pastas `css/`, `data/`, `js/` e `vendor/`.
+O RoutePilot pode ser publicado no Netlify diretamente pelo repositório Git. A raiz de publicação contém `index.html`, `manifest.webmanifest`, `service-worker.js` e as pastas `css/`, `data/`, `js/` e `vendor/`. O arquivo `netlify.toml` mantém essa raiz e publica a função opcional de geocodificação.
+
+Para habilitar o Geoapify sem expor a chave no navegador, crie no Netlify a variável de ambiente `GEOAPIFY_API_KEY`. O build configura o navegador para chamar `/.netlify/functions/geocode`; somente a função do Netlify lê o segredo. Nunca coloque o valor em `js/runtime-config.js`, `.env.example`, commits ou capturas de tela.
+
+Sem essa variável, o sistema continua usando os 122.919 endereços locais, Photon e seleção manual no mapa.
 
 ZIPs de publicação são artefatos gerados e não fazem parte do código-fonte versionado.
 
@@ -88,6 +93,7 @@ RoutePilot/
 |-- css/
 |-- data/
 |-- js/
+|-- netlify/functions/
 |-- vendor/
 |-- docs/
 |-- scripts/
@@ -112,6 +118,10 @@ RoutePilot/
 - `js/route-map.js`: camada independente da rota planejada no Leaflet;
 - `js/scheduling-config.js` e `js/scheduling-core.js`: tipos de serviço, capacidade por turno, horários e distribuição das OS;
 - `js/work-order-search.js`: normalização, ranking tolerante, cache e controle de respostas antigas na busca de OS;
+- `js/geocoding-core.js`: modelo interno, ranking e deduplicação entre fontes;
+- `js/geocoding-providers.js`: adaptadores independentes do Photon e Geoapify;
+- `js/geocoding-service.js`: ordem local → Photon → Geoapify e fallback manual;
+- `netlify/functions/geocode.mjs`: proxy opcional que mantém a chave Geoapify fora do cliente;
 - `js/agenda-filters.js`: regras puras dos filtros visuais de técnicos;
 - `js/agenda-storage.js`: persistência local de técnicos, OS e agendas no IndexedDB;
 - `js/agenda-ui.js` e `js/agenda-map.js`: fluxo desktop de criação de rotas, prévia e agenda diária;

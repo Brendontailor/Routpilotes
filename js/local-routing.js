@@ -126,7 +126,7 @@ async function searchLocalRouteLocations(query,{limit=5}={}){
   const loadedShards=new Map(await Promise.all([...new Set(streetEntries.map(item=>item.entry[2]))].map(async shard=>[shard,await loadLocalAddressShard(shard)])));
   for(const ranked of streetEntries){
     const entry=ranked.entry,group=loadedShards.get(entry[2])?.streets?.[entry[0]];if(!group)continue;
-    const streetNumbers=new Set((SEARCH.normalize(group[0]).match(/\b\d+[a-z]?\b/g)||[])),houseNumber=queryNumbers.find(number=>!streetNumbers.has(number))||'';
+    const streetNumbers=new Set((SEARCH.normalize(group[0]).match(/\b\d+[a-z]?\b/g)||[])),houseNumber=queryNumbers.filter(number=>!streetNumbers.has(number)).at(-1)||'';
     const grouped=new Map();
     group[1].forEach(address=>{const region=byRegion[address[3]];if(!region)return;const key=region.id;if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push(address);});
     for(const [regionId,addresses] of grouped){

@@ -16,7 +16,7 @@
   /** Calcula a distância de edição usada na tolerância a erros de digitação. */
   function editDistance(a,b){let previous=Array.from({length:b.length+1},(_,index)=>index);for(let i=1;i<=a.length;i++){const row=[i];for(let j=1;j<=b.length;j++)row[j]=Math.min(row[j-1]+1,previous[j]+1,previous[j-1]+(a[i-1]!==b[j-1]));previous=row;}return previous[b.length];}
   /** Mede quanto um termo digitado se parece com uma palavra candidata. */
-  function tokenSimilarity(queryToken,candidateToken){if(queryToken===candidateToken)return 1;if(candidateToken.startsWith(queryToken)||queryToken.startsWith(candidateToken))return .9;const longest=Math.max(queryToken.length,candidateToken.length);if(longest<4)return 0;const distance=editDistance(queryToken,candidateToken),limit=longest>=8?2:1;return distance<=limit?Math.max(.55,1-distance/longest):0;}
+  function tokenSimilarity(queryToken,candidateToken){if(queryToken===candidateToken)return 1;if(/^\d+[a-z]?$/.test(queryToken)||/^\d+[a-z]?$/.test(candidateToken))return 0;if(candidateToken.startsWith(queryToken)||queryToken.startsWith(candidateToken))return .9;const longest=Math.max(queryToken.length,candidateToken.length);if(longest<4)return 0;const distance=editDistance(queryToken,candidateToken),limit=longest>=8?2:1;return distance<=limit?Math.max(.55,1-distance/longest):0;}
   /** Pontua um candidato combinando cobertura dos termos, nome e prioridade local. */
   function scoreCandidate(query,candidate){
     const normalizedQuery=normalize(query),name=normalize(candidate.name),full=normalize([candidate.name,candidate.context,candidate.cityName,candidate.locality].filter(Boolean).join(' '));if(!normalizedQuery||!full)return 0;

@@ -7,7 +7,7 @@ RoutePilot is a static geographic consultation tool for locating service areas, 
 ## Architecture
 
 - Static HTML, CSS, and modular JavaScript.
-- Manual folder or ZIP deployment to Netlify.
+- Git-connected deployment to Netlify, with an optional serverless geocoding proxy.
 - Installable PWA with a versioned service worker.
 - Leaflet 1.9.4 stored locally; OpenStreetMap supplies online map tiles.
 - No mandatory backend, database, build step, API key, or paid API.
@@ -23,6 +23,7 @@ RoutePilot is a static geographic consultation tool for locating service areas, 
 - `service-worker.js`: PWA cache and update strategy.
 - `docs/`: permanent architecture context and development checkpoint.
 - `scripts/`: reusable audit and validation tools.
+- `netlify/functions/`: optional server-side adapters that keep provider secrets out of the browser.
 - `outputs/`: ignored local deploy artifacts and historical exports; not source code.
 
 ## Modules
@@ -49,6 +50,9 @@ RoutePilot is a static geographic consultation tool for locating service areas, 
 - `ui-shell.js`: desktop workspace shell, contextual-panel header, toolbar state, and Layers popover.
 - `osm-addresses.js`: bounded Overpass requests, address/building association, labels, cache, and request cancellation.
 - `open-address-tiles.js`: lazy bbox loading and in-memory cache for tiled IBGE/Overture addresses.
+- `geocoding-core.js`: provider-neutral result model, operation-area ranking, and deduplication.
+- `geocoding-providers.js`: isolated Photon and Geoapify HTTP adapters.
+- `geocoding-service.js`: local-first provider orchestration, cache, stale-request cancellation, and manual fallback.
 - `osm-address-debug.js`: optional building inspection panel and copy tools for OSM diagnostics.
 - `sharing.js`: validated deep links, clipboard sharing, and concise nearby-place summaries.
 - `map-point-actions.js`: left-click point focus and right-click coordinate/share actions.
@@ -109,7 +113,7 @@ Desktop navigation also provides `Criar rota` and `Agenda`. Work orders use norm
 
 Technicians, customer names, work orders and daily agendas are stored locally through `js/agenda-storage.js`. Existing days require a preview before reoptimization or fitting only new work orders. The mobile interface remains unchanged.
 
-Work-order location search normalizes accents and abbreviations internally, tolerates misspellings and reordered tokens, prioritizes the local service catalog, and requires explicit coordinate confirmation. It searches the 122,919 integrated open addresses and offers a free Google Maps search link for manual verification; no Google API data is copied into RoutePilot. The original typed text is preserved separately. Work orders may use `any` as their shift so the scheduler chooses one compatible morning or afternoon slot. Saved Agenda filters affect only visible columns and reference technicians by stable ID.
+Work-order location search normalizes accents and abbreviations internally, tolerates misspellings and reordered tokens, prioritizes the local service catalog, and requires explicit coordinate confirmation. It searches the 122,919 integrated open addresses first, uses Photon to expand weak searches, and can use Geoapify as an optional third provider. Results share one internal model and pass through RoutePilot ranking and deduplication. The Geoapify key is read only by an optional Netlify function; the browser receives no key. Provider failure never blocks local or manual selection. The Google Maps link remains manual verification only; no Google API data is copied into RoutePilot. The original typed text is preserved separately. Work orders may use `any` as their shift so the scheduler chooses one compatible morning or afternoon slot. Saved Agenda filters affect only visible columns and reference technicians by stable ID.
 
 ## Geographic Sharing
 

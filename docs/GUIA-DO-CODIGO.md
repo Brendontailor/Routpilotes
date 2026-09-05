@@ -86,6 +86,20 @@ A ordem manual tem precedência: arraste um atendimento para a posição desejad
 - `js/navigation.js` troca cidade, região, localidade e painel contextual.
 - `js/map-point-actions.js` contém as ações de clique direito no mapa.
 
+### Busca híbrida do cadastro de atendimento
+
+- `js/work-order-search.js` normaliza o texto e consulta primeiro o catálogo local.
+- `js/geocoding-core.js` converte todos os resultados ao mesmo formato, deduplica e aplica o ranking próprio.
+- `js/geocoding-providers.js` contém os adaptadores HTTP separados de Photon e Geoapify.
+- `js/geocoding-service.js` controla a ordem local → Photon → Geoapify, cache temporário, cancelamento e fallback manual.
+- `js/runtime-config.js` contém apenas configuração pública gerada no deploy; nunca deve receber uma chave privada.
+- `netlify/functions/geocode.mjs` é o proxy opcional que lê `GEOAPIFY_API_KEY` somente no servidor do Netlify.
+- `CONFIGURACAO_GEOCODIFICACAO`, em `js/config.js`, centraliza debounce, limites, timeout, pontuações e URLs.
+
+Quando a base local oferece um resultado forte, nenhuma API externa é consultada. Photon amplia buscas fracas ou ausentes. Geoapify é usado somente quando configurado e necessário. Falhas externas não impedem a confirmação de resultado local ou de um ponto manual.
+
+O cache híbrido fica somente em memória, usa consulta normalizada + contexto + provider e expira por TTL. A OS salva as coordenadas confirmadas e não repete a geocodificação durante agenda ou roteamento. Somente o texto do endereço é enviado aos providers; nome do cliente, observação, telefone e demais dados operacionais não são transmitidos.
+
 ## Service Worker e PWA
 
 - `manifest.webmanifest` define nome, ícones, cores e modo instalável.
@@ -123,6 +137,8 @@ A base do técnico orienta a distribuição, mas nunca bloqueia outra cidade. O 
 | Planejador de vários atendimentos | `js/route-planner.js`, `js/route-optimizer.js`, `js/route-distance.js`, `js/route-map.js` |
 | Ordens de serviço e agenda diária | `js/scheduling-config.js`, `js/scheduling-core.js`, `js/agenda-storage.js`, `js/agenda-ui.js`, `js/agenda-map.js` |
 | Busca tolerante de uma OS | `js/work-order-search.js`, `js/local-routing.js` |
+| Providers e ranking geográfico | `js/geocoding-core.js`, `js/geocoding-providers.js`, `js/geocoding-service.js` |
+| Configuração opcional do Geoapify | `js/runtime-config.js`, `netlify/functions/geocode.mjs`, `netlify.toml` |
 | Filtros visuais da Agenda | `js/agenda-filters.js`, `js/agenda-storage.js`, `js/agenda-ui.js` |
 | Compartilhamento e referências | `js/sharing.js`, `js/location-share-core.js`, `js/landmark-ranking.js` |
 | Gerar malha e índice local | `scripts/generate-local-routing-data.mjs` |

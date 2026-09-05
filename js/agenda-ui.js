@@ -1,7 +1,7 @@
 /* Recurso RoutePilot: cadastro de OS, distribuição e agenda diária desktop. */
 const RoutePilotAgenda=(()=>{
   const CONFIG=RoutePilotSchedulingConfig,CORE=RoutePilotSchedulingCore;
-  const state={tab:'map',date:new Date().toISOString().slice(0,10),technicians:[],orders:[],selected:new Set(),confirmedLocation:null,locationCandidate:null,searchResults:[],searchTimer:null,searchCoordinator:null,generated:null,agenda:null,manager:false,detailId:null,pendingAgenda:null,drag:null,filters:[],visibleTechnicianIds:new Set(),showUnassigned:true,filterOpen:false,filterQuery:'',filterEditor:false,editFilterId:null,activeFilterId:null};
+  const state={tab:'map',date:new Date().toISOString().slice(0,10),technicians:[],orders:[],selected:new Set(),confirmedLocation:null,locationCandidate:null,searchResults:[],searchTimer:null,geocodingService:null,searchCanExpand:false,searchWarning:'',generated:null,agenda:null,manager:false,detailId:null,pendingAgenda:null,drag:null,filters:[],visibleTechnicianIds:new Set(),showUnassigned:true,filterOpen:false,filterQuery:'',filterEditor:false,editFilterId:null,activeFilterId:null};
   const $agenda=id=>document.getElementById(id);
   const makeId=prefix=>crypto.randomUUID?`${prefix}_${crypto.randomUUID()}`:`${prefix}_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
   const technicianById=id=>state.technicians.find(item=>item.id===id);
@@ -16,7 +16,9 @@ const RoutePilotAgenda=(()=>{
   async function init(){
     if(!window.matchMedia('(min-width:901px)').matches)return;
     state.technicians=await RoutePilotAgendaStorage.ensureDefaultTechnicians();state.orders=await RoutePilotAgendaStorage.all('workOrders');state.selected=new Set(activeTechnicians().map(item=>item.id));state.agenda=await RoutePilotAgendaStorage.getAgenda(state.date)||null;state.filters=await RoutePilotAgendaStorage.getAgendaFilters();
-    const defaultFilter=state.filters.find(filter=>filter.isDefault);state.visibleTechnicianIds=new Set(defaultFilter?.technicianIds||activeTechnicians().map(item=>item.id));state.showUnassigned=defaultFilter?.showUnassigned!==false;state.activeFilterId=defaultFilter?.id||null;state.searchCoordinator=RoutePilotWorkOrderSearch.createCoordinator(query=>searchLocalRouteLocations(query,{limit:5}));
+    const defaultFilter=state.filters.find(filter=>filter.isDefault);state.visibleTechnicianIds=new Set(defaultFilter?.technicianIds||activeTechnicians().map(item=>item.id));state.showUnassigned=defaultFilter?.showUnassigned!==false;state.activeFilterId=defaultFilter?.id||null;
+    const operationContext=RoutePilotGeocodingCore.createOperationContext(regions,cityNames,CONFIGURACAO_GEOCODIFICACAO.centroPreferencial);
+    state.geocodingService=RoutePilotGeocodingService.create({config:CONFIGURACAO_GEOCODIFICACAO,context:operationContext,localSearch:query=>searchLocalRouteLocations(query,{limit:CONFIGURACAO_GEOCODIFICACAO.maximoSugestoes}),localReverse:coords=>RoutePilotOpenAddresses.reverse(coords),photon:new RoutePilotGeocodingProviders.PhotonProvider(CONFIGURACAO_GEOCODIFICACAO.photon),geoapify:new RoutePilotGeocodingProviders.GeoapifyProvider(CONFIGURACAO_GEOCODIFICACAO.geoapify)});
     bind();renderTabs();
   }
   /** Registra os eventos próprios uma única vez. */
@@ -68,7 +70,7 @@ const RoutePilotAgenda=(()=>{
   /** Atualiza sugestões e estado de confirmação sem reconstruir o formulário. */
   function showLocationSearch(results,message=''){
     const panel=$agenda('workOrderSuggestions'),status=$agenda('workOrderLocationStatus');if(!panel||!status)return;
-    panel.hidden=!results.length;panel.innerHTML=results.map((item,index)=>`<button type="button" class="compare-suggestion ${index===0?'is-best':''}" data-agenda-action="previewLocation" data-index="${index}"><strong>${esc(item.formattedAddress||item.name)}</strong><small>${esc(item.cityName||cityName(item.city))} · ${esc(item.locality||'Localidade conhecida')}${item.approximate?' · aproximada':''}</small></button>`).join('');
+    panel.hidden=!results.length;panel.innerHTML=results.map((item,index)=>`<button type="button" class="compare-suggestion ${index===0?'is-best':''}" data-agenda-action="previewLocation" data-index="${index}"><strong>${esc(item.formattedAddress||item.name)}</strong><small>${esc(item.cityName||cityName(item.city))} · ${esc(item.locality||'Localidade conhecida')} · ${esc(locationSourceLabel(item.source))}${item.approximate?' · aproximada':''}</small></button>`).join('');
     status.hidden=!message;status.innerHTML=message;
   }
   /** Monta um link gratuito para conferência manual, sem consultar APIs do Google. */
@@ -78,15 +80,31 @@ const RoutePilotAgenda=(()=>{
     const url=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
     return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">Conferir no Google Maps ↗</a>`;
   }
+  /** Traduz a origem tecnica para um rotulo curto na interface. */
+  function locationSourceLabel(source){return ({local:'Base local',photon:'Photon',geoapify:'Geoapify',manual:'Ponto manual'})[source]||source||'Cadastro RoutePilot';}
+  /** Monta o aviso e as acoes disponiveis para um candidato geografico. */
+  function locationFeedback(candidate,{confirmed=false}={}){
+    const message=confirmed?`Local confirmado: ${esc(candidate.formattedAddress||candidate.name)}`:candidate.partialAddress?'Rua localizada, número não confirmado.':candidate.approximate?'Localização aproximada — confirme no mapa.':'Melhor resultado exibido no mapa.';
+    const warning=state.searchWarning?`<span class="location-warning">${esc(state.searchWarning)}</span>`:'';
+    return `<span class="${confirmed?'location-confirmed':''}">${message}</span>${warning}${confirmed?'':`<button type="button" data-agenda-action="confirmLocation">Confirmar localização</button>`}${state.searchCanExpand&&!confirmed?'<button type="button" data-agenda-action="moreLocationOptions">Ver outras opções</button>':''}<button type="button" data-agenda-action="selectLocationOnMap">${confirmed?'Ajustar no mapa':'Selecionar no mapa'}</button>${googleMapsCheckLink(candidate)}`;
+  }
   /** Pesquisa com debounce, cache e descarte de respostas antigas. */
-  async function runLocationSearch(query){
+  async function runLocationSearch(query,{forceExternal=false}={}){
     showLocationSearch([],`<span class="location-searching">Interpretando endereço...</span>`);
-    try{const response=await state.searchCoordinator.search(query);if(response.stale)return;state.searchResults=response.results;const best=response.results[0];if(!best){RoutePilotAgendaMap.clearPreview();showLocationSearch([],`<span class="location-warning">Nenhum local provável encontrado.</span>`);return;}state.locationCandidate=best;RoutePilotAgendaMap.previewLocation(best);showLocationSearch(response.results,`<span>${best.approximate?'Localização aproximada — confirme no mapa.':'Melhor resultado exibido no mapa.'}</span><button type="button" data-agenda-action="confirmLocation">Confirmar localização</button><button type="button" data-agenda-action="adjustLocation">Ajustar no mapa</button>${googleMapsCheckLink(best)}`);}catch(error){showLocationSearch([],`<span class="location-warning">${esc(error.message||'Não foi possível pesquisar agora.')}</span>`);}
+    try{const response=await state.geocodingService.search(query,{forceExternal});if(response.stale)return;state.searchResults=response.results;state.searchCanExpand=response.canExpand;state.searchWarning=response.warning||'';const best=response.results[0];if(!best){RoutePilotAgendaMap.clearPreview();showLocationSearch([],`<span class="location-warning">Nenhum local provável encontrado.</span><button type="button" data-agenda-action="selectLocationOnMap">Selecionar no mapa</button>`);return;}state.locationCandidate=best;RoutePilotAgendaMap.previewLocation(best);showLocationSearch(response.results,locationFeedback(best));}catch(error){showLocationSearch([],`<span class="location-warning">${esc(error.message||'Não foi possível pesquisar agora.')}</span><button type="button" data-agenda-action="selectLocationOnMap">Selecionar no mapa</button>`);}
   }
   /** Seleciona uma sugestão sem cadastrar a OS automaticamente. */
-  function previewLocation(index){const candidate=state.searchResults[index];if(!candidate)return;state.locationCandidate=candidate;state.confirmedLocation=null;RoutePilotAgendaMap.previewLocation(candidate);showLocationSearch(state.searchResults,`<span>${candidate.approximate?'Localização aproximada — confirme no mapa.':'Endereço interpretado no mapa.'}</span><button type="button" data-agenda-action="confirmLocation">Confirmar localização</button><button type="button" data-agenda-action="adjustLocation">Ajustar no mapa</button>${googleMapsCheckLink(candidate)}`);}
+  function previewLocation(index){const candidate=state.searchResults[index];if(!candidate)return;state.locationCandidate=candidate;state.confirmedLocation=null;RoutePilotAgendaMap.previewLocation(candidate);showLocationSearch(state.searchResults,locationFeedback(candidate));}
   /** Confirma as coordenadas que serão persistidas e reutilizadas pelo roteirizador. */
-  function confirmLocation(){const candidate=state.locationCandidate;if(!candidate)return;state.confirmedLocation={...candidate,locationConfirmed:true};RoutePilotAgendaMap.previewLocation(candidate,{confirmed:true});showLocationSearch([],`<span class="location-confirmed">Local confirmado: ${esc(candidate.formattedAddress||candidate.name)}</span><button type="button" data-agenda-action="adjustLocation">Ajustar no mapa</button>${googleMapsCheckLink(candidate)}`);}
+  function confirmLocation(){const candidate=state.locationCandidate;if(!candidate)return;state.confirmedLocation={...candidate,locationConfirmed:true};RoutePilotAgendaMap.previewLocation(candidate,{confirmed:true});showLocationSearch([],locationFeedback(candidate,{confirmed:true}));}
+  /** Confirma primeiro o ponto manual e tenta enriquecer o endereco em segundo plano. */
+  async function selectManualLocation(coords){
+    const typed=$agenda('workOrderAddress')?.value.trim(),manual=RoutePilotGeocodingCore.createManualCandidate(coords,typed||'Ponto selecionado no mapa');if(!manual)return;
+    const region=regionAtCoordinates(coords[0],coords[1]);state.searchCanExpand=false;state.searchWarning='';state.locationCandidate={...manual,city:region?.city||'',cityName:region?cityName(region.city):'',region:region?.id||null,locality:region?.name||manual.locality};confirmLocation();
+    showLocationSearch([],`<span class="location-confirmed">Ponto manual confirmado.</span><span class="location-searching">Identificando rua e localidade...</span>${googleMapsCheckLink(state.locationCandidate)}`);
+    const reverse=await state.geocodingService.reverse(coords),current=state.locationCandidate;if(!current||current.source!=='manual'||current.coords.some((value,index)=>value!==coords[index]))return;
+    state.locationCandidate={...current,...reverse.result,coords:[...coords],latitude:coords[0],longitude:coords[1],source:'manual',locationConfirmed:true};state.confirmedLocation={...state.locationCandidate};state.searchWarning=reverse.warning||'';RoutePilotAgendaMap.previewLocation(state.locationCandidate,{confirmed:true});showLocationSearch([],locationFeedback(state.locationCandidate,{confirmed:true}));
+  }
   /** Cria a grade diária inspirada no fluxo do IXC. */
   function renderAgenda(){
     const allTechnicians=activeTechnicians(),technicians=RoutePilotAgendaFilters.visibleTechnicians(allTechnicians,state.visibleTechnicianIds),agenda=state.agenda,items=agenda?.schedules?.flatMap(schedule=>schedule.items.map(item=>({...item,technicianId:schedule.technician.id})))||[];
@@ -146,7 +164,8 @@ const RoutePilotAgenda=(()=>{
     const duplicate=CORE.findDuplicateWorkOrder(state.orders.filter(order=>!order.archived),{customerName,date:state.date,coords:place.coords});if(duplicate){showToast('Este atendimento já está cadastrado para o mesmo cliente e local');return;}
     const fixedPosition=Number(data.get('fixedPosition'));
     const originalSearch=String(data.get('address')).trim();
-    const order={id:makeId('os'),customerName,date:state.date,serviceType:data.get('serviceType'),searchedText:originalSearch,address:place.formattedAddress||place.name||originalSearch,coords:place.coords.map(Number),locality:place.locality||place.name||'',city:place.city||'',locationSource:place.source||'Cadastro RoutePilot',locationConfirmed:true,locationApproximate:Boolean(place.approximate),shift:data.get('shift')||'any',highPriority:data.has('highPriority'),locked:data.has('locked'),fixedPosition:Number.isInteger(fixedPosition)&&fixedPosition>0?fixedPosition:null,requiredTechnicianId:data.get('requiredTechnicianId')||null,note:String(data.get('note')||'').trim(),timeConstraint:{type:data.get('timeType'),start:data.get('timeStart')||null,end:data.get('timeEnd')||null},createdAt:new Date().toISOString()};
+    const formattedAddress=place.formattedAddress||place.name||originalSearch,latitude=Number(place.coords[0]),longitude=Number(place.coords[1]);
+    const order={id:makeId('os'),customerName,date:state.date,serviceType:data.get('serviceType'),addressInput:originalSearch,formattedAddress,searchedText:originalSearch,address:formattedAddress,latitude,longitude,coords:[latitude,longitude],locality:place.locality||place.name||'',city:place.city||'',locationSource:place.source||'local',locationConfirmed:true,locationApproximate:Boolean(place.approximate),shift:data.get('shift')||'any',highPriority:data.has('highPriority'),locked:data.has('locked'),fixedPosition:Number.isInteger(fixedPosition)&&fixedPosition>0?fixedPosition:null,requiredTechnicianId:data.get('requiredTechnicianId')||null,note:String(data.get('note')||'').trim(),timeConstraint:{type:data.get('timeType'),start:data.get('timeStart')||null,end:data.get('timeEnd')||null},createdAt:new Date().toISOString()};
     state.orders.push(order);await RoutePilotAgendaStorage.put('workOrders',order);state.confirmedLocation=null;state.locationCandidate=null;state.searchResults=[];state.generated=null;RoutePilotAgendaMap.clearPreview();form.reset();render();showToast(`Atendimento de ${order.customerName} adicionado`);
   }
   /** Aplica um filtro salvo somente às colunas visíveis. */
@@ -192,7 +211,8 @@ const RoutePilotAgenda=(()=>{
     if(action==='copyOrderLocation'){const order=state.orders.find(item=>item.id===button.dataset.id);if(order)copyMapCoordinates(order.coords[0],order.coords[1]);}
     if(action==='previewLocation')previewLocation(Number(button.dataset.index));
     if(action==='confirmLocation')confirmLocation();
-    if(action==='adjustLocation'){RoutePilotAgendaMap.pickNextPoint(coords=>{const current=state.locationCandidate||{name:$agenda('workOrderAddress')?.value||'Ponto ajustado',formattedAddress:$agenda('workOrderAddress')?.value||'Ponto ajustado',city:'',locality:'Ponto ajustado'};state.locationCandidate={...current,coords,source:'Ponto ajustado manualmente',approximate:false};confirmLocation();});showToast('Clique no mapa para ajustar o ponto');}
+    if(action==='moreLocationOptions')runLocationSearch($agenda('workOrderAddress')?.value||'',{forceExternal:true});
+    if(action==='selectLocationOnMap'){RoutePilotAgendaMap.pickNextPoint(selectManualLocation);showToast('Clique no mapa para selecionar o ponto');}
     if(action==='toggleAgendaFilter'){state.filterOpen=!state.filterOpen;render({preserveAgendaScroll:true});}
     if(action==='agendaFilterAll'){state.visibleTechnicianIds=new Set(activeTechnicians().map(item=>item.id));state.activeFilterId=null;render({preserveAgendaScroll:true});}
     if(action==='agendaFilterNone'){state.visibleTechnicianIds=new Set();state.activeFilterId=null;render({preserveAgendaScroll:true});}
@@ -213,10 +233,10 @@ const RoutePilotAgenda=(()=>{
     if(event.target.id==='agendaFilterForm'){event.preventDefault();const data=new FormData(event.target),existing=state.filters.find(item=>item.id===data.get('id')),filter={id:existing?.id||makeId('agenda_filter'),name:String(data.get('name')).trim(),technicianIds:existing?.technicianIds||[...state.visibleTechnicianIds],showUnassigned:existing?.showUnassigned??state.showUnassigned,isDefault:data.has('isDefault')};state.filters=RoutePilotAgendaFilters.saveFilter(state.filters,filter);await persistFilters();state.editFilterId=null;state.activeFilterId=filter.id;render({preserveAgendaScroll:true});showToast('Filtro salvo');}
   }
   /** Limpa confirmação e devolve o turno para Qualquer. */
-  function handleReset(event){if(event.target.id!=='workOrderForm')return;state.searchCoordinator?.cancel();clearTimeout(state.searchTimer);state.confirmedLocation=null;state.locationCandidate=null;state.searchResults=[];RoutePilotAgendaMap.clearPreview();setTimeout(()=>{event.target.shift.value='any';showLocationSearch([],'');},0);}
+  function handleReset(event){if(event.target.id!=='workOrderForm')return;state.geocodingService?.cancel();clearTimeout(state.searchTimer);state.confirmedLocation=null;state.locationCandidate=null;state.searchResults=[];state.searchCanExpand=false;state.searchWarning='';RoutePilotAgendaMap.clearPreview();setTimeout(()=>{event.target.shift.value='any';showLocationSearch([],'');},0);}
   /** Mostra sugestões geográficas no formulário de OS. */
   function handleInput(event){
-    if(event.target.id==='workOrderAddress'){state.confirmedLocation=null;state.locationCandidate=null;state.searchCoordinator?.cancel();clearTimeout(state.searchTimer);const query=event.target.value;if(!RoutePilotWorkOrderSearch.normalize(query)){state.searchResults=[];RoutePilotAgendaMap.clearPreview();showLocationSearch([],'');return;}state.searchTimer=setTimeout(()=>runLocationSearch(query),320);}
+    if(event.target.id==='workOrderAddress'){state.confirmedLocation=null;state.locationCandidate=null;state.geocodingService?.cancel();clearTimeout(state.searchTimer);const query=event.target.value;if(!RoutePilotWorkOrderSearch.normalize(query)){state.searchResults=[];RoutePilotAgendaMap.clearPreview();showLocationSearch([],'');return;}state.searchTimer=setTimeout(()=>runLocationSearch(query),CONFIGURACAO_GEOCODIFICACAO.debounceMs);}
     if(event.target.id==='agendaFilterSearch'){state.filterQuery=event.target.value;const query=RoutePilotWorkOrderSearch.normalize(state.filterQuery);document.querySelectorAll('.agenda-filter-list label').forEach(label=>label.hidden=Boolean(query)&&!RoutePilotWorkOrderSearch.normalize(label.textContent).includes(query));}
   }
   /** Persiste disponibilidade, nome, base e data selecionada. */

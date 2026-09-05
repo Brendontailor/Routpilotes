@@ -270,3 +270,17 @@ Ultima atualizacao: 2026-09-04
 - Cada candidato pode ser conferido manualmente no Google Maps por um link de pesquisa; o RoutePilot não consulta nem copia a base do Google.
 - A cobertura permanece limitada aos 122.919 endereços abertos já integrados nas cinco cidades atendidas; nenhum endereço ou coordenada foi inventado.
 - Cache do Service Worker atualizado para `routepilot-shell-v23`.
+
+## 2026-09-05 — Geocodificação híbrida local, Photon e Geoapify
+
+- A busca do cadastro de atendimento passou a usar providers independentes e um modelo interno único.
+- A base local continua sendo consultada primeiro; resultado local forte evita chamadas externas.
+- Photon amplia buscas fracas ou sem resultado, com bias e limite para a área operacional.
+- Geoapify é um complemento opcional e só é consultado quando Photon não resolve bem ou o usuário pede outras opções.
+- A chave Geoapify fica em `GEOAPIFY_API_KEY` no Netlify e é lida somente pela função `netlify/functions/geocode.mjs`; não existe segredo versionado ou enviado ao navegador.
+- Cache por consulta, contexto e provider evita chamadas repetidas; requisições antigas são canceladas ou descartadas.
+- Resultados passam por ranking de texto, número, cidade, região atendida, completude e origem, além de deduplicação por endereço e proximidade.
+- A comparação fuzzy exige igualdade entre tokens numéricos, evitando confundir ruas ou casas como `28` e `284`; nomes de rua numéricos continuam sendo separados do número do imóvel.
+- Seleção manual e coordenadas continuam válidas mesmo se o reverse geocoding falhar; ruas sem número confirmado podem ser aceitas como aproximadas.
+- A OS preserva texto pesquisado, endereço formatado, coordenadas, cidade, localidade, fonte e confirmação para reutilização pela agenda e pelo roteirizador.
+- Cache do Service Worker atualizado para `routepilot-shell-v24`.

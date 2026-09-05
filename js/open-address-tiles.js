@@ -48,7 +48,22 @@ function setVisibleOpenAddresses(points){openAddressVisiblePoints=Array.isArray(
 /** Guia: Limpa dados ou estados temporários em números de imóveis por células (`clearVisibleOpenAddresses`). */
 function clearVisibleOpenAddresses(){openAddressVisiblePoints=[];}
 
+/** Procura o numero local mais proximo de um ponto selecionado manualmente. */
+async function reverseOpenAddress(coords,{radiusMeters=80}={}){
+  const [lat,lon]=coords.map(Number);if(!Number.isFinite(lat)||!Number.isFinite(lon))return null;
+  const latPad=radiusMeters/111320,lonPad=radiusMeters/(111320*Math.max(.2,Math.cos(lat*Math.PI/180)));
+  const bounds={getSouth:()=>lat-latPad,getNorth:()=>lat+latPad,getWest:()=>lon-lonPad,getEast:()=>lon+lonPad};
+  const addresses=await loadOpenAddressesForBounds(bounds);let nearest=null;
+  for(const address of addresses){
+    const meters=distanceKm([lat,lon],[address.lat,address.lon])*1000;if(meters>radiusMeters||nearest&&nearest.meters<=meters)continue;nearest={address,meters};
+  }
+  if(!nearest)return null;
+  const address=nearest.address,region=byRegion[address.region];
+  return {id:`open:${address.id}`,name:`${address.street}, ${address.number}`,formattedAddress:`${address.street}, ${address.number}`,street:address.street,houseNumber:String(address.number),city:region?.city||'',cityName:region?cityName(region.city):'',region:region?.id||null,locality:region?.name||'',coords:[address.lat,address.lon],source:'local',approximate:false};
+}
+
 window.RoutePilotOpenAddresses={
   status:()=>({available:openAddressTileIndex.total,cells:Object.keys(openAddressTileIndex.tiles).length,loadedCells:openAddressTileCache.size,pendingCells:openAddressTileRequests.size,visiblePoints:openAddressVisiblePoints.length}),
+  reverse:reverseOpenAddress,
   clearMemory:()=>{openAddressTileCache.clear();openAddressTileRequests.clear();clearVisibleOpenAddresses();}
 };

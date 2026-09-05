@@ -72,3 +72,30 @@ const CONFIGURACAO_ROTAS_LOCAIS=Object.freeze({
   distanciaMaximaAjusteMetros:3000,
   maximoRotasCache:30
 });
+
+const CONFIGURACAO_GEOCODIFICACAO=Object.freeze({
+  debounceMs:320,
+  minimoCaracteres:4,
+  maximoSugestoes:5,
+  cacheTtlMs:30*60*1000,
+  pontuacaoLocalForte:1080,
+  pontuacaoExternaForte:900,
+  centroPreferencial:Object.freeze([-31.62,-52.48]),
+  photon:Object.freeze({
+    habilitado:true,
+    urlBase:'https://photon.komoot.io',
+    idioma:'default',
+    timeoutMs:6500,
+    pausaAposLimiteMs:2*60*1000,
+    limiteResultados:8
+  }),
+  geoapify:Object.freeze({
+    habilitado:true,
+    urlBase:'https://api.geoapify.com/v1/geocode',
+    apiKey:String(globalThis.ROUTEPILOT_RUNTIME_CONFIG?.geoapifyApiKey||''),
+    proxyUrl:String(globalThis.ROUTEPILOT_RUNTIME_CONFIG?.geoapifyProxyUrl||''),
+    timeoutMs:6500,
+    pausaAposLimiteMs:2*60*1000,
+    limiteResultados:8
+  })
+});

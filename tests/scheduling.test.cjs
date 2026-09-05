@@ -104,6 +104,12 @@ test('busca tolera erros, acentos, abreviações e ordem diferente',()=>{
   assert.deepEqual(search.rank('local inexistente xyz',candidates),[]);
 });
 
+test('busca fuzzy nunca confunde numeros diferentes',()=>{
+  assert.equal(search.tokenSimilarity('28','284'),0);
+  assert.equal(search.tokenSimilarity('331','331a'),0);
+  assert.equal(search.tokenSimilarity('331','331'),1);
+});
+
 test('resultado local recebe prioridade no ranking',()=>{
   const ranked=search.rank('Areal',[{id:'longe',name:'Areal',localPriority:0},{id:'local',name:'Areal',context:'Pelotas',localPriority:100}]);
   assert.equal(ranked[0].id,'local');
