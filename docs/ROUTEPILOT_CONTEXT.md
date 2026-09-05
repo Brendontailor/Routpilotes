@@ -103,6 +103,12 @@ The application compares registered places or exact local addresses using local 
 
 The desktop planner accepts a separate origin and up to 24 appointments. It builds a cached distance matrix, suggests an order with nearest-neighbor plus 2-opt, and keeps the route layer separate from structural map layers. The user can drag appointments, recalculate the exact manual order, restore the recommendation, undo one change, and lock positions before reoptimizing. There are no automatic priority levels: list order is authoritative.
 
+## Work Orders And Daily Agenda
+
+Desktop navigation also provides `Criar rota` and `Agenda`. Work orders use normalized per-shift capacity, optional time constraints, an optional required technician, locking and fixed route positions. Distribution first assigns work orders, then reuses the local distance matrix and route optimizer for each technician. A technician's base is a preference only: travel to another city remains allowed and produces a non-blocking reminder.
+
+Technicians, work orders and daily agendas are stored locally through `js/agenda-storage.js`. Existing days require a preview before reoptimization or fitting only new work orders. The mobile interface remains unchanged.
+
 ## Geographic Sharing
 
 The sharing panel creates quick, detailed, or location-only messages from sanitized geographic fields. It can include up to three ranked nearby landmarks and open WhatsApp Web without selecting a recipient. Customer data is neither requested nor stored.

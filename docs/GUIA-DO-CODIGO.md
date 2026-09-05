@@ -93,6 +93,16 @@ A ordem manual tem precedência: arraste um atendimento para a posição desejad
 - Sempre que um arquivo do aplicativo for criado ou alterado, confirme que ele está em `APP_SHELL` e aumente a versão de `CACHE_NAME`.
 - Tiles do OpenStreetMap não devem ser adicionados ao cache em massa.
 
+## Ordens de serviço e agenda
+
+- `js/scheduling-config.js`: técnicos padrão, turnos, duração e carga dos tipos de serviço.
+- `js/scheduling-core.js`: valida capacidade e horários, distribui OS e gera lembretes de deslocamento entre cidades.
+- `js/agenda-storage.js`: isola o IndexedDB usado por técnicos, OS e agenda diária.
+- `js/agenda-ui.js`: formulário, distribuição, prévia, grade diária e gerenciamento da equipe no desktop.
+- `js/agenda-map.js`: desenha marcadores e uma camada de rota separada por técnico e turno.
+
+A base do técnico orienta a distribuição, mas nunca bloqueia outra cidade. O aviso de deslocamento é informativo e a OS permanece alocada quando as demais regras forem válidas.
+
 ## Onde alterar
 
 | Necessidade | Arquivo principal |
@@ -109,6 +119,7 @@ A ordem manual tem precedência: arraste um atendimento para a posição desejad
 | Contornos | `data/boundaries.js` |
 | Comparação e cálculo por estradas | `js/comparison.js`, `js/local-routing.js` |
 | Planejador de vários atendimentos | `js/route-planner.js`, `js/route-optimizer.js`, `js/route-distance.js`, `js/route-map.js` |
+| Ordens de serviço e agenda diária | `js/scheduling-config.js`, `js/scheduling-core.js`, `js/agenda-storage.js`, `js/agenda-ui.js`, `js/agenda-map.js` |
 | Compartilhamento e referências | `js/sharing.js`, `js/location-share-core.js`, `js/landmark-ranking.js` |
 | Gerar malha e índice local | `scripts/generate-local-routing-data.mjs` |
 | Street View | `js/streetview.js` |

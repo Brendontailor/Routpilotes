@@ -235,3 +235,15 @@ Ultima atualizacao: 2026-09-04
 - Validação em 1366x768, 1600x900 e 390x844 confirmou comparação, rota de 62,3 km pela malha local, compartilhamento, Esc e ausência de estouro horizontal.
 - Corrigida a perda do estado da comparação ao adicionar ou remover o terceiro local em diante.
 - Cache do Service Worker atualizado para `routepilot-shell-v19`.
+
+## 2026-09-05 — Ordens de serviço e agenda diária desktop
+
+- Foram adicionadas as áreas desktop `Criar rota` e `Agenda`, sem alterar o fluxo mobile existente.
+- O cadastro de OS guarda número, serviço, localização, turno, restrição de horário, técnico obrigatório, bloqueio, posição fixa, prioridade e observação operacional sem dados pessoais de clientes.
+- A capacidade por turno usa carga normalizada e nunca ultrapassa o limite silenciosamente; OS sem encaixe permanecem não alocadas com motivo explícito.
+- A distribuição escolhe técnico e turno, reaproveita a matriz rodoviária local e otimiza a sequência de cada rota com vizinho mais próximo e 2-opt quando horários e posições permitem.
+- A cidade-base do técnico é somente uma preferência. Atendimentos em outra cidade continuam permitidos e recebem um lembrete não bloqueante com técnico, base e destino.
+- A equipe inicial possui 11 técnicos: Wendell e Moises com base em Morro Redondo; Pablo e Vagner em Monte Bonito; os demais em Pelotas. Bruno de Lima não faz parte do cadastro padrão.
+- Técnicos, OS e agendas são persistidos no IndexedDB; cadastros existentes não são sobrescritos pelos padrões.
+- Dias já programados oferecem prévia para reotimizar ou preservar a agenda e encaixar apenas novas OS.
+- Cache do Service Worker atualizado para `routepilot-shell-v21`.

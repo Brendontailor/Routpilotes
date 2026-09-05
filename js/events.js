@@ -156,7 +156,7 @@ document.addEventListener('keydown',event=>{
   event.preventDefault(); goBack();
 });
 // Inicializa os recursos somente depois que todos os módulos foram carregados.
-initDesktopShell();initToolsButton();initMap();initAddressDebug();initStreetViewLauncher();render();applyDeepLink();
+initDesktopShell();initToolsButton();initMap();initAddressDebug();initStreetViewLauncher();render();applyDeepLink();RoutePilotAgenda.init().catch(error=>console.error('Falha ao iniciar Agenda',error));
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')) {
   window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
 }

@@ -109,6 +109,9 @@ RoutePilot/
 - `js/route-optimizer.js`: ordem sugerida e melhoria 2-opt, respeitando posições fixas;
 - `js/route-distance.js`: matriz de distâncias e cache dos cálculos;
 - `js/route-map.js`: camada independente da rota planejada no Leaflet;
+- `js/scheduling-config.js` e `js/scheduling-core.js`: tipos de serviço, capacidade por turno, horários e distribuição das OS;
+- `js/agenda-storage.js`: persistência local de técnicos, OS e agendas no IndexedDB;
+- `js/agenda-ui.js` e `js/agenda-map.js`: fluxo desktop de criação de rotas, prévia e agenda diária;
 - `js/location-share-core.js` e `js/landmark-ranking.js`: mensagens geográficas e referências úteis;
 - `data/routing/`: malha viária e índice fragmentado de ruas e números, carregados sob demanda;
 - `data/`: regiões, localidades, contornos, vias e referências;
@@ -125,6 +128,7 @@ RoutePilot/
 - a malha considera sentidos de circulação disponíveis na fonte, mas não substitui a conferência de bloqueios, obras ou condições atuais;
 - informações operacionais cadastradas precisam ser revisadas antes de serem tratadas como validadas;
 - as anotações ficam no IndexedDB do navegador e do computador atual enquanto não houver sincronização em nuvem;
+- técnicos, ordens de serviço e agendas também ficam somente no IndexedDB deste navegador, sem sincronização entre computadores;
 - dados de acesso, fonte ou confiança desconhecidos permanecem como não informados.
 
 ## Autor
