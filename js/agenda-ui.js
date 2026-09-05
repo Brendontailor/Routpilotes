@@ -94,7 +94,11 @@ const RoutePilotAgenda=(()=>{
     try{const response=await state.geocodingService.search(query,{forceExternal});if(response.stale)return;state.searchResults=response.results;state.searchCanExpand=response.canExpand;state.searchWarning=response.warning||'';const best=response.results[0];if(!best){RoutePilotAgendaMap.clearPreview();showLocationSearch([],`<span class="location-warning">Nenhum local provável encontrado.</span><button type="button" data-agenda-action="selectLocationOnMap">Selecionar no mapa</button>`);return;}state.locationCandidate=best;RoutePilotAgendaMap.previewLocation(best);showLocationSearch(response.results,locationFeedback(best));}catch(error){showLocationSearch([],`<span class="location-warning">${esc(error.message||'Não foi possível pesquisar agora.')}</span><button type="button" data-agenda-action="selectLocationOnMap">Selecionar no mapa</button>`);}
   }
   /** Seleciona uma sugestão sem cadastrar a OS automaticamente. */
-  function previewLocation(index){const candidate=state.searchResults[index];if(!candidate)return;state.locationCandidate=candidate;state.confirmedLocation=null;RoutePilotAgendaMap.previewLocation(candidate);showLocationSearch(state.searchResults,locationFeedback(candidate));}
+  function previewLocation(index){
+    const candidate=state.searchResults[index];if(!candidate)return;
+    const addressInput=$agenda('workOrderAddress');if(addressInput)addressInput.value=candidate.formattedAddress||candidate.name||addressInput.value;
+    state.locationCandidate=candidate;state.confirmedLocation=null;RoutePilotAgendaMap.previewLocation(candidate);showLocationSearch(state.searchResults,locationFeedback(candidate));
+  }
   /** Confirma as coordenadas que serão persistidas e reutilizadas pelo roteirizador. */
   function confirmLocation(){const candidate=state.locationCandidate;if(!candidate)return;state.confirmedLocation={...candidate,locationConfirmed:true};RoutePilotAgendaMap.previewLocation(candidate,{confirmed:true});showLocationSearch([],locationFeedback(candidate,{confirmed:true}));}
   /** Confirma primeiro o ponto manual e tenta enriquecer o endereco em segundo plano. */

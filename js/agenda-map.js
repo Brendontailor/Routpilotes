@@ -4,8 +4,10 @@ const RoutePilotAgendaMap=(()=>{
   let agendaMap=null,routeLayers=new Map(),previewMarker=null;
   /** Inicializa o mapa da área operacional somente quando ela é aberta. */
   function ensureMap(){
+    const container=document.getElementById('operationsMap');if(!container)return null;
+    if(agendaMap&&agendaMap.getContainer()!==container){agendaMap.remove();agendaMap=null;routeLayers.clear();previewMarker=null;}
     if(agendaMap)return agendaMap;
-    agendaMap=L.map('operationsMap',{zoomControl:true,preferCanvas:true}).setView([-31.69,-52.48],9);
+    agendaMap=L.map(container,{zoomControl:true,preferCanvas:true}).setView([-31.69,-52.48],9);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(agendaMap);
     return agendaMap;
   }
@@ -13,17 +15,17 @@ const RoutePilotAgendaMap=(()=>{
   function clear(){routeLayers.forEach(layer=>layer.remove());routeLayers.clear();}
   /** Destaca temporariamente o melhor endereço sem cadastrar a OS. */
   function previewLocation(place,{confirmed=false}={}){
-    const mapInstance=ensureMap();if(previewMarker)previewMarker.remove();if(!place?.coords)return;
+    const mapInstance=ensureMap();if(previewMarker)previewMarker.remove();if(!mapInstance||!place?.coords)return;
     previewMarker=L.marker(place.coords,{opacity:confirmed?1:.82}).bindTooltip(`${confirmed?'Local confirmado':'Sugestão'}: ${place.formattedAddress||place.name}`,{permanent:false}).addTo(mapInstance);
     mapInstance.setView(place.coords,place.approximate?16:18,{animate:false});
   }
   /** Remove somente o marcador temporário da busca de OS. */
   function clearPreview(){if(previewMarker){previewMarker.remove();previewMarker=null;}}
   /** Aguarda um clique para ajustar manualmente a coordenada aproximada. */
-  function pickNextPoint(callback){const mapInstance=ensureMap();mapInstance.getContainer().classList.add('is-picking-location');mapInstance.once('click',event=>{mapInstance.getContainer().classList.remove('is-picking-location');callback([event.latlng.lat,event.latlng.lng]);});}
+  function pickNextPoint(callback){const mapInstance=ensureMap();if(!mapInstance)return;mapInstance.getContainer().classList.add('is-picking-location');mapInstance.once('click',event=>{mapInstance.getContainer().classList.remove('is-picking-location');callback([event.latlng.lat,event.latlng.lng]);});}
   /** Desenha uma camada numerada para cada técnico e enquadra todos os pontos. */
   function render(schedules=[]){
-    const mapInstance=ensureMap();clear();const bounds=[];
+    const mapInstance=ensureMap();if(!mapInstance)return;clear();const bounds=[];
     schedules.forEach((schedule,scheduleIndex)=>{
       const color=COLORS[schedule.technician.displayOrder%COLORS.length]||COLORS[scheduleIndex%COLORS.length];
       const group=L.layerGroup().addTo(mapInstance),points=schedule.items.map(item=>item.order.coords).filter(Boolean);routeLayers.set(`${schedule.technician.id}:${schedule.shiftId}`,group);

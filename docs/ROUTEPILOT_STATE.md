@@ -284,3 +284,10 @@ Ultima atualizacao: 2026-09-04
 - Seleção manual e coordenadas continuam válidas mesmo se o reverse geocoding falhar; ruas sem número confirmado podem ser aceitas como aproximadas.
 - A OS preserva texto pesquisado, endereço formatado, coordenadas, cidade, localidade, fonte e confirmação para reutilização pela agenda e pelo roteirizador.
 - Cache do Service Worker atualizado para `routepilot-shell-v24`.
+
+## 2026-09-05 — Preenchimento pelo autocomplete
+
+- Ao clicar em uma sugestão do cadastro de atendimento, o endereço formatado escolhido substitui o texto digitado no campo.
+- A sugestão continua sendo apenas uma prévia até o usuário confirmar a localização.
+- O mapa da distribuição detecta quando a tela recria seu contêiner e remonta o Leaflet, evitando o painel vazio após cadastrar, gerar ou reorganizar atendimentos.
+- Cache do Service Worker atualizado para `routepilot-shell-v25`.
