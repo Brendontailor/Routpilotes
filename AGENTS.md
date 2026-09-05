@@ -22,7 +22,6 @@
 - Preserve A4 printing.
 - Preserve the PWA.
 - Sanitize displayed content and untrusted URL data.
-- Do not store customers' personal data.
 - Store operational notes against locations or coordinates, never against customers.
 - Keep local operational notes behind an isolated IndexedDB abstraction.
 - New operational notes start pending; validation must never mutate structural map data automatically.
