@@ -10,6 +10,7 @@
     connector_pickup:{label:'Retirada de conector',load:.125,durationMinutes:25,color:'#a26a15'}
   };
   const SHIFTS={
+    any:{label:'Qualquer',start:null,end:null},
     morning:{label:'Manhã',start:'08:00',end:'12:00'},
     afternoon:{label:'Tarde',start:'13:00',end:'18:00'}
   };

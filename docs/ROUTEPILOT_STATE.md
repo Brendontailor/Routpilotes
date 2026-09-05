@@ -239,7 +239,7 @@ Ultima atualizacao: 2026-09-04
 ## 2026-09-05 — Ordens de serviço e agenda diária desktop
 
 - Foram adicionadas as áreas desktop `Criar rota` e `Agenda`, sem alterar o fluxo mobile existente.
-- O cadastro de OS guarda número, serviço, localização, turno, restrição de horário, técnico obrigatório, bloqueio, posição fixa, prioridade e observação operacional sem dados pessoais de clientes.
+- O cadastro mantém compatibilidade com números de OS antigos e usa nome do cliente nos novos atendimentos, além de serviço, localização, turno, restrição de horário, técnico obrigatório, bloqueio, posição fixa, prioridade e observação operacional.
 - A capacidade por turno usa carga normalizada e nunca ultrapassa o limite silenciosamente; OS sem encaixe permanecem não alocadas com motivo explícito.
 - A distribuição escolhe técnico e turno, reaproveita a matriz rodoviária local e otimiza a sequência de cada rota com vizinho mais próximo e 2-opt quando horários e posições permitem.
 - A cidade-base do técnico é somente uma preferência. Atendimentos em outra cidade continuam permitidos e recebem um lembrete não bloqueante com técnico, base e destino.
@@ -247,3 +247,26 @@ Ultima atualizacao: 2026-09-04
 - Técnicos, OS e agendas são persistidos no IndexedDB; cadastros existentes não são sobrescritos pelos padrões.
 - Dias já programados oferecem prévia para reotimizar ou preservar a agenda e encaixar apenas novas OS.
 - Cache do Service Worker atualizado para `routepilot-shell-v21`.
+
+## 2026-09-05 — Busca tolerante, turno flexível e filtros da Agenda
+
+- O cadastro desktop de visitas passou a aceitar busca incompleta, sem acento, abreviada, fora de ordem e com pequenos erros de digitação.
+- Novos atendimentos identificam o cliente por nome em um campo separado do ID interno; registros antigos com número de OS continuam compatíveis.
+- Sugestões locais usam debounce de 320 ms, cache por consulta e token para impedir que respostas antigas substituam pesquisas novas.
+- O melhor candidato é exibido no mapa operacional, mas a OS só pode ser salva após confirmação explícita; pontos aproximados podem ser ajustados manualmente.
+- A OS preserva texto pesquisado, endereço interpretado, coordenadas, cidade, localidade, fonte e estado de confirmação.
+- `Qualquer` é o turno padrão e o scheduler escolhe exatamente um turno compatível, respeitando capacidade e restrições de horário.
+- A Agenda recebeu filtros visuais persistentes por ID de técnico, com seleção de colunas, `Sem colaborador`, filtros nomeados e filtro padrão.
+- Alterar filtros não recalcula rotas nem modifica OS, técnicos ou agenda.
+- Os novos recursos continuam exclusivos do desktop; nenhuma interface ou breakpoint mobile foi alterado.
+- Cache do Service Worker atualizado para `routepilot-shell-v22`.
+
+## 2026-09-05 — Busca de endereços em toda a base local
+
+- O catálogo local de 2.416 vias passou a registrar as cidades e regiões onde cada via possui endereços.
+- A busca de atendimentos consulta todo o catálogo leve, tolera pequenos erros e usa cidade/região para distinguir nomes semelhantes.
+- O número da casa não reduz a correspondência do nome da via; somente os fragmentos dos melhores candidatos são carregados, em paralelo e com cache.
+- Resultados com número exato recebem preferência. Quando o número não existe na base, o sistema mantém a indicação de localização aproximada e exige confirmação no mapa.
+- Cada candidato pode ser conferido manualmente no Google Maps por um link de pesquisa; o RoutePilot não consulta nem copia a base do Google.
+- A cobertura permanece limitada aos 122.919 endereços abertos já integrados nas cinco cidades atendidas; nenhum endereço ou coordenada foi inventado.
+- Cache do Service Worker atualizado para `routepilot-shell-v23`.

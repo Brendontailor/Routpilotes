@@ -2,6 +2,8 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const config=require('../js/scheduling-config.js');
 const core=require('../js/scheduling-core.js');
+const search=require('../js/work-order-search.js');
+const filters=require('../js/agenda-filters.js');
 
 const technician=(id='t1',overrides={})=>({id,name:id,serviceArea:'Pelotas',active:true,defaultShifts:['morning','afternoon'],displayOrder:0,...overrides});
 const order=(number,serviceType='maintenance',overrides={})=>({id:`os_${number}`,number:String(number),serviceType,coords:[-31.7+Number(number)/10000,-52.3],city:'Pelotas',locality:'Centro',shift:'morning',timeConstraint:{type:'free',start:null,end:null},...overrides});
@@ -74,10 +76,94 @@ test('duplicata de OS é detectada pelo número',()=>{
   assert.equal(core.findDuplicateWorkOrder([order(123)],{number:'123'}).id,'os_123');
 });
 
+test('atendimento duplicado usa cliente, data e coordenada sem depender do nome como ID',()=>{
+  const saved=order(124,'maintenance',{customerName:'Cliente Teste',date:'2026-09-05'}),candidate={customerName:'cliente teste',date:'2026-09-05',coords:saved.coords};
+  assert.equal(core.findDuplicateWorkOrder([saved],candidate).id,saved.id);
+  assert.equal(core.findDuplicateWorkOrder([saved],{...candidate,date:'2026-09-06'}),null);
+});
+
 test('adaptador de persistência em memória mantém dados após nova leitura',async()=>{
   global.structuredClone??=(value)=>JSON.parse(JSON.stringify(value));
   global.RoutePilotSchedulingConfig=config;
   const source=require('../js/agenda-storage.js');
   const store=source.createMemoryStore();await store.put('workOrders',order(7));
   assert.equal((await store.all('workOrders'))[0].number,'7');
+});
+
+test('busca tolera erros, acentos, abreviações e ordem diferente',()=>{
+  const candidates=[
+    {id:'pelotas',name:'Pelotas',localPriority:100},
+    {id:'morro',name:'Morro Redondo',localPriority:100},
+    {id:'rua28',name:'Rua Vinte e Oito Dunas',context:'Areal Pelotas',localPriority:100}
+  ];
+  assert.equal(search.rank('pelotss',candidates)[0].id,'pelotas');
+  assert.equal(search.rank('moro redndo',candidates)[0].id,'morro');
+  assert.equal(search.rank('r 28 dunas',candidates)[0].id,'rua28');
+  assert.equal(search.rank('pelotas dunas rua 28',candidates)[0].id,'rua28');
+  assert.equal(search.rank('Morró Redôndo',candidates)[0].id,'morro');
+  assert.deepEqual(search.rank('local inexistente xyz',candidates),[]);
+});
+
+test('resultado local recebe prioridade no ranking',()=>{
+  const ranked=search.rank('Areal',[{id:'longe',name:'Areal',localPriority:0},{id:'local',name:'Areal',context:'Pelotas',localPriority:100}]);
+  assert.equal(ranked[0].id,'local');
+});
+
+test('busca de via ignora número da casa e usa cidade e região no ranking',()=>{
+  const candidates=[
+    {id:'duque',name:'Avenida Duque de Caxias',context:'Pelotas Fragata',localPriority:80},
+    {id:'outra',name:'Rua Caxias',context:'Canguçu Centro',localPriority:80}
+  ];
+  const ranked=candidates.map(candidate=>({...candidate,score:search.scoreStreetCandidate('av duqe caxias 331 fragata pelotss',candidate)})).sort((a,b)=>b.score-a.score);
+  assert.equal(ranked[0].id,'duque');
+  assert.ok(ranked[0].score>ranked[1].score);
+});
+
+test('busca usa cache e resposta antiga não sobrescreve a nova',async()=>{
+  let calls=0;const pending={};const coordinator=search.createCoordinator(query=>new Promise(resolve=>{calls++;pending[query]=resolve;}));
+  const oldRequest=coordinator.search('pelotss'),newRequest=coordinator.search('moro redndo');pending['moro redndo']([{id:'morro'}]);assert.equal((await newRequest).results[0].id,'morro');pending.pelotss([{id:'pelotas'}]);assert.equal((await oldRequest).stale,true);
+  const cached=await coordinator.search('moro redndo');assert.equal(cached.cached,true);assert.equal(calls,2);
+});
+
+test('turno Qualquer escolhe manhã sem duplicar a OS',()=>{
+  assert.equal(Object.keys(config.SHIFTS)[0],'any');
+  const flexible=order(20,'maintenance',{shift:'any'}),result=core.allocateWorkOrders([flexible],[technician()],{matrix:matrixFor([flexible])});
+  assert.equal(result.allocated,1);assert.equal(result.schedules.length,1);assert.equal(result.schedules[0].shiftId,'morning');
+});
+
+test('turno Qualquer usa tarde quando manhã está completa',()=>{
+  const existing=Array.from({length:4},(_,index)=>order(index+30)),flexible=order(40,'maintenance',{shift:'any'}),matrix=matrixFor([...existing,flexible]);
+  const initial={technician:technician(),shiftId:'morning',items:existing.map((item,index)=>({order:item,start:480+index*55,end:525+index*55,travelKm:0})),load:1,distanceKm:0};
+  const result=core.allocateWorkOrders([flexible],[technician()],{matrix,initialSchedules:[initial]});
+  assert.equal(result.allocated,1);assert.equal(result.schedules.find(schedule=>schedule.items.some(item=>item.order.id===flexible.id)).shiftId,'afternoon');
+});
+
+test('horário fixo restringe Qualquer ao turno correto',()=>{
+  const morning=order(50,'maintenance',{shift:'any',timeConstraint:{type:'fixed',start:'09:30'}}),afternoon=order(51,'maintenance',{shift:'any',timeConstraint:{type:'window',start:'14:00',end:'16:00'}}),matrix=matrixFor([morning,afternoon]);
+  const result=core.allocateWorkOrders([morning,afternoon],[technician()],{matrix});
+  assert.equal(result.schedules.find(schedule=>schedule.items.some(item=>item.order.id===morning.id)).shiftId,'morning');
+  assert.equal(result.schedules.find(schedule=>schedule.items.some(item=>item.order.id===afternoon.id)).shiftId,'afternoon');
+  assert.equal(result.schedules.flatMap(schedule=>schedule.items).length,2);
+});
+
+test('filtros usam IDs, controlam Sem colaborador e preservam renome do técnico',()=>{
+  const technicians=[technician('a',{name:'Antes'}),technician('b')],filter={id:'f1',name:'Equipe',technicianIds:['a'],showUnassigned:false,isDefault:true};
+  assert.deepEqual(filters.visibleTechnicians(technicians,filter.technicianIds).map(item=>item.id),['a']);
+  technicians[0].name='Depois';assert.equal(filters.visibleTechnicians(technicians,filter.technicianIds)[0].name,'Depois');
+  assert.equal(filters.normalizeFilter(filter,['a','b']).showUnassigned,false);
+});
+
+test('filtros podem salvar, editar, definir padrão e excluir',()=>{
+  let saved=filters.saveFilter([],{id:'f1',name:'Pelotas',technicianIds:['a'],showUnassigned:true,isDefault:false});
+  saved=filters.saveFilter(saved,{...saved[0],name:'Equipe Pelotas'});assert.equal(saved[0].name,'Equipe Pelotas');
+  saved=filters.saveFilter(saved,{id:'f2',name:'Morro',technicianIds:['b'],showUnassigned:false,isDefault:true});saved=filters.setDefault(saved,'f1');
+  assert.equal(saved.find(item=>item.id==='f1').isDefault,true);assert.equal(saved.find(item=>item.id==='f2').isDefault,false);
+  assert.deepEqual(filters.removeFilter(saved,'f2').map(item=>item.id),['f1']);
+});
+
+test('filtro persistido pode ser carregado novamente por ID',async()=>{
+  global.structuredClone??=(value)=>JSON.parse(JSON.stringify(value));global.RoutePilotSchedulingConfig=config;
+  const storage=require('../js/agenda-storage.js'),store=storage.createMemoryStore(),filter={id:'agenda_filter_1',type:'agendaTechnicianFilter',name:'Equipe Pelotas',technicianIds:['a'],showUnassigned:true,isDefault:true};
+  await store.put('settings',filter);const reloaded=(await store.all('settings')).find(item=>item.id===filter.id);
+  assert.deepEqual(reloaded.technicianIds,['a']);assert.equal(reloaded.isDefault,true);
 });

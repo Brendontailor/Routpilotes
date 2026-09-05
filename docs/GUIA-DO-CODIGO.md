@@ -64,7 +64,7 @@ Cada lugar deve manter um ID interno único. O nome mostrado ao usuário não po
 - `js/route-distance.js` cria e reutiliza a matriz de distâncias sem repetir cálculos.
 - `js/route-optimizer.js` usa vizinho mais próximo e 2-opt para sugerir uma sequência; posições marcadas como fixas não mudam na reotimização.
 - `js/route-map.js` desenha origem, paradas e segmentos em uma camada Leaflet separada.
-- `data/routing/road-network.json` contém nós e conexões dirigidas; `address-streets.json` e os fragmentos `addresses-*.json` resolvem endereços sem geocodificação externa.
+- `data/routing/road-network.json` contém nós e conexões dirigidas; `address-streets.json` indexa todas as vias também por cidade/região e os fragmentos `addresses-*.json` resolvem números sem geocodificação externa.
 - `data/routing-index.js` registra versão, origem e contagens da base.
 - `scripts/generate-local-routing-data.mjs` regenera esses arquivos a partir de um recorte GeoJSONSeq do tema `transportation` da Overture.
 
@@ -77,7 +77,7 @@ A ordem manual tem precedência: arraste um atendimento para a posição desejad
 - `js/sharing.js` abre a central de compartilhamento a partir de coordenadas, áreas e paradas do planejador.
 - `js/location-share-core.js` elimina campos não geográficos e monta os três formatos de mensagem.
 - `js/landmark-ranking.js` escolhe até três referências próximas, úteis e sem duplicidade.
-- O WhatsApp Web é aberto sem contato predefinido; nenhum dado de cliente é armazenado ou incluído.
+- O WhatsApp Web é aberto sem contato predefinido; o nome do cliente armazenado na Agenda nunca é incluído na mensagem geográfica.
 
 ## Pesquisa e navegação
 
@@ -100,6 +100,8 @@ A ordem manual tem precedência: arraste um atendimento para a posição desejad
 - `js/agenda-storage.js`: isola o IndexedDB usado por técnicos, OS e agenda diária.
 - `js/agenda-ui.js`: formulário, distribuição, prévia, grade diária e gerenciamento da equipe no desktop.
 - `js/agenda-map.js`: desenha marcadores e uma camada de rota separada por técnico e turno.
+- `js/work-order-search.js`: corrige abreviações somente para comparação, pontua candidatos locais e evita que respostas antigas substituam buscas novas.
+- `js/agenda-filters.js`: mantém seleção, padrão e vínculos dos filtros pelos IDs dos técnicos.
 
 A base do técnico orienta a distribuição, mas nunca bloqueia outra cidade. O aviso de deslocamento é informativo e a OS permanece alocada quando as demais regras forem válidas.
 
@@ -120,6 +122,8 @@ A base do técnico orienta a distribuição, mas nunca bloqueia outra cidade. O 
 | Comparação e cálculo por estradas | `js/comparison.js`, `js/local-routing.js` |
 | Planejador de vários atendimentos | `js/route-planner.js`, `js/route-optimizer.js`, `js/route-distance.js`, `js/route-map.js` |
 | Ordens de serviço e agenda diária | `js/scheduling-config.js`, `js/scheduling-core.js`, `js/agenda-storage.js`, `js/agenda-ui.js`, `js/agenda-map.js` |
+| Busca tolerante de uma OS | `js/work-order-search.js`, `js/local-routing.js` |
+| Filtros visuais da Agenda | `js/agenda-filters.js`, `js/agenda-storage.js`, `js/agenda-ui.js` |
 | Compartilhamento e referências | `js/sharing.js`, `js/location-share-core.js`, `js/landmark-ranking.js` |
 | Gerar malha e índice local | `scripts/generate-local-routing-data.mjs` |
 | Street View | `js/streetview.js` |

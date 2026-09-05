@@ -107,11 +107,13 @@ The desktop planner accepts a separate origin and up to 24 appointments. It buil
 
 Desktop navigation also provides `Criar rota` and `Agenda`. Work orders use normalized per-shift capacity, optional time constraints, an optional required technician, locking and fixed route positions. Distribution first assigns work orders, then reuses the local distance matrix and route optimizer for each technician. A technician's base is a preference only: travel to another city remains allowed and produces a non-blocking reminder.
 
-Technicians, work orders and daily agendas are stored locally through `js/agenda-storage.js`. Existing days require a preview before reoptimization or fitting only new work orders. The mobile interface remains unchanged.
+Technicians, customer names, work orders and daily agendas are stored locally through `js/agenda-storage.js`. Existing days require a preview before reoptimization or fitting only new work orders. The mobile interface remains unchanged.
+
+Work-order location search normalizes accents and abbreviations internally, tolerates misspellings and reordered tokens, prioritizes the local service catalog, and requires explicit coordinate confirmation. It searches the 122,919 integrated open addresses and offers a free Google Maps search link for manual verification; no Google API data is copied into RoutePilot. The original typed text is preserved separately. Work orders may use `any` as their shift so the scheduler chooses one compatible morning or afternoon slot. Saved Agenda filters affect only visible columns and reference technicians by stable ID.
 
 ## Geographic Sharing
 
-The sharing panel creates quick, detailed, or location-only messages from sanitized geographic fields. It can include up to three ranked nearby landmarks and open WhatsApp Web without selecting a recipient. Customer data is neither requested nor stored.
+The sharing panel creates quick, detailed, or location-only messages from sanitized geographic fields. It can include up to three ranked nearby landmarks and open WhatsApp Web without selecting a recipient. Customer names stored by the Agenda are never included in geographic sharing.
 
 ## Street View
 

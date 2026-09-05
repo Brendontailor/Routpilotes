@@ -140,10 +140,10 @@ for(const file of fs.readdirSync(addressDir).filter(file=>file.endsWith('.json')
   for(const item of tile.points||[]){
     const [,lat,lon,number,street,regionId]=item,normalized=clean(street);
     if(!normalized||!number||!regionById.has(regionId))continue;
-    if(!streets.has(normalized))streets.set(normalized,{name:street,addresses:[],seen:new Set()});
+    if(!streets.has(normalized))streets.set(normalized,{name:street,addresses:[],seen:new Set(),regionIds:new Set()});
     const record=streets.get(normalized),key=`${clean(number)}|${lat}|${lon}|${regionId}`;
     if(record.seen.has(key))continue;
-    record.seen.add(key);record.addresses.push([String(number),Math.round(lat*1e6),Math.round(lon*1e6),regionId]);
+    record.seen.add(key);record.regionIds.add(regionId);record.addresses.push([String(number),Math.round(lat*1e6),Math.round(lon*1e6),regionId]);
   }
 }
 
@@ -158,9 +158,9 @@ for(const [normalized,record] of [...streets.entries()].sort(([a],[b])=>a.locale
   const shard=(hash(normalized)%ADDRESS_SHARDS).toString(16).padStart(2,'0');
   record.addresses.sort((a,b)=>a[0].localeCompare(b[0],'pt-BR',{numeric:true})||a[1]-b[1]||a[2]-b[2]);
   shards[Number.parseInt(shard,16)].streets[normalized]=[record.name,record.addresses];
-  catalog.push([normalized,record.name,shard]);
+  catalog.push([normalized,record.name,shard,[...record.regionIds].sort()]);
 }
-fs.writeFileSync(path.join(outputDir,'address-streets.json'),JSON.stringify({v:1,streets:catalog}));
+fs.writeFileSync(path.join(outputDir,'address-streets.json'),JSON.stringify({v:2,streets:catalog}));
 shards.forEach((shard,index)=>fs.writeFileSync(path.join(outputDir,`addresses-${index.toString(16).padStart(2,'0')}.json`),JSON.stringify(shard)));
 
 const metadata={

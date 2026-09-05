@@ -76,6 +76,15 @@ const roadNetworkFile=path.join(root,localRoutingIndex.roadNetworkFile);
 const streetCatalogFile=path.join(root,localRoutingIndex.streetCatalogFile);
 if(!fs.existsSync(roadNetworkFile))failures.push('missing local road network');
 if(!fs.existsSync(streetCatalogFile))failures.push('missing local street catalog');
+if(fs.existsSync(streetCatalogFile)){
+  const catalog=JSON.parse(fs.readFileSync(streetCatalogFile,'utf8'));
+  if(catalog.v!==2)failures.push(`unexpected local street catalog version: ${catalog.v}`);
+  if(catalog.streets?.length!==localRoutingIndex.streets)failures.push(`routing street count mismatch: ${catalog.streets?.length}/${localRoutingIndex.streets}`);
+  for(const entry of catalog.streets||[]){
+    if(!entry[0]||!entry[1]||!entry[2]||!Array.isArray(entry[3])||!entry[3].length){failures.push(`invalid local street catalog entry: ${entry[0]||'unknown'}`);break;}
+    if(entry[3].some(regionId=>!regionIds.has(regionId))){failures.push(`invalid local street region: ${entry[0]}`);break;}
+  }
+}
 if(fs.existsSync(roadNetworkFile)){
   const network=JSON.parse(fs.readFileSync(roadNetworkFile,'utf8'));
   if(network.nodes.length!==localRoutingIndex.nodes)failures.push(`routing node count mismatch: ${network.nodes.length}/${localRoutingIndex.nodes}`);
@@ -125,10 +134,10 @@ if(manifest?.start_url!=='./')failures.push(`unexpected manifest start_url: ${ma
 const serviceWorker=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
 const shellAssets=[...serviceWorker.matchAll(/\s+'\.\/([^']+)'/g)].map(match=>match[1]);
 for(const asset of shellAssets)if(!fs.existsSync(path.resolve(root,asset)))failures.push(`missing service worker asset: ${asset}`);
-if(!serviceWorker.includes("routepilot-shell-v21"))failures.push('service worker cache is not v21');
+if(!serviceWorker.includes("routepilot-shell-v23"))failures.push('service worker cache is not v23');
 if(/tile\.openstreetmap\.org/.test(serviceWorker))failures.push('service worker must not mass-cache OSM tiles');
 
-const requiredV2=['config.js','notes-storage.js','area-inspector.js','area-intelligence.js','radius-search.js','address-radius.js','sharing.js','map-point-actions.js','notes-ui.js','data-review.js','open-address-tiles.js','local-routing.js','route-distance.js','route-optimizer.js','landmark-ranking.js','location-share-core.js','route-map.js','route-planner.js','scheduling-config.js','scheduling-core.js','agenda-storage.js','agenda-map.js','agenda-ui.js'];
+const requiredV2=['config.js','notes-storage.js','area-inspector.js','area-intelligence.js','radius-search.js','address-radius.js','sharing.js','map-point-actions.js','notes-ui.js','data-review.js','open-address-tiles.js','local-routing.js','route-distance.js','route-optimizer.js','landmark-ranking.js','location-share-core.js','route-map.js','route-planner.js','scheduling-config.js','scheduling-core.js','work-order-search.js','agenda-filters.js','agenda-storage.js','agenda-map.js','agenda-ui.js'];
 for(const file of requiredV2)if(!index.includes(`js/${file}`))failures.push(`V2 script not loaded: ${file}`);
 
 const report={

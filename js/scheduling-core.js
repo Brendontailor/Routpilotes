@@ -16,13 +16,26 @@
   /** Informa se uma nova OS ainda cabe na capacidade única do turno. */
   function hasCapacity(orders,candidate,capacity=OPERATIONAL_SETTINGS.shiftCapacity){return calculateLoad(orders)+workOrderLoad(candidate)<=capacity+1e-9;}
   /** Detecta número de OS repetido sem depender da interface. */
-  function findDuplicateWorkOrder(orders,candidate,ignoreId=null){const number=String(candidate.number||'').trim().toLowerCase();return orders.find(order=>order.id!==ignoreId&&String(order.number||'').trim().toLowerCase()===number)||null;}
+  function findDuplicateWorkOrder(orders,candidate,ignoreId=null){
+    const number=String(candidate.number||'').trim().toLowerCase(),customer=String(candidate.customerName||'').trim().toLowerCase(),coords=(candidate.coords||[]).map(Number);
+    return orders.find(order=>{if(order.id===ignoreId)return false;if(number&&String(order.number||'').trim().toLowerCase()===number)return true;if(!customer||String(order.customerName||'').trim().toLowerCase()!==customer||candidate.date&&order.date!==candidate.date)return false;return coords.length===2&&Array.isArray(order.coords)&&Math.abs(Number(order.coords[0])-coords[0])<1e-5&&Math.abs(Number(order.coords[1])-coords[1])<1e-5;})||null;
+  }
   /** Lê uma distância da matriz e usa zero apenas para o mesmo ponto. */
   function matrixDistance(matrix,a,b){if(!a||!b||a.id===b.id)return 0;const value=matrix?.[a.id]?.[b.id];return Number.isFinite(value)?value:Infinity;}
   /** Calcula deslocamento estimado em minutos. */
   function travelMinutes(matrix,a,b,averageSpeedKmh=OPERATIONAL_SETTINGS.averageSpeedKmh){const km=matrixDistance(matrix,a,b);return Number.isFinite(km)?km/averageSpeedKmh*60:Infinity;}
   /** Normaliza uma restrição de horário livre, exata ou em janela. */
   function normalizeTimeConstraint(input={}){const type=['free','fixed','window'].includes(input.type)?input.type:'free';const start=timeToMinutes(input.start),end=timeToMinutes(input.end);return {type,start,end:type==='fixed'?start:end};}
+  /** Resolve os turnos possíveis sem duplicar uma OS marcada como Qualquer. */
+  function allowedShiftIds(order){
+    if(order.shift&&order.shift!=='any')return SHIFTS[order.shift]?[order.shift]:[];
+    const constraint=normalizeTimeConstraint(order.timeConstraint),shiftIds=Object.keys(SHIFTS).filter(id=>id!=='any');
+    if(constraint.type==='free')return shiftIds;
+    if(constraint.start===null)return [];
+    if(constraint.type==='fixed')return shiftIds.filter(id=>constraint.start>=timeToMinutes(SHIFTS[id].start)&&constraint.start<timeToMinutes(SHIFTS[id].end));
+    if(constraint.end===null)return [];
+    return shiftIds.filter(id=>Math.max(constraint.start,timeToMinutes(SHIFTS[id].start))<Math.min(constraint.end,timeToMinutes(SHIFTS[id].end)));
+  }
   /** Calcula o primeiro horário válido e rejeita chegadas tardias. */
   function placeInTimeline(order,earliestStart,shift){
     const constraint=normalizeTimeConstraint(order.timeConstraint),shiftStart=timeToMinutes(shift.start),shiftEnd=timeToMinutes(shift.end);
@@ -43,7 +56,7 @@
   function operationalOrder(orders){
     const constraintRank={fixed:0,window:1,free:2};
     return [...orders].sort((a,b)=>constraintRank[normalizeTimeConstraint(a.timeConstraint).type]-constraintRank[normalizeTimeConstraint(b.timeConstraint).type]||
-      (normalizeTimeConstraint(a.timeConstraint).start??Infinity)-(normalizeTimeConstraint(b.timeConstraint).start??Infinity)||Number(Boolean(b.highPriority))-Number(Boolean(a.highPriority))||String(a.number).localeCompare(String(b.number),'pt-BR',{numeric:true}));
+      (normalizeTimeConstraint(a.timeConstraint).start??Infinity)-(normalizeTimeConstraint(b.timeConstraint).start??Infinity)||Number(Boolean(b.highPriority))-Number(Boolean(a.highPriority))||String(a.customerName||a.number||a.id).localeCompare(String(b.customerName||b.number||b.id),'pt-BR',{numeric:true}));
   }
   /** Identifica a área operacional da OS sem transformar a preferência em bloqueio. */
   function workOrderArea(order){const locality=String(order.locality||'').toLowerCase();return locality.includes('monte bonito')?'Monte Bonito':order.city||order.locality||'';}
@@ -70,14 +83,15 @@
     });
     for(const order of operationalOrder(orders)){
       if(!Array.isArray(order.coords)||order.coords.length!==2||order.coords.some(value=>!Number.isFinite(Number(value)))){unallocated.push({order,reason:'INVALID_LOCATION',message:UNALLOCATED_REASONS.INVALID_LOCATION});continue;}
-      const candidates=[...schedules.values()].filter(schedule=>schedule.shiftId===order.shift&&(!order.requiredTechnicianId||schedule.technician.id===order.requiredTechnicianId));
+      const allowedShifts=allowedShiftIds(order);
+      const candidates=[...schedules.values()].filter(schedule=>allowedShifts.includes(schedule.shiftId)&&(!order.requiredTechnicianId||schedule.technician.id===order.requiredTechnicianId));
       if(order.requiredTechnicianId&&!candidates.length){unallocated.push({order,reason:'FIXED_TECH_UNAVAILABLE',message:UNALLOCATED_REASONS.FIXED_TECH_UNAVAILABLE});continue;}
       if(!candidates.length){unallocated.push({order,reason:'SHIFT_CONFLICT',message:UNALLOCATED_REASONS.SHIFT_CONFLICT});continue;}
       let capacityBlocked=true,timeBlocked=false;
       const options=[];
       for(const schedule of candidates){
         if(!hasCapacity(schedule.items.map(item=>item.order),order,settings.shiftCapacity))continue;
-        capacityBlocked=false;const placement=evaluateAppend(schedule,order,{matrix,shift:SHIFTS[order.shift],bufferMinutes:settings.bufferMinutes});
+        capacityBlocked=false;const placement=evaluateAppend(schedule,order,{matrix,shift:SHIFTS[schedule.shiftId],bufferMinutes:settings.bufferMinutes});
         if(!placement.valid){timeBlocked=true;continue;}
         const destination=workOrderArea(order),sameArea=String(schedule.technician.serviceArea||'').toLowerCase()===String(destination).toLowerCase();
         const balancePenalty=schedule.load*8,areaPenalty=sameArea?0:12;
@@ -102,5 +116,5 @@
     }
     return {valid:true,schedule};
   }
-  return {timeToMinutes,minutesToTime,workOrderLoad,calculateLoad,hasCapacity,findDuplicateWorkOrder,matrixDistance,travelMinutes,normalizeTimeConstraint,placeInTimeline,operationalOrder,workOrderArea,assignmentReminder,evaluateAppend,allocateWorkOrders,recalculateSchedule};
+  return {timeToMinutes,minutesToTime,workOrderLoad,calculateLoad,hasCapacity,findDuplicateWorkOrder,matrixDistance,travelMinutes,normalizeTimeConstraint,allowedShiftIds,placeInTimeline,operationalOrder,workOrderArea,assignmentReminder,evaluateAppend,allocateWorkOrders,recalculateSchedule};
 });

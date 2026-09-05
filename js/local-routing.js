@@ -110,6 +110,35 @@ async function resolveLocalRouteAddress(query){
   return {...unique[0],key:`address:${unique[0].id}`};
 }
 
+/** Procura endereços, ruas e localidades sem exigir texto ou número exatos. */
+async function searchLocalRouteLocations(query,{limit=5}={}){
+  const SEARCH=RoutePilotWorkOrderSearch,normalizedQuery=SEARCH.normalize(query);if(!normalizedQuery)return [];
+  const known=typeof compareCatalog==='function'?compareCatalog().map(item=>({...item,formattedAddress:item.name,cityName:cityName(item.city),locality:item.context,source:'Cadastro RoutePilot',approximate:false,localPriority:110})):[];
+  const cityCandidates=Object.keys(cityNames).map(city=>{const related=regions.filter(region=>region.city===city),coords=related.length?[related.reduce((sum,region)=>sum+region.center[0],0)/related.length,related.reduce((sum,region)=>sum+region.center[1],0)/related.length]:null;return coords?{kind:'city',id:`city:${city}`,key:`city:${city}`,name:cityName(city),formattedAddress:cityName(city),city,cityName:cityName(city),locality:'Cidade atendida',region:null,coords,source:'Cadastro RoutePilot',approximate:true,localPriority:130}:null;}).filter(Boolean);
+  const catalog=await loadLocalStreetCatalog();
+  // O catálogo leve cobre todas as vias e inclui as regiões onde cada uma possui números.
+  const streetEntries=(catalog.streets||[]).map(entry=>{
+    const regionIds=entry[3]||[],context=regionIds.map(regionId=>{const region=byRegion[regionId];return region?`${cityName(region.city)} ${region.name}`:'';}).filter(Boolean).join(' ');
+    const candidate={entry,name:entry[1],context:`via rua avenida estrada rodovia travessa ${context}`,localPriority:80};
+    return {...candidate,searchScore:SEARCH.scoreStreetCandidate(query,candidate)};
+  }).filter(item=>item.searchScore>0).sort((a,b)=>b.searchScore-a.searchScore||a.name.localeCompare(b.name,'pt-BR')).slice(0,16);
+  const queryNumbers=normalizedQuery.match(/\b\d+[a-z]?\b/g)||[],streetResults=[];
+  const loadedShards=new Map(await Promise.all([...new Set(streetEntries.map(item=>item.entry[2]))].map(async shard=>[shard,await loadLocalAddressShard(shard)])));
+  for(const ranked of streetEntries){
+    const entry=ranked.entry,group=loadedShards.get(entry[2])?.streets?.[entry[0]];if(!group)continue;
+    const streetNumbers=new Set((SEARCH.normalize(group[0]).match(/\b\d+[a-z]?\b/g)||[])),houseNumber=queryNumbers.find(number=>!streetNumbers.has(number))||'';
+    const grouped=new Map();
+    group[1].forEach(address=>{const region=byRegion[address[3]];if(!region)return;const key=region.id;if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push(address);});
+    for(const [regionId,addresses] of grouped){
+      const region=byRegion[regionId],exact=houseNumber?addresses.find(address=>SEARCH.normalize(address[0])===houseNumber):null,address=exact||addresses[Math.floor(addresses.length/2)];if(!address)continue;
+      streetResults.push({kind:'address',id:`${entry[0]}:${address[0]}:${address[1]}:${address[2]}`,key:`address:${entry[0]}:${address[0]}:${address[1]}:${address[2]}`,name:exact?`${group[0]}, ${address[0]}`:group[0],formattedAddress:exact?`${group[0]}, ${address[0]}`:group[0],city:region.city,cityName:cityName(region.city),region:region.id,locality:region.name,context:`${cityName(region.city)} ${region.name}`,sub:exact?'Endereço local':'Localização aproximada',coords:[address[1]/1e6,address[2]/1e6],boundaryId:null,source:'Base local RoutePilot',approximate:!exact,localPriority:exact?145:90});
+    }
+  }
+  const combined=SEARCH.rank(query,[...cityCandidates,...known,...streetResults],{limit:limit*3}),seen=new Set(),results=[];
+  for(const item of combined){const key=`${item.kind}:${item.name}:${item.city}:${item.region||''}`;if(seen.has(key))continue;seen.add(key);results.push(item);if(results.length===limit)break;}
+  return results;
+}
+
 /** Guia: Executa uma etapa auxiliar em roteamento local (`routingNodeCoordinates`). */
 function routingNodeCoordinates(network,index){const node=network.nodes[index];return [node[0]/1e6,node[1]/1e6];}
 

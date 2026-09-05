@@ -29,6 +29,7 @@ O RoutePilot atende Pelotas, Capão do Leão, Morro Redondo, Canguçu e Cerrito.
 - mapa interativo com Leaflet e OpenStreetMap;
 - navegação por cidade, região, bairro e localidade rural;
 - busca inteligente, fuzzy e sem dependência de acentos;
+- consulta local dos 122.919 endereços integrados, com conferência opcional no Google Maps por link;
 - busca e identificação por coordenadas;
 - identificação de região com point-in-polygon;
 - consulta de regiões e localidades próximas;
@@ -110,6 +111,8 @@ RoutePilot/
 - `js/route-distance.js`: matriz de distâncias e cache dos cálculos;
 - `js/route-map.js`: camada independente da rota planejada no Leaflet;
 - `js/scheduling-config.js` e `js/scheduling-core.js`: tipos de serviço, capacidade por turno, horários e distribuição das OS;
+- `js/work-order-search.js`: normalização, ranking tolerante, cache e controle de respostas antigas na busca de OS;
+- `js/agenda-filters.js`: regras puras dos filtros visuais de técnicos;
 - `js/agenda-storage.js`: persistência local de técnicos, OS e agendas no IndexedDB;
 - `js/agenda-ui.js` e `js/agenda-map.js`: fluxo desktop de criação de rotas, prévia e agenda diária;
 - `js/location-share-core.js` e `js/landmark-ranking.js`: mensagens geográficas e referências úteis;
