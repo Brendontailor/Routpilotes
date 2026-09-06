@@ -116,6 +116,33 @@ test('OS não agendada pode ser encaixada em uma rota válida',()=>{
   assert.deepEqual(result.schedule.items.map(item=>item.order.id),[unassigned.id,existing.id]);
 });
 
+test('arrasto vertical altera o horario em intervalos exatos',()=>{
+  const tech=technician('t1'),first=order(27),moved=order(28),matrix=matrixFor([first,moved]);
+  const source=core.recalculateSchedule([first,moved],tech,'morning',{matrix}).schedule;
+  const result=core.scheduleWorkOrderAtTime(moved,source,source,10*60,{matrix});
+  assert.equal(result.valid,true);
+  const scheduled=result.targetSchedule.items.find(item=>item.order.id===moved.id);
+  assert.equal(scheduled.start,600);
+  assert.deepEqual(scheduled.order.timeConstraint,{type:'fixed',start:'10:00',end:null});
+});
+
+test('OS não agendada pode ser solta em horario definido da tarde',()=>{
+  const tech=technician('t1'),unassigned=order(29,'maintenance',{shift:'any'}),matrix=matrixFor([unassigned]),target={technician:tech,shiftId:'afternoon',items:[],load:0,distanceKm:0};
+  const result=core.scheduleWorkOrderAtTime(unassigned,null,target,15*60+15,{matrix});
+  assert.equal(result.valid,true);
+  assert.equal(result.targetSchedule.items[0].start,915);
+  assert.equal(result.order.shift,'afternoon');
+});
+
+test('reagendamento retira a OS e recalcula a rota restante',()=>{
+  const tech=technician('t1'),first=order(30),removed=order(31),matrix=matrixFor([first,removed]);
+  const schedule=core.recalculateSchedule([first,removed],tech,'morning',{matrix}).schedule;
+  const result=core.removeWorkOrderFromSchedule(schedule,removed.id,{matrix});
+  assert.equal(result.valid,true);
+  assert.deepEqual(result.schedule.items.map(item=>item.order.id),[first.id]);
+  assert.equal(schedule.items.length,2);
+});
+
 test('sugestão de técnico considera distância, área, turno e capacidade',()=>{
   const pelotas=technician('pelotas',{serviceArea:'Pelotas',displayOrder:0}),morro=technician('morro',{serviceArea:'Morro Redondo',displayOrder:1});
   const current=order(30),candidate=order(31,'maintenance',{city:'Morro Redondo',locality:'Morro Redondo'}),matrix=matrixFor([current,candidate]);

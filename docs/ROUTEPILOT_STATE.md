@@ -306,3 +306,13 @@ Ultima atualizacao: 2026-09-04
 - O técnico do texto é identificado pelo cadastro local com tolerância a acentos e pequenas diferenças, como preferência não bloqueante.
 - A busca tenta primeiro o endereço completo na cidade informada e, quando necessário, usa bairro/região e cidade como fallback, sempre exigindo confirmação do ponto.
 - Cache do Service Worker atualizado para `routepilot-shell-v26`.
+
+## 2026-09-05 — Ajuste manual de horário e situação da visita
+
+- Atendimentos da Agenda podem ser arrastados para cima ou para baixo e reposicionados em intervalos de 15 minutos.
+- Uma linha-guia mostra o novo horário antes de soltar; horários fora dos turnos de 08:00–12:00 e 13:00–18:00 são recusados.
+- A confirmação informa horário anterior, novo horário e eventual troca de técnico antes de recalcular as rotas afetadas.
+- O horário confirmado fica salvo como restrição exata da OS, mantendo a programação depois de recarregar a página.
+- O detalhe de uma visita agendada oferece `Reagendar` e `Cancelar visita`, ambas com confirmação explícita.
+- Reagendar retira a visita da rota, recalcula a coluna e devolve a OS à gaveta de não agendadas; cancelar arquiva o atendimento e o retira da agenda sem exclusão silenciosa do registro.
+- Cache do Service Worker atualizado para `routepilot-shell-v27`.

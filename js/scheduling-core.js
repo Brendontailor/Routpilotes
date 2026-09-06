@@ -139,6 +139,30 @@
     const targetResult=recalculateSchedule(targetOrders,targetSchedule.technician,targetSchedule.shiftId,{matrix,settings});if(!targetResult.valid)return targetResult;
     return {valid:true,order,sourceSchedule:sourceResult.schedule,targetSchedule:targetResult.schedule};
   }
+  /** Reposiciona uma OS em um horario exato, inclusive dentro da mesma coluna. */
+  function scheduleWorkOrderAtTime(order,sourceSchedule,targetSchedule,targetStart,{matrix={},settings=OPERATIONAL_SETTINGS}={}){
+    if(!order||!targetSchedule||!Number.isFinite(targetStart))return {valid:false,reason:'INVALID_MOVE'};
+    const sourceOrder=sourceSchedule?.items.find(item=>item.order.id===order.id)?.order||order;
+    if(sourceOrder.locked)return {valid:false,reason:'LOCKED_WORK_ORDER'};
+    if(sourceOrder.requiredTechnicianId&&sourceOrder.requiredTechnicianId!==targetSchedule.technician.id)return {valid:false,reason:'FIXED_TECH_UNAVAILABLE'};
+    const scheduledOrder={...sourceOrder,shift:targetSchedule.shiftId,timeConstraint:{type:'fixed',start:minutesToTime(targetStart),end:null}};
+    if(!allowedShiftIds(scheduledOrder).includes(targetSchedule.shiftId))return {valid:false,reason:'SHIFT_CONFLICT'};
+    const sourceKey=sourceSchedule?`${sourceSchedule.technician.id}:${sourceSchedule.shiftId}`:null,targetKey=`${targetSchedule.technician.id}:${targetSchedule.shiftId}`,sameSchedule=sourceKey===targetKey;
+    if(sourceSchedule&&!sourceSchedule.items.some(item=>item.order.id===order.id))return {valid:false,reason:'INVALID_MOVE'};
+    const targetItems=targetSchedule.items.filter(item=>item.order.id!==order.id),targetOrders=targetItems.map(item=>item.order),targetIndex=targetItems.findIndex(item=>item.start>targetStart),safeIndex=targetIndex<0?targetOrders.length:targetIndex;
+    targetOrders.splice(safeIndex,0,scheduledOrder);
+    const targetResult=recalculateSchedule(targetOrders,targetSchedule.technician,targetSchedule.shiftId,{matrix,settings});if(!targetResult.valid)return targetResult;
+    let sourceResult=null;
+    if(sourceSchedule&&!sameSchedule){sourceResult=recalculateSchedule(sourceSchedule.items.filter(item=>item.order.id!==order.id).map(item=>item.order),sourceSchedule.technician,sourceSchedule.shiftId,{matrix,settings});if(!sourceResult.valid)return sourceResult;}
+    return {valid:true,order:scheduledOrder,sourceSchedule:sourceResult?.schedule||null,targetSchedule:targetResult.schedule,targetIndex:safeIndex};
+  }
+  /** Retira uma OS da rota e recalcula os horarios restantes sem apagar o atendimento. */
+  function removeWorkOrderFromSchedule(schedule,orderId,{matrix={},settings=OPERATIONAL_SETTINGS}={}){
+    if(!schedule)return {valid:false,reason:'INVALID_MOVE'};
+    const order=schedule.items.find(item=>item.order.id===orderId)?.order;if(!order)return {valid:false,reason:'INVALID_MOVE'};
+    const result=recalculateSchedule(schedule.items.filter(item=>item.order.id!==orderId).map(item=>item.order),schedule.technician,schedule.shiftId,{matrix,settings});
+    return result.valid?{valid:true,order,schedule:result.schedule}:result;
+  }
   /** Compara todos os encaixes válidos e ordena técnicos pela rota resultante. */
   function recommendWorkOrderAssignments(order,schedules,technicians,{matrix={},settings=OPERATIONAL_SETTINGS}={}){
     if(!order||order.locked)return [];
@@ -168,5 +192,5 @@
     }
     return options.sort((a,b)=>a.score-b.score||a.totalDistance-b.totalDistance||a.technician.displayOrder-b.technician.displayOrder);
   }
-  return {timeToMinutes,minutesToTime,workOrderLoad,calculateLoad,hasCapacity,findDuplicateWorkOrder,matrixDistance,travelMinutes,normalizeTimeConstraint,allowedShiftIds,placeInTimeline,operationalOrder,workOrderArea,assignmentReminder,evaluateAppend,allocateWorkOrders,recalculateSchedule,assignWorkOrderToSchedule,moveWorkOrderBetweenSchedules,recommendWorkOrderAssignments};
+  return {timeToMinutes,minutesToTime,workOrderLoad,calculateLoad,hasCapacity,findDuplicateWorkOrder,matrixDistance,travelMinutes,normalizeTimeConstraint,allowedShiftIds,placeInTimeline,operationalOrder,workOrderArea,assignmentReminder,evaluateAppend,allocateWorkOrders,recalculateSchedule,assignWorkOrderToSchedule,moveWorkOrderBetweenSchedules,scheduleWorkOrderAtTime,removeWorkOrderFromSchedule,recommendWorkOrderAssignments};
 });
