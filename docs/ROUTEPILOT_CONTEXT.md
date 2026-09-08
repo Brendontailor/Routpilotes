@@ -114,7 +114,7 @@ The desktop planner accepts a separate origin and up to 24 appointments. It buil
 
 Desktop navigation also provides `Criar rota` and `Agenda`. Work orders use normalized per-shift capacity, optional time constraints, an optional required technician, locking and fixed route positions. Distribution first assigns work orders, then reuses the local distance matrix and route optimizer for each technician. A technician's base is a preference only: travel to another city remains allowed and produces a non-blocking reminder.
 
-Technicians, operational customer names, work orders and daily agendas use IndexedDB through `js/agenda-storage.js` and synchronize as shared records through authenticated Netlify Functions and Neon. Agenda filters and route-team filters are private to the authenticated user. Existing days require a preview before reoptimization or fitting only new work orders. The mobile interface remains unchanged.
+Technicians, operational customer names, work orders and daily agendas use IndexedDB through `js/agenda-storage.js` and synchronize as shared records through authenticated Netlify Functions and Neon. Agenda filters and route-team filters are private to the authenticated user. Existing days require a preview before reoptimization or fitting only new work orders. A manual Agenda action can reorganize order and times inside each technician's existing routes without redistributing work between technicians or shifts. The mobile interface remains unchanged.
 
 ## Authentication And Shared Persistence
 

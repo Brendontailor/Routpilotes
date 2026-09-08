@@ -422,3 +422,12 @@ Ultima atualizacao: 2026-09-08
 - Um fallback de navegação entrega `index.html` em caminhos de retorno, evitando a página 404 antes do processamento do token OAuth presente no hash da URL.
 - A URL principal configurada no Netlify Identity ainda deve apontar para o domínio de produção atual.
 - Cache do Service Worker atualizado para `routepilot-shell-v39`.
+
+## 2026-09-08 — Reorganização manual das rotas da Agenda
+
+- A Agenda diária ganhou o botão manual `Reorganizar rotas`.
+- A ação pede confirmação e recalcula a ordem e os horários de todas as rotas com duas ou mais visitas.
+- Cada OS permanece com o mesmo técnico e no mesmo turno; não ocorre uma nova distribuição entre a equipe.
+- Horários fixos, janelas, bloqueios e posições fixas são preservados. Uma rota incompatível permanece inalterada e é informada no resultado.
+- A Agenda reorganizada é salva pelo mesmo armazenamento compartilhado já usado pelas demais alterações.
+- Cache do Service Worker atualizado para `routepilot-shell-v40`.

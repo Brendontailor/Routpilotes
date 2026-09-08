@@ -160,6 +160,23 @@ test('reagendamento retira a OS e recalcula a rota restante',()=>{
   assert.equal(schedule.items.length,2);
 });
 
+test('ação manual reorganiza cada técnico sem transferir OS entre rotas',()=>{
+  const firstTech=technician('t1'),secondTech=technician('t2'),a=order(60),b=order(61),c=order(62),d=order(63),matrix=matrixFor([a,b,c,d]);
+  matrix[a.id][b.id]=10;matrix[b.id][a.id]=10;matrix[a.id][c.id]=1;matrix[c.id][a.id]=1;matrix[c.id][b.id]=1;matrix[b.id][c.id]=1;
+  const firstSchedule=core.recalculateSchedule([a,b,c],firstTech,'morning',{matrix}).schedule,secondSchedule=core.recalculateSchedule([d],secondTech,'morning',{matrix}).schedule;
+  const result=core.reorganizeTechnicianSchedules([firstSchedule,secondSchedule],{matrix,optimizeRoute:require('../js/route-optimizer.js').optimizeRoute});
+  assert.deepEqual(result.schedules[0].items.map(item=>item.order.id),[a.id,c.id,b.id]);
+  assert.deepEqual(result.schedules[1].items.map(item=>item.order.id),[d.id]);
+  assert.equal(result.schedules[0].technician.id,'t1');assert.equal(result.schedules[1].technician.id,'t2');assert.equal(result.changedSchedules,1);
+});
+
+test('reorganização manual preserva posições bloqueadas',()=>{
+  const tech=technician('t1'),a=order(70),blocked=order(71,'maintenance',{locked:true}),c=order(72),matrix=matrixFor([a,blocked,c]);
+  matrix[a.id][blocked.id]=10;matrix[blocked.id][a.id]=10;matrix[a.id][c.id]=1;matrix[c.id][a.id]=1;matrix[c.id][blocked.id]=1;matrix[blocked.id][c.id]=1;
+  const schedule=core.recalculateSchedule([a,blocked,c],tech,'morning',{matrix}).schedule,result=core.reorganizeTechnicianSchedules([schedule],{matrix,optimizeRoute:require('../js/route-optimizer.js').optimizeRoute});
+  assert.equal(result.schedules[0].items[1].order.id,blocked.id);
+});
+
 test('sugestão de técnico considera distância, área, turno e capacidade',()=>{
   const pelotas=technician('pelotas',{serviceArea:'Pelotas',displayOrder:0}),morro=technician('morro',{serviceArea:'Morro Redondo',displayOrder:1});
   const current=order(30),candidate=order(31,'maintenance',{city:'Morro Redondo',locality:'Morro Redondo'}),matrix=matrixFor([current,candidate]);

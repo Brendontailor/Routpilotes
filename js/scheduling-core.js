@@ -167,6 +167,36 @@
     const result=recalculateSchedule(schedule.items.filter(item=>item.order.id!==orderId).map(item=>item.order),schedule.technician,schedule.shiftId,{matrix,settings});
     return result.valid?{valid:true,order,schedule:result.schedule}:result;
   }
+  /** Reorganiza cada rota sem transferir atendimentos entre tecnicos ou turnos. */
+  function reorganizeTechnicianSchedules(schedules,{matrix={},optimizeRoute,settings=OPERATIONAL_SETTINGS}={}){
+    if(typeof optimizeRoute!=='function')throw new Error('ROUTE_OPTIMIZER_REQUIRED');
+    let changedSchedules=0,failedSchedules=0;
+    const reorganized=(Array.isArray(schedules)?schedules:[]).map(schedule=>{
+      const orders=(schedule.items||[]).map(item=>item.order);
+      if(orders.length<2)return schedule;
+      const occupied=new Set(),lockedPositions={};let invalidLocks=false;
+      orders.forEach((order,index)=>{
+        const position=Number(order.fixedPosition)-1;
+        if(!Number.isInteger(position)||position<0||position>=orders.length)return;
+        if(occupied.has(position)){invalidLocks=true;return;}
+        lockedPositions[order.id]=position;occupied.add(position);
+      });
+      orders.forEach((order,index)=>{
+        if(Object.hasOwn(lockedPositions,order.id)||!order.locked&&normalizeTimeConstraint(order.timeConstraint).type==='free')return;
+        if(occupied.has(index)){invalidLocks=true;return;}
+        lockedPositions[order.id]=index;occupied.add(index);
+      });
+      if(invalidLocks){failedSchedules++;return schedule;}
+      try{
+        const optimized=optimizeRoute(orders,{origin:orders[0],matrix,lockedPositions}),calculated=recalculateSchedule(optimized.orderedPoints,schedule.technician,schedule.shiftId,{matrix,settings});
+        if(!calculated.valid){failedSchedules++;return schedule;}
+        const changed=calculated.schedule.items.some((item,index)=>item.order.id!==schedule.items[index]?.order.id||item.start!==schedule.items[index]?.start);
+        if(changed)changedSchedules++;
+        return calculated.schedule;
+      }catch(error){failedSchedules++;return schedule;}
+    });
+    return {schedules:reorganized,changedSchedules,failedSchedules};
+  }
   /** Compara todos os encaixes válidos e ordena técnicos pela rota resultante. */
   function recommendWorkOrderAssignments(order,schedules,technicians,{matrix={},settings=OPERATIONAL_SETTINGS}={}){
     if(!order||order.locked)return [];
@@ -196,5 +226,5 @@
     }
     return options.sort((a,b)=>a.score-b.score||a.totalDistance-b.totalDistance||a.technician.displayOrder-b.technician.displayOrder);
   }
-  return {timeToMinutes,minutesToTime,workOrderTimeUnits,workOrderLoad,workOrderDuration,calculateLoad,hasCapacity,findDuplicateWorkOrder,matrixDistance,travelMinutes,normalizeTimeConstraint,allowedShiftIds,placeInTimeline,operationalOrder,workOrderArea,assignmentReminder,evaluateAppend,allocateWorkOrders,recalculateSchedule,assignWorkOrderToSchedule,moveWorkOrderBetweenSchedules,scheduleWorkOrderAtTime,removeWorkOrderFromSchedule,recommendWorkOrderAssignments};
+  return {timeToMinutes,minutesToTime,workOrderTimeUnits,workOrderLoad,workOrderDuration,calculateLoad,hasCapacity,findDuplicateWorkOrder,matrixDistance,travelMinutes,normalizeTimeConstraint,allowedShiftIds,placeInTimeline,operationalOrder,workOrderArea,assignmentReminder,evaluateAppend,allocateWorkOrders,recalculateSchedule,assignWorkOrderToSchedule,moveWorkOrderBetweenSchedules,scheduleWorkOrderAtTime,removeWorkOrderFromSchedule,reorganizeTechnicianSchedules,recommendWorkOrderAssignments};
 });
