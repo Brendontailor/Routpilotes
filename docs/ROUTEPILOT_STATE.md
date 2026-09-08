@@ -359,3 +359,13 @@ Ultima atualizacao: 2026-09-04
 - `Sem colaborador` continua representado pela área de OS não agendadas, depois das colunas dos técnicos.
 - Uma migração local aplica a ordem uma única vez aos cadastros existentes; alterações posteriores feitas em `Gerenciar técnicos` continuam persistentes.
 - Cache do Service Worker atualizado para `routepilot-shell-v32`.
+
+## 2026-09-08 — Agenda compacta e responsiva no desktop
+
+- A grade diária passou a calcular automaticamente a altura das horas conforme a altura disponível da janela, com limites de legibilidade para notebooks, monitores de 17 a 32 polegadas e resoluções maiores.
+- As 11 colunas dos técnicos agora dividem a largura disponível e usam uma largura mínima compacta, eliminando a rolagem horizontal nas resoluções desktop validadas.
+- Cabeçalhos exibem o nome em até duas linhas e preservam o nome completo como dica ao passar o mouse.
+- Cartões de OS ficaram menores; visitas curtas priorizam horário e cliente, enquanto todos os dados continuam acessíveis pelo clique em detalhes.
+- O cálculo do arrasto vertical usa a mesma escala responsiva da grade e continua ajustando os horários em intervalos de 15 minutos.
+- Validação visual realizada em `1393x642`, `1366x768`, `1920x1080`, `2560x1440` e `3840x2160`.
+- Cache do Service Worker atualizado para `routepilot-shell-v33`.
