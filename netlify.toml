@@ -5,3 +5,18 @@
 
 [functions]
   node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/api/data"
+  to = "/.netlify/functions/operational-data"
+  status = 200
+
+[[redirects]]
+  from = "/api/database-status"
+  to = "/.netlify/functions/database-status"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

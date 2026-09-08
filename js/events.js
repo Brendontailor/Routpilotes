@@ -155,8 +155,15 @@ document.addEventListener('keydown',event=>{
   if(event.key!=='Escape'||event.ctrlKey||event.altKey||event.metaKey||event.repeat||event.isComposing) return;
   event.preventDefault(); goBack();
 });
-// Inicializa os recursos somente depois que todos os módulos foram carregados.
-initDesktopShell();initToolsButton();initMap();initAddressDebug();initStreetViewLauncher();render();applyDeepLink();RoutePilotAuth.init().then(()=>RoutePilotAgenda.init()).catch(error=>console.error('Falha ao iniciar recursos autenticados',error));
+// Inicializa mapa e operacao uma unica vez, somente depois de confirmar o login.
+let routePilotInitialized=false;
+function initializeRoutePilot(){
+  if(routePilotInitialized)return;
+  routePilotInitialized=true;
+  initDesktopShell();initToolsButton();initMap();initAddressDebug();initStreetViewLauncher();render();applyDeepLink();RoutePilotAgenda.init();
+}
+RoutePilotAuth.onChange(user=>{if(user)initializeRoutePilot();});
+RoutePilotAuth.init().then(user=>{if(user)initializeRoutePilot();}).catch(error=>console.error('Falha ao iniciar recursos autenticados',error));
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')) {
   window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
 }

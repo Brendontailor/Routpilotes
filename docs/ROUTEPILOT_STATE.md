@@ -412,3 +412,13 @@ Ultima atualizacao: 2026-09-08
 - Variáveis necessárias no Netlify: `DATABASE_URL` e `ROUTEPILOT_ALLOWED_EMAILS`. `GEOAPIFY_API_KEY` permanece opcional.
 - Cache do Service Worker atualizado para `routepilot-shell-v38`; respostas de `/api/` nunca entram no cache do Service Worker.
 - Limitação atual: conflitos simultâneos do mesmo registro usam `updatedAt` (última alteração vence), ainda sem tela manual de conciliação.
+
+## 2026-09-08 — Acesso obrigatório e retorno do login
+
+- O RoutePilot agora mantém toda a interface bloqueada até o Netlify Identity confirmar uma sessão Google.
+- Cabeçalho, mapa, criação de rotas e Agenda ficam inertes durante a verificação e quando não há login.
+- O mapa e os demais módulos são inicializados somente depois da autenticação; ao sair, a tela de acesso volta imediatamente.
+- O `netlify.toml` passou a encaminhar `/api/data` e `/api/database-status` para as Functions correspondentes.
+- Um fallback de navegação entrega `index.html` em caminhos de retorno, evitando a página 404 antes do processamento do token OAuth presente no hash da URL.
+- A URL principal configurada no Netlify Identity ainda deve apontar para o domínio de produção atual.
+- Cache do Service Worker atualizado para `routepilot-shell-v39`.

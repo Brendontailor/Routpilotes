@@ -61,7 +61,7 @@ O RoutePilot atende Pelotas, Capão do Leão, Morro Redondo, Canguçu e Cerrito.
 - Netlify Identity com login Google;
 - Neon Postgres para sincronização operacional autenticada.
 
-O mapa e os recursos geográficos continuam úteis sem login e sem banco. A área operacional usa login Google, Netlify Functions e Neon para que técnicos, OS, correções de endereço e agendas sejam iguais para os usuários autorizados. Preferências e anotações são privadas por conta, e o IndexedDB continua sendo a camada offline.
+O acesso ao RoutePilot exige login Google. Depois da autenticação, os recursos geográficos continuam independentes do banco, enquanto Netlify Functions e Neon mantêm técnicos, OS, correções de endereço e agendas iguais para os usuários autorizados. Preferências e anotações são privadas por conta, e o IndexedDB continua sendo a camada offline.
 
 ## Execução local
 
@@ -86,9 +86,10 @@ Sem essa variável, o sistema continua usando os 122.919 endereços locais, Phot
 Para habilitar a área operacional:
 
 1. ative o Netlify Identity e o provedor Google no painel do site;
-2. configure `DATABASE_URL` com a conexão pooled do Neon;
-3. configure `ROUTEPILOT_ALLOWED_EMAILS` com os e-mails autorizados separados por vírgula;
-4. execute um novo deploy pelo Git.
+2. confirme em Identity que a URL principal do site aponta para o domínio de produção atual;
+3. configure `DATABASE_URL` com a conexão pooled do Neon;
+4. configure `ROUTEPILOT_ALLOWED_EMAILS` com os e-mails autorizados separados por vírgula;
+5. execute um novo deploy pelo Git.
 
 As funções também aceitam usuários com o papel `routepilot` ou `admin`. O endpoint protegido `/api/database-status` cria o esquema idempotente e confirma a conexão. A API `/api/data` sanitiza todas as coleções e nunca aceita login de cliente, senha, token ou chave de API.
 

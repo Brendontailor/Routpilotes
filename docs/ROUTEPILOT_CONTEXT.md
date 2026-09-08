@@ -11,7 +11,7 @@ RoutePilot is a static geographic consultation tool for locating service areas, 
 - Netlify Identity provides Google login; Neon Postgres stores authorized shared operational data through server-side functions only.
 - Installable PWA with a versioned service worker.
 - Leaflet 1.9.4 stored locally; OpenStreetMap supplies online map tiles.
-- No mandatory backend, database, build step, API key, or paid API.
+- Authentication is mandatory to enter the interface; after login, geographic features remain decoupled from database availability and paid APIs.
 
 ## Directories
 
@@ -118,7 +118,7 @@ Technicians, operational customer names, work orders and daily agendas use Index
 
 ## Authentication And Shared Persistence
 
-Google login is provided by Netlify Identity. Server functions derive the user from the authenticated Netlify context and then require either an email listed in `ROUTEPILOT_ALLOWED_EMAILS` or the `routepilot`/`admin` role. The browser never receives `DATABASE_URL`.
+Google login is provided by Netlify Identity. The application shell remains locked and the map is not initialized until a session is confirmed. Netlify rewrites preserve OAuth callback landing paths and route `/api/data` and `/api/database-status` to their protected Functions. Server functions derive the user from the authenticated Netlify context and then require either an email listed in `ROUTEPILOT_ALLOWED_EMAILS` or the `routepilot`/`admin` role. The browser never receives `DATABASE_URL`.
 
 Shared collections are `technicians`, `workOrders`, `agendas`, and `addressCorrections`. User collections are `settings` and `notes`. IndexedDB remains the offline source, with stable IDs, pending/failed synchronization state, an idempotent queue for Agenda data, and server tombstones for deletions.
 
