@@ -7,9 +7,9 @@ const localDistanceCache=new Map();
 
 /** Normaliza as correcoes manuais para o mesmo formato dos demais resultados locais. */
 function verifiedLocalAddresses(){
-  const addresses=globalThis.RoutePilotAddressCorrections;
-  if(!Array.isArray(addresses))return [];
-  return addresses.map(address=>({...address,key:`address:${address.id}`,aliases:[...(address.aliases||[])],context:[address.context,...(address.aliases||[])].filter(Boolean).join(' ')}));
+  const staticAddresses=Array.isArray(globalThis.RoutePilotAddressCorrections)?globalThis.RoutePilotAddressCorrections:[];
+  const localAddresses=globalThis.RoutePilotAddressCorrectionsStorage?.cached?.()||[];
+  return [...new Map([...staticAddresses,...localAddresses].map(address=>[address.id,address])).values()].map(address=>({...address,key:`address:${address.id}`,aliases:[...(address.aliases||[])],context:[address.context,...(address.aliases||[])].filter(Boolean).join(' ')}));
 }
 
 /** Procura somente correcoes verificadas, incluindo grafias alternativas conhecidas. */

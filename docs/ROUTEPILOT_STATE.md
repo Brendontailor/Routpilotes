@@ -333,3 +333,12 @@ Ultima atualizacao: 2026-09-04
 - A correção participa da busca tolerante e da resolução local de endereços sem modificar os 122.919 registros abertos nem os contornos geográficos existentes.
 - A grafia alternativa `Rosalvo Mendes` também é reconhecida, mas a interface mantém o nome confirmado `Rua Rozalvo Mendes, 180`.
 - Cache do Service Worker atualizado para `routepilot-shell-v29`.
+
+## 2026-09-08 — Ajustes locais exportáveis de endereços
+
+- O cadastro de atendimento permite informar manualmente endereço, latitude, longitude, cidade e bairro/localidade quando a busca não possui o ponto.
+- O endereço corrigido é confirmado na OS e passa a participar imediatamente da busca local daquele computador.
+- As correções ficam em um IndexedDB separado, sempre com status `pending`, sem alterar automaticamente os 122.919 endereços abertos ou os contornos oficiais.
+- O painel `Ajustes locais` informa a quantidade pendente e exporta JSON com endereço, cidade, localidade, região identificada, latitude/longitude WGS84, geometria GeoJSON, link de mapa, ID, origem e datas.
+- A exportação não inclui cliente, técnico, observação ou outros dados da OS.
+- Cache do Service Worker atualizado para `routepilot-shell-v30`.

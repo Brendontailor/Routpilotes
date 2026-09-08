@@ -67,6 +67,7 @@ Cada lugar deve manter um ID interno único. O nome mostrado ao usuário não po
 - `data/routing/road-network.json` contém nós e conexões dirigidas; `address-streets.json` indexa todas as vias também por cidade/região e os fragmentos `addresses-*.json` resolvem números sem geocodificação externa.
 - `data/routing-index.js` registra versão, origem e contagens da base.
 - `data/address-corrections.js` guarda somente endereços e coordenadas conferidos manualmente que ainda não existem na base aberta.
+- `js/address-corrections-storage.js` mantém ajustes pendentes no IndexedDB, disponibiliza-os para a busca e gera o JSON completo de revisão.
 - `scripts/generate-local-routing-data.mjs` regenera esses arquivos a partir de um recorte GeoJSONSeq do tema `transportation` da Overture.
 
 O RoutePilot não envia endereços para serviços de rota. O Service Worker guarda a malha depois do primeiro uso, sem incluí-la no app shell inicial.
