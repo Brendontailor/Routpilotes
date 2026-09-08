@@ -195,6 +195,14 @@ test('adaptador de persistência em memória mantém dados após nova leitura',a
   assert.equal((await store.all('workOrders'))[0].number,'7');
 });
 
+test('agenda ordena técnicos conforme a sequência operacional solicitada',()=>{
+  global.RoutePilotSchedulingConfig=config;const storage=require('../js/agenda-storage.js'),unordered=[...config.DEFAULT_TECHNICIANS].reverse(),custom=technician('tecnico_novo',{displayOrder:2}),ordered=storage.orderTechnicians([...unordered,custom]);
+  assert.deepEqual(ordered.slice(0,10).map(item=>item.id),config.TECHNICIAN_DISPLAY_ORDER.slice(0,10));
+  assert.equal(ordered[10].id,'william_pereira_de_sousa');
+  assert.equal(ordered.at(-1).id,'tecnico_novo');
+  assert.deepEqual(ordered.map(item=>item.displayOrder),ordered.map((_,index)=>index));
+});
+
 test('busca tolera erros, acentos, abreviações e ordem diferente',()=>{
   const candidates=[
     {id:'pelotas',name:'Pelotas',localPriority:100},

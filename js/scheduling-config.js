@@ -15,18 +15,19 @@
     afternoon:{label:'Tarde',start:'13:00',end:'18:00'}
   };
   const OPERATIONAL_SETTINGS={shiftCapacity:1,bufferMinutes:10,averageSpeedKmh:35,maxWorkOrders:80};
+  const TECHNICIAN_DISPLAY_ORDER=['alifer_medronha_de_lima','eduardo_cesar_fiori_da_silva','ivan_cardoso_amaral','joao_carlos_muller_junior','mauricio_lemos_oliveira','moises_moura_de_souza','pablo_albuquerque_dutra','pedro_juan_porciuncula_burgues_blaas','vagner_aires_lemos','wendell_abraham_coelho','william_pereira_de_sousa'];
   const DEFAULT_TECHNICIANS=[
-    ['william_pereira_de_sousa','William Pereira de Sousa','Pelotas'],
-    ['wendell_abraham_coelho','Wendell Abraham Coelho','Morro Redondo'],
+    ['alifer_medronha_de_lima','Alifer Medronha de Lima','Pelotas'],
     ['eduardo_cesar_fiori_da_silva','Eduardo Cesar Fiori da Silva','Pelotas'],
-    ['moises_moura_de_souza','Moises Moura de Souza','Morro Redondo'],
+    ['ivan_cardoso_amaral','Ivan Cardoso Amaral','Pelotas'],
     ['joao_carlos_muller_junior','João Carlos Muller Junior','Pelotas'],
+    ['mauricio_lemos_oliveira','Mauricio Lemos Oliveira','Pelotas'],
+    ['moises_moura_de_souza','Moises Moura de Souza','Morro Redondo'],
+    ['pablo_albuquerque_dutra','Pablo Albuquerque Dutra','Monte Bonito'],
     ['pedro_juan_porciuncula_burgues_blaas','Pedro Juan Porciuncula Burgues Blaas','Pelotas'],
     ['vagner_aires_lemos','Vagner Aires Lemos','Monte Bonito'],
-    ['pablo_albuquerque_dutra','Pablo Albuquerque Dutra','Monte Bonito'],
-    ['alifer_medronha_de_lima','Alifer Medronha de Lima','Pelotas'],
-    ['ivan_cardoso_amaral','Ivan Cardoso Amaral','Pelotas'],
-    ['mauricio_lemos_oliveira','Mauricio Lemos Oliveira','Pelotas']
+    ['wendell_abraham_coelho','Wendell Abraham Coelho','Morro Redondo'],
+    ['william_pereira_de_sousa','William Pereira de Sousa','Pelotas']
   ].map(([id,name,serviceArea],displayOrder)=>({id,name,serviceArea,active:true,defaultShifts:['morning','afternoon'],displayOrder,startLocation:null}));
   const UNALLOCATED_REASONS={
     CAPACITY_EXCEEDED:'Capacidade do turno atingida.',
@@ -36,5 +37,5 @@
     INVALID_LOCATION:'Localização não pôde ser determinada.',
     DUPLICATE_WORK_ORDER:'Número de OS já cadastrado.'
   };
-  return {SERVICE_TYPES,SHIFTS,OPERATIONAL_SETTINGS,DEFAULT_TECHNICIANS,UNALLOCATED_REASONS};
+  return {SERVICE_TYPES,SHIFTS,OPERATIONAL_SETTINGS,TECHNICIAN_DISPLAY_ORDER,DEFAULT_TECHNICIANS,UNALLOCATED_REASONS};
 });

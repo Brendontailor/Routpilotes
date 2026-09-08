@@ -18,7 +18,7 @@ const RoutePilotAgenda=(()=>{
   /** Carrega técnicos, OS e agenda persistidos sem sobrescrever cadastros existentes. */
   async function init(){
     if(!window.matchMedia('(min-width:901px)').matches)return;
-    state.technicians=await RoutePilotAgendaStorage.ensureDefaultTechnicians();state.orders=await RoutePilotAgendaStorage.all('workOrders');state.selected=new Set(activeTechnicians().map(item=>item.id));state.agenda=await RoutePilotAgendaStorage.getAgenda(state.date)||null;state.filters=await RoutePilotAgendaStorage.getAgendaFilters();
+    await RoutePilotAgendaStorage.ensureDefaultTechnicians();state.technicians=await RoutePilotAgendaStorage.ensureTechnicianDisplayOrder();state.orders=await RoutePilotAgendaStorage.all('workOrders');state.selected=new Set(activeTechnicians().map(item=>item.id));state.agenda=await RoutePilotAgendaStorage.getAgenda(state.date)||null;state.filters=await RoutePilotAgendaStorage.getAgendaFilters();
     try{state.addressCorrections=await RoutePilotAddressCorrectionsStorage.init();}catch(error){state.addressCorrections=[];}
     const defaultFilter=state.filters.find(filter=>filter.isDefault);state.visibleTechnicianIds=new Set(defaultFilter?.technicianIds||activeTechnicians().map(item=>item.id));state.showUnassigned=defaultFilter?.showUnassigned!==false;state.activeFilterId=defaultFilter?.id||null;
     const operationContext=RoutePilotGeocodingCore.createOperationContext(regions,cityNames,CONFIGURACAO_GEOCODIFICACAO.centroPreferencial);

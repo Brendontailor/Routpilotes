@@ -15,6 +15,10 @@ const RoutePilotAgendaStorage=(()=>{
   async function putMany(store,values){const db=await openDatabase();return new Promise((resolve,reject)=>{const tx=db.transaction(store,'readwrite'),target=tx.objectStore(store);values.forEach(value=>target.put(structuredClone(value)));tx.oncomplete=()=>{db.close();resolve(values);};tx.onerror=()=>{db.close();reject(tx.error||new Error('Falha ao salvar registros'));};});}
   /** Cria os técnicos padrão somente quando ainda não existe cadastro. */
   async function ensureDefaultTechnicians(){const current=await all('technicians');if(current.length)return current;await putMany('technicians',RoutePilotSchedulingConfig.DEFAULT_TECHNICIANS);return all('technicians');}
+  /** Ordena IDs conhecidos e mantém técnicos adicionados manualmente no final. */
+  function orderTechnicians(technicians,preferredOrder=RoutePilotSchedulingConfig.TECHNICIAN_DISPLAY_ORDER){const positions=new Map(preferredOrder.map((id,index)=>[id,index]));return [...technicians].sort((a,b)=>(positions.get(a.id)??preferredOrder.length+Number(a.displayOrder||0))-(positions.get(b.id)??preferredOrder.length+Number(b.displayOrder||0))).map((item,displayOrder)=>({...item,displayOrder}));}
+  /** Aplica a nova ordem uma vez, sem desfazer reorganizações manuais futuras. */
+  async function ensureTechnicianDisplayOrder(){const migrationId='migration_technician_order_2026_09_08',done=await run('settings','readonly',store=>store.get(migrationId));if(done)return all('technicians');const ordered=orderTechnicians(await all('technicians'));await putMany('technicians',ordered);await put('settings',{id:migrationId,type:'migration',appliedAt:new Date().toISOString()});return ordered;}
   /** Obtém a agenda de uma data sem criar dados fictícios. */
   async function getAgenda(date){return run('agendas','readonly',store=>store.get(date));}
   /** Persiste uma agenda diária completa. */
@@ -27,6 +31,6 @@ const RoutePilotAgendaStorage=(()=>{
   function removeAgendaFilter(id){return remove('settings',id);}
   /** Adaptador em memória usado pelos testes da persistência. */
   function createMemoryStore(seed={}){const stores=Object.fromEntries(STORES.map(name=>[name,new Map((seed[name]||[]).map(item=>[item.id,structuredClone(item)]))]));return {async all(name){return [...stores[name].values()].map(value=>structuredClone(value));},async put(name,value){stores[name].set(value.id,structuredClone(value));return value;},async get(name,id){return structuredClone(stores[name].get(id));},async remove(name,id){stores[name].delete(id);}};}
-  return {all,put,remove,putMany,ensureDefaultTechnicians,getAgenda,saveAgenda,getAgendaFilters,saveAgendaFilter,removeAgendaFilter,createMemoryStore};
+  return {all,put,remove,putMany,ensureDefaultTechnicians,ensureTechnicianDisplayOrder,orderTechnicians,getAgenda,saveAgenda,getAgendaFilters,saveAgendaFilter,removeAgendaFilter,createMemoryStore};
 })();
 if(typeof module==='object'&&module.exports)module.exports=RoutePilotAgendaStorage;

@@ -351,3 +351,11 @@ Ultima atualizacao: 2026-09-04
 - O botão informa quantos técnicos participarão da distribuição e fica bloqueado quando nenhum técnico estiver selecionado.
 - O cálculo recebe somente os IDs dos técnicos ativos escolhidos; o algoritmo de distribuição não foi alterado.
 - Cache do Service Worker atualizado para `routepilot-shell-v31`.
+
+## 2026-09-08 — Ordem operacional dos técnicos na Agenda
+
+- A ordem padrão passou a ser: Alifer, Eduardo, Ivan, João Carlos, Mauricio, Moises, Pablo, Pedro, Vagner, Wendell e William.
+- William foi preservado ativo no final porque não aparece na referência visual, mas não houve solicitação de remoção ou desativação.
+- `Sem colaborador` continua representado pela área de OS não agendadas, depois das colunas dos técnicos.
+- Uma migração local aplica a ordem uma única vez aos cadastros existentes; alterações posteriores feitas em `Gerenciar técnicos` continuam persistentes.
+- Cache do Service Worker atualizado para `routepilot-shell-v32`.
