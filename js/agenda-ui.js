@@ -1,7 +1,7 @@
 /* Recurso RoutePilot: cadastro de OS, distribuição e agenda diária desktop. */
 const RoutePilotAgenda=(()=>{
   const CONFIG=RoutePilotSchedulingConfig,CORE=RoutePilotSchedulingCore;
-  const AGENDA_LAYOUT=Object.freeze({startHour:6,endHour:19,minHourHeight:28,maxHourHeight:64,reservedViewportHeight:250,timeAxisWidth:50,minColumnWidth:102});
+  const AGENDA_LAYOUT=Object.freeze({startHour:6,endHour:20,minHourHeight:28,maxHourHeight:64,reservedViewportHeight:250,timeAxisWidth:50,minColumnWidth:102});
   let agendaResizeTimer=null;
   const state={tab:'map',date:new Date().toISOString().slice(0,10),technicians:[],orders:[],addressCorrections:[],selected:new Set(),techniciansExpanded:false,confirmedLocation:null,locationCandidate:null,searchResults:[],searchTimer:null,geocodingService:null,searchCanExpand:false,searchWarning:'',generated:null,agenda:null,manager:false,detailId:null,pendingAgenda:null,pendingMove:null,pendingVisitAction:null,pendingSuggestion:null,drag:null,unassignedOpen:true,filters:[],visibleTechnicianIds:new Set(),showUnassigned:true,filterOpen:false,filterQuery:'',filterEditor:false,editFilterId:null,activeFilterId:null};
   const $agenda=id=>document.getElementById(id);

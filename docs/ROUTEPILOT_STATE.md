@@ -369,3 +369,10 @@ Ultima atualizacao: 2026-09-04
 - O cálculo do arrasto vertical usa a mesma escala responsiva da grade e continua ajustando os horários em intervalos de 15 minutos.
 - Validação visual realizada em `1393x642`, `1366x768`, `1920x1080`, `2560x1440` e `3840x2160`.
 - Cache do Service Worker atualizado para `routepilot-shell-v33`.
+
+## 2026-09-08 — Agenda visível até 20h
+
+- A grade diária agora exibe o período completo de `06:00` até `20:00`.
+- A altura das horas continua sendo calculada automaticamente para manter toda a agenda visível em diferentes resoluções desktop.
+- Os turnos operacionais existentes não foram alterados.
+- Cache do Service Worker atualizado para `routepilot-shell-v34`.
