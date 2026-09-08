@@ -816,7 +816,7 @@ header p { font-size:11px;color:#66808a; }
 .section-title h3,.unallocated-panel h3{margin:0;color:#274d58;font-size:14px}
 .section-title button,.agenda-toolbar button{padding:7px 9px;border-radius:5px;font-size:10px}
 .technician-chips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:11px;max-height:180px;overflow:auto}
-.technician-selection-summary{display:block;margin-top:4px;color:#6f858c;font-size:9px}.technician-selection .section-title>div:last-child{display:flex;gap:6px}.technician-selection.is-collapsed{padding-block:11px}
+.technician-selection-summary{display:block;margin-top:4px;color:#47717c;font-size:9px;font-weight:750}.selected-technician-names{display:block;max-width:330px;margin-top:3px;overflow:hidden;color:#71868c;font-size:8px;font-weight:500;text-overflow:ellipsis;white-space:nowrap}.technician-selection .section-title>div:last-child{display:flex;gap:6px}.technician-selection.is-collapsed{padding-block:11px}.technician-selection-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-top:10px;padding-top:9px;border-top:1px solid #e2ecee}.technician-selection-actions span{margin-right:auto;color:#617b83;font-size:9px}.technician-selection-actions button{padding:6px 8px;border-radius:5px;font-size:8px}
 .technician-chips label{display:flex;align-items:center;gap:7px;padding:8px;border:1px solid #dce8ea;border-radius:6px;background:#f8fbfb;font-size:10px;font-weight:650}
 .technician-chips label:has(input:checked){border-color:#79bdca;background:#eaf7f9;color:#075f72}
 .technician-chips input{width:15px;height:15px;accent-color:#087f96}

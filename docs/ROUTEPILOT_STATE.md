@@ -342,3 +342,12 @@ Ultima atualizacao: 2026-09-04
 - O painel `Ajustes locais` informa a quantidade pendente e exporta JSON com endereço, cidade, localidade, região identificada, latitude/longitude WGS84, geometria GeoJSON, link de mapa, ID, origem e datas.
 - A exportação não inclui cliente, técnico, observação ou outros dados da OS.
 - Cache do Service Worker atualizado para `routepilot-shell-v30`.
+
+## 2026-09-08 — Seleção explícita da equipe da rota
+
+- A criação de rota agora apresenta `Escolha os técnicos` antes do cadastro e mantém a lista recolhida por padrão.
+- `Selecionar técnicos` abre os nomes com caixas de seleção e ações rápidas `Selecionar todos` e `Nenhum`.
+- O resumo e o botão de geração atualizam imediatamente sem apagar uma OS que esteja sendo preenchida.
+- O botão informa quantos técnicos participarão da distribuição e fica bloqueado quando nenhum técnico estiver selecionado.
+- O cálculo recebe somente os IDs dos técnicos ativos escolhidos; o algoritmo de distribuição não foi alterado.
+- Cache do Service Worker atualizado para `routepilot-shell-v31`.

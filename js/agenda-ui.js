@@ -56,8 +56,24 @@ const RoutePilotAgenda=(()=>{
   function dateToolbar(title){return `<div class="operations-heading"><div><small>OPERAÇÃO DIÁRIA</small><h2>${title}</h2></div><div class="agenda-date-nav"><button data-agenda-action="datePrevious" aria-label="Dia anterior">‹</button><label>Data<input type="date" id="agendaDate" value="${state.date}"></label><button data-agenda-action="dateNext" aria-label="Próximo dia">›</button></div></div>`;}
   /** Renderiza seleção de técnicos, formulário de OS e resultado da distribuição. */
   function renderCreateRoute(){
-    const orders=pendingDayOrders(),technicians=activeTechnicians();
-    return `<section class="route-creation">${dateToolbar('Criar rota')}<div class="route-builder-grid"><div class="route-builder-panel"><section class="technician-selection ${state.techniciansExpanded?'':'is-collapsed'}"><div class="section-title"><div><small>EQUIPE DO DIA</small><h3>Técnicos disponíveis</h3><span class="technician-selection-summary">${state.selected.size} de ${technicians.length} selecionados</span></div><div><button data-agenda-action="toggleTechnicianNames" aria-expanded="${state.techniciansExpanded}">${state.techniciansExpanded?'Minimizar nomes':'Mostrar equipe'}</button><button data-agenda-action="manageTechnicians">Gerenciar técnicos</button></div></div>${state.techniciansExpanded?`<div class="technician-chips">${technicians.map(item=>`<label><input type="checkbox" data-agenda-technician="${esc(item.id)}" ${state.selected.has(item.id)?'checked':''}><span>${esc(item.name)}<small>${esc(item.serviceArea||'Sem base definida')}</small></span></label>`).join('')}</div>`:''}</section>${renderOrderForm()}<section class="work-order-list"><div class="section-title"><div><small>${orders.length} PENDENTES</small><h3>Ordens a distribuir</h3></div></div>${orders.length?orders.map(renderOrderCard).join(''):'<p class="agenda-empty">Nenhuma OS aguardando distribuição para esta data.</p>'}</section><button class="agenda-primary" data-agenda-action="generateRoutes" ${orders.length?'':'disabled'}>Gerar rota</button>${renderDistribution()}</div><aside class="operations-map-panel"><div class="map-panel-heading"><strong>Distribuição no mapa</strong><span>${state.generated?`${state.generated.allocated} alocadas`:'Aguardando geração'}</span></div><div id="operationsMap" aria-label="Mapa das rotas por técnico"></div></aside></div></section>`;
+    const orders=pendingDayOrders(),technicians=activeTechnicians(),selectedTechnicians=technicians.filter(item=>state.selected.has(item.id)),selectedCount=selectedTechnicians.length;
+    const selectedNames=selectedTechnicians.length?`${selectedTechnicians.slice(0,3).map(item=>item.name.split(' ')[0]).join(', ')}${selectedTechnicians.length>3?` e mais ${selectedTechnicians.length-3}`:''}`:'Nenhum técnico escolhido';
+    const selectionActions=`<div class="technician-selection-body" ${state.techniciansExpanded?'':'hidden'}><div class="technician-selection-actions"><span>Marque somente quem poderá receber OS nesta rota.</span><button type="button" data-agenda-action="selectAllRouteTechnicians">Selecionar todos</button><button type="button" data-agenda-action="selectNoRouteTechnicians">Nenhum</button></div><div class="technician-chips">${technicians.map(item=>`<label><input type="checkbox" data-agenda-technician="${esc(item.id)}" ${state.selected.has(item.id)?'checked':''}><span>${esc(item.name)}<small>${esc(item.serviceArea||'Sem base definida')}</small></span></label>`).join('')}</div></div>`;
+    const generateLabel=selectedCount?`Gerar rota com ${selectedCount} técnico${selectedCount===1?'':'s'}`:'Selecione os técnicos para gerar';
+    return `<section class="route-creation">${dateToolbar('Criar rota')}<div class="route-builder-grid"><div class="route-builder-panel"><section class="technician-selection ${state.techniciansExpanded?'':'is-collapsed'}"><div class="section-title"><div><small>EQUIPE DESTA ROTA</small><h3>Escolha os técnicos</h3><span id="routeTechnicianSummary" class="technician-selection-summary">${selectedCount} de ${technicians.length} selecionados</span><span id="routeTechnicianNames" class="selected-technician-names">${esc(selectedNames)}</span></div><div><button data-agenda-action="toggleTechnicianNames" aria-expanded="${state.techniciansExpanded}">${state.techniciansExpanded?'Concluir seleção':'Selecionar técnicos'}</button><button data-agenda-action="manageTechnicians">Gerenciar técnicos</button></div></div>${selectionActions}</section>${renderOrderForm()}<section class="work-order-list"><div class="section-title"><div><small>${orders.length} PENDENTES</small><h3>Ordens a distribuir</h3></div></div>${orders.length?orders.map(renderOrderCard).join(''):'<p class="agenda-empty">Nenhuma OS aguardando distribuição para esta data.</p>'}</section><button id="generateRoutesButton" class="agenda-primary" data-agenda-action="generateRoutes" ${orders.length&&selectedCount?'':'disabled'}>${generateLabel}</button>${renderDistribution()}</div><aside class="operations-map-panel"><div class="map-panel-heading"><strong>Distribuição no mapa</strong><span>${state.generated?`${state.generated.allocated} alocadas`:'Aguardando geração'}</span></div><div id="operationsMap" aria-label="Mapa das rotas por técnico"></div></aside></div></section>`;
+  }
+
+  /** Atualiza contador, resumo e botão sem apagar os campos da OS em preenchimento. */
+  function updateRouteTechnicianSelection(){
+    const technicians=activeTechnicians(),selected=technicians.filter(item=>state.selected.has(item.id)),summary=$agenda('routeTechnicianSummary'),names=$agenda('routeTechnicianNames'),generate=$agenda('generateRoutesButton');
+    if(summary)summary.textContent=`${selected.length} de ${technicians.length} selecionados`;
+    if(names)names.textContent=selected.length?`${selected.slice(0,3).map(item=>item.name.split(' ')[0]).join(', ')}${selected.length>3?` e mais ${selected.length-3}`:''}`:'Nenhum técnico escolhido';
+    if(generate){generate.disabled=!pendingDayOrders().length||!selected.length;generate.textContent=selected.length?`Gerar rota com ${selected.length} técnico${selected.length===1?'':'s'}`:'Selecione os técnicos para gerar';}
+  }
+
+  /** Expande ou recolhe a equipe sem reconstruir o formulario de atendimento. */
+  function toggleRouteTechnicianSelection(button){
+    state.techniciansExpanded=!state.techniciansExpanded;const section=button.closest('.technician-selection'),body=section?.querySelector('.technician-selection-body');section?.classList.toggle('is-collapsed',!state.techniciansExpanded);if(body)body.hidden=!state.techniciansExpanded;button.textContent=state.techniciansExpanded?'Concluir seleção':'Selecionar técnicos';button.setAttribute('aria-expanded',String(state.techniciansExpanded));
   }
   /** Renderiza o formulário de uma nova OS com restrições configuráveis. */
   function renderOrderForm(){
@@ -215,10 +231,10 @@ const RoutePilotAgenda=(()=>{
   }
   /** Constrói a matriz local e distribui todas as OS do dia. */
   async function generateRoutes(){
-    const orders=pendingDayOrders();if(!orders.length)return;showToast('Calculando distribuição...');
+    const orders=pendingDayOrders(),selectedIds=activeTechnicians().filter(item=>state.selected.has(item.id)).map(item=>item.id);if(!orders.length)return;if(!selectedIds.length){showToast('Selecione pelo menos um técnico para esta rota');return;}showToast('Calculando distribuição...');
     const points=orders.map(order=>({...order,id:order.id}));let matrix={};
     try{matrix=(await RoutePilotLocalRouting.calculateMatrix(points)).matrix;}catch(error){const provider=RoutePilotDistance.createDistanceProvider();matrix=await new RoutePilotDistance.DistanceMatrix(points,provider,{mode:'straight'}).build();showToast('Usando distância em linha reta como contingência');}
-    state.generated=optimizeDistributedSchedules(CORE.allocateWorkOrders(orders,state.technicians,{matrix,selectedTechnicianIds:[...state.selected]}),matrix);state.generated.matrix=matrix;render();
+    state.generated=optimizeDistributedSchedules(CORE.allocateWorkOrders(orders,state.technicians,{matrix,selectedTechnicianIds:selectedIds}),matrix);state.generated.matrix=matrix;render();
   }
   /** Valida, resolve e persiste uma nova OS. */
   async function addWorkOrder(form){
@@ -344,7 +360,9 @@ const RoutePilotAgenda=(()=>{
     const tabButton=event.target.closest('[data-main-tab]');if(tabButton){open(tabButton.dataset.mainTab);return;}
     const button=event.target.closest('[data-agenda-action]');if(!button)return;const action=button.dataset.agendaAction;
     if(action==='manageTechnicians'){state.manager=true;render();}
-    if(action==='toggleTechnicianNames'){state.techniciansExpanded=!state.techniciansExpanded;render();}
+    if(action==='toggleTechnicianNames')toggleRouteTechnicianSelection(button);
+    if(action==='selectAllRouteTechnicians'){state.selected=new Set(activeTechnicians().map(item=>item.id));document.querySelectorAll('[data-agenda-technician]').forEach(input=>input.checked=true);updateRouteTechnicianSelection();}
+    if(action==='selectNoRouteTechnicians'){state.selected.clear();document.querySelectorAll('[data-agenda-technician]').forEach(input=>input.checked=false);updateRouteTechnicianSelection();}
     if(action==='closeManager'){state.manager=false;render();}
     if(action==='orderDetails'){state.detailId=button.dataset.id;render();}
     if(action==='closeOrderDetails'){state.detailId=null;render();}
@@ -406,7 +424,7 @@ const RoutePilotAgenda=(()=>{
   /** Persiste disponibilidade, nome, base e data selecionada. */
   async function handleChange(event){
     if(event.target.id==='agendaDate'){state.date=event.target.value;state.generated=null;state.agenda=await RoutePilotAgendaStorage.getAgenda(state.date)||null;render();}
-    if(event.target.dataset.agendaTechnician){event.target.checked?state.selected.add(event.target.dataset.agendaTechnician):state.selected.delete(event.target.dataset.agendaTechnician);}
+    if(event.target.dataset.agendaTechnician){event.target.checked?state.selected.add(event.target.dataset.agendaTechnician):state.selected.delete(event.target.dataset.agendaTechnician);updateRouteTechnicianSelection();}
     if(event.target.dataset.agendaFilterTech){event.target.checked?state.visibleTechnicianIds.add(event.target.dataset.agendaFilterTech):state.visibleTechnicianIds.delete(event.target.dataset.agendaFilterTech);state.activeFilterId=null;render({preserveAgendaScroll:true});}
     if(event.target.id==='agendaFilterUnassigned'){state.showUnassigned=event.target.checked;state.activeFilterId=null;render({preserveAgendaScroll:true});}
     if(event.target.id==='agendaSavedFilter'){const filter=state.filters.find(item=>item.id===event.target.value);if(filter)applyAgendaFilter(filter);}
