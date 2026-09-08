@@ -8,12 +8,12 @@ const failures=[];
 const context={console:{groupCollapsed(){},groupEnd(){},info(){},warn(){},error(){}}};
 vm.createContext(context);
 
-for(const file of ['regions.js','locations.js','routes.js','boundaries.js','map-details.js','v2-metadata.js','priority-areas.js','coab-duque-addresses.js','osm-address-snapshot.js','open-address-tiles-index.js','routing-index.js']){
+for(const file of ['regions.js','locations.js','routes.js','boundaries.js','map-details.js','v2-metadata.js','priority-areas.js','coab-duque-addresses.js','osm-address-snapshot.js','open-address-tiles-index.js','routing-index.js','address-corrections.js']){
   const source=fs.readFileSync(path.join(root,'data',file),'utf8').replace(/^const /gm,'var ');
   vm.runInContext(source,context,{filename:file});
 }
 
-const {regions,points,boundaries,mapDetails,priorityMapAreas,verifiedAddressPoints,osmAddressSnapshot,openAddressTileIndex,localRoutingIndex}=context;
+const {regions,points,boundaries,mapDetails,priorityMapAreas,verifiedAddressPoints,osmAddressSnapshot,openAddressTileIndex,localRoutingIndex,RoutePilotAddressCorrections}=context;
 /** Guia: Executa uma etapa auxiliar em validação geral do RoutePilot (`duplicate`). */
 const duplicate=values=>[...new Set(values.filter((value,index)=>values.indexOf(value)!==index))];
 const regionIds=new Set(regions.map(item=>item.id));
@@ -42,6 +42,12 @@ for(const item of verifiedAddressPoints){
 }
 duplicate(priorityMapAreas.map(item=>item.id)).forEach(id=>failures.push(`duplicate priority area id: ${id}`));
 for(const area of priorityMapAreas)if(!validCoordinate(...area.center))failures.push(`invalid priority area center: ${area.id}`);
+duplicate(RoutePilotAddressCorrections.map(item=>item.id)).forEach(id=>failures.push(`duplicate address correction id: ${id}`));
+for(const item of RoutePilotAddressCorrections){
+  if(!validCoordinate(...item.coords))failures.push(`invalid address correction coordinates: ${item.id}`);
+  if(!regionIds.has(item.region))failures.push(`invalid address correction region: ${item.id}/${item.region}`);
+  if(!item.street||!item.houseNumber||!item.locality||!item.city)failures.push(`incomplete address correction: ${item.id}`);
+}
 duplicate(osmAddressSnapshot.points.map(item=>item.id)).forEach(id=>failures.push(`duplicate snapshot address id: ${id}`));
 for(const item of osmAddressSnapshot.points){
   if(!validCoordinate(item.lat,item.lon))failures.push(`invalid snapshot address coordinates: ${item.id}`);
@@ -134,7 +140,7 @@ if(manifest?.start_url!=='./')failures.push(`unexpected manifest start_url: ${ma
 const serviceWorker=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
 const shellAssets=[...serviceWorker.matchAll(/\s+'\.\/([^']+)'/g)].map(match=>match[1]);
 for(const asset of shellAssets)if(!fs.existsSync(path.resolve(root,asset)))failures.push(`missing service worker asset: ${asset}`);
-if(!serviceWorker.includes("routepilot-shell-v28"))failures.push('service worker cache is not v28');
+if(!serviceWorker.includes("routepilot-shell-v29"))failures.push('service worker cache is not v29');
 if(/tile\.openstreetmap\.org/.test(serviceWorker))failures.push('service worker must not mass-cache OSM tiles');
 
 const requiredV2=['runtime-config.js','config.js','notes-storage.js','area-inspector.js','area-intelligence.js','radius-search.js','address-radius.js','sharing.js','map-point-actions.js','notes-ui.js','data-review.js','open-address-tiles.js','local-routing.js','route-distance.js','route-optimizer.js','landmark-ranking.js','location-share-core.js','route-map.js','route-planner.js','scheduling-config.js','scheduling-core.js','work-order-search.js','work-order-import.js','geocoding-core.js','geocoding-providers.js','geocoding-service.js','agenda-filters.js','agenda-storage.js','agenda-map.js','agenda-ui.js'];
@@ -147,7 +153,7 @@ if(!fs.existsSync(path.join(root,'netlify.toml')))failures.push('missing Netlify
 
 const report={
   root,
-  counts:{cities:new Set(regions.map(item=>item.city)).size,regions:regions.length,points:points.length,boundaries:boundaries.features.length,references:mapDetails.pois.length,priorityAreas:priorityMapAreas.length,verifiedAddresses:verifiedAddressPoints.length,snapshotAddresses:osmAddressSnapshot.points.length,openAddresses:openAddressCount,openAddressTiles:Object.keys(openAddressTileIndex.tiles||{}).length,routingNodes:localRoutingIndex.nodes,routingEdges:localRoutingIndex.edges,routingAddresses:routingAddressCount},
+  counts:{cities:new Set(regions.map(item=>item.city)).size,regions:regions.length,points:points.length,boundaries:boundaries.features.length,references:mapDetails.pois.length,priorityAreas:priorityMapAreas.length,verifiedAddresses:verifiedAddressPoints.length,addressCorrections:RoutePilotAddressCorrections.length,snapshotAddresses:osmAddressSnapshot.points.length,openAddresses:openAddressCount,openAddressTiles:Object.keys(openAddressTileIndex.tiles||{}).length,routingNodes:localRoutingIndex.nodes,routingEdges:localRoutingIndex.edges,routingAddresses:routingAddressCount},
   cascatas:cascatas.map(point=>({id:point.id,city:point.city,region:point.region})),
   informativeNearby:unresolved.length,
   checked:{htmlAssets:htmlAssets.length,cssAssets:cssAssets.length,serviceWorkerAssets:shellAssets.length,htmlIds:htmlIds.length},

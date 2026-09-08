@@ -326,3 +326,10 @@ Ultima atualizacao: 2026-09-04
 - Clicar em uma sugestão de endereço agora preenche e confirma o resultado em uma única ação; o melhor resultado automático continua apenas como prévia até uma escolha explícita.
 - O botão de confirmação direta foi renomeado para `Usar este endereço`, mantendo `Ajustar no mapa` para correções manuais.
 - Cache do Service Worker atualizado para `routepilot-shell-v28`.
+
+## 2026-09-08 — Correção local de endereço no Fragata
+
+- `Rua Rozalvo Mendes, 180`, no Fragata, foi adicionada como correção conferida a partir do endereço e das coordenadas informadas pelo usuário.
+- A correção participa da busca tolerante e da resolução local de endereços sem modificar os 122.919 registros abertos nem os contornos geográficos existentes.
+- A grafia alternativa `Rosalvo Mendes` também é reconhecida, mas a interface mantém o nome confirmado `Rua Rozalvo Mendes, 180`.
+- Cache do Service Worker atualizado para `routepilot-shell-v29`.

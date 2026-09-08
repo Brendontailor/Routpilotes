@@ -4,6 +4,7 @@ const config=require('../js/scheduling-config.js');
 const core=require('../js/scheduling-core.js');
 const search=require('../js/work-order-search.js');
 const filters=require('../js/agenda-filters.js');
+const addressCorrections=require('../data/address-corrections.js');
 
 const technician=(id='t1',overrides={})=>({id,name:id,serviceArea:'Pelotas',active:true,defaultShifts:['morning','afternoon'],displayOrder:0,...overrides});
 const order=(number,serviceType='maintenance',overrides={})=>({id:`os_${number}`,number:String(number),serviceType,coords:[-31.7+Number(number)/10000,-52.3],city:'Pelotas',locality:'Centro',shift:'morning',timeConstraint:{type:'free',start:null,end:null},...overrides});
@@ -227,6 +228,14 @@ test('busca de via ignora número da casa e usa cidade e região no ranking',()=
   const ranked=candidates.map(candidate=>({...candidate,score:search.scoreStreetCandidate('av duqe caxias 331 fragata pelotss',candidate)})).sort((a,b)=>b.score-a.score);
   assert.equal(ranked[0].id,'duque');
   assert.ok(ranked[0].score>ranked[1].score);
+});
+
+test('correção do endereço Rozalvo Mendes reconhece número e pequena diferença de grafia',()=>{
+  const exact=search.rank('R. Rozalvo Mendes, 180 - Fragata',addressCorrections,{limit:1})[0];
+  const alternative=search.rank('Rua Rosalvo Mendes 180 Pelotas',addressCorrections,{limit:1})[0];
+  assert.equal(exact.id,'address_pelotas_fragata_rozalvo_mendes_180');
+  assert.equal(alternative.id,exact.id);
+  assert.deepEqual(exact.coords,[-31.739210888312844,-52.39853950331596]);
 });
 
 test('busca usa cache e resposta antiga não sobrescreve a nova',async()=>{

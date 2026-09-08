@@ -5,6 +5,19 @@ const localAddressShardPromises=new Map();
 const localRouteCache=new Map();
 const localDistanceCache=new Map();
 
+/** Normaliza as correcoes manuais para o mesmo formato dos demais resultados locais. */
+function verifiedLocalAddresses(){
+  const addresses=globalThis.RoutePilotAddressCorrections;
+  if(!Array.isArray(addresses))return [];
+  return addresses.map(address=>({...address,key:`address:${address.id}`,aliases:[...(address.aliases||[])],context:[address.context,...(address.aliases||[])].filter(Boolean).join(' ')}));
+}
+
+/** Procura somente correcoes verificadas, incluindo grafias alternativas conhecidas. */
+function searchVerifiedLocalAddresses(query,{limit=5}={}){
+  const SEARCH=RoutePilotWorkOrderSearch;
+  return SEARCH.rank(query,verifiedLocalAddresses(),{limit});
+}
+
 /** Guia: Executa uma etapa auxiliar em roteamento local (`localRoutingFetch`). */
 function localRoutingFetch(path){
   return fetch(path).then(response=>{
@@ -80,6 +93,9 @@ function dedupeLocalAddressMatches(matches){
 
 /** Resolve um endereço somente na base estática do RoutePilot. */
 async function resolveLocalRouteAddress(query){
+  const queryNumbers=RoutePilotWorkOrderSearch.normalize(query).match(/\b\d+[a-z]?\b/g)||[];
+  const corrected=searchVerifiedLocalAddresses(query,{limit:3}).filter(address=>queryNumbers.includes(RoutePilotWorkOrderSearch.normalize(address.houseNumber))&&address.searchScore>=650);
+  if(corrected.length===1)return corrected[0];
   const parsed=parseLocalAddressQuery(query);
   if(!parsed.number||!parsed.street)throw new Error('Informe rua, número e cidade. Exemplo: Avenida Duque de Caxias, 331, Pelotas.');
   const catalog=await loadLocalStreetCatalog();
@@ -113,6 +129,7 @@ async function resolveLocalRouteAddress(query){
 /** Procura endereços, ruas e localidades sem exigir texto ou número exatos. */
 async function searchLocalRouteLocations(query,{limit=5}={}){
   const SEARCH=RoutePilotWorkOrderSearch,normalizedQuery=SEARCH.normalize(query);if(!normalizedQuery)return [];
+  const corrected=verifiedLocalAddresses();
   const known=typeof compareCatalog==='function'?compareCatalog().map(item=>({...item,formattedAddress:item.name,cityName:cityName(item.city),locality:item.context,source:'Cadastro RoutePilot',approximate:false,localPriority:110})):[];
   const cityCandidates=Object.keys(cityNames).map(city=>{const related=regions.filter(region=>region.city===city),coords=related.length?[related.reduce((sum,region)=>sum+region.center[0],0)/related.length,related.reduce((sum,region)=>sum+region.center[1],0)/related.length]:null;return coords?{kind:'city',id:`city:${city}`,key:`city:${city}`,name:cityName(city),formattedAddress:cityName(city),city,cityName:cityName(city),locality:'Cidade atendida',region:null,coords,source:'Cadastro RoutePilot',approximate:true,localPriority:130}:null;}).filter(Boolean);
   const catalog=await loadLocalStreetCatalog();
@@ -134,7 +151,7 @@ async function searchLocalRouteLocations(query,{limit=5}={}){
       streetResults.push({kind:'address',id:`${entry[0]}:${address[0]}:${address[1]}:${address[2]}`,key:`address:${entry[0]}:${address[0]}:${address[1]}:${address[2]}`,name:exact?`${group[0]}, ${address[0]}`:group[0],formattedAddress:exact?`${group[0]}, ${address[0]}`:group[0],city:region.city,cityName:cityName(region.city),region:region.id,locality:region.name,context:`${cityName(region.city)} ${region.name}`,sub:exact?'Endereço local':'Localização aproximada',coords:[address[1]/1e6,address[2]/1e6],boundaryId:null,source:'Base local RoutePilot',approximate:!exact,localPriority:exact?145:90});
     }
   }
-  const combined=SEARCH.rank(query,[...cityCandidates,...known,...streetResults],{limit:limit*3}),seen=new Set(),results=[];
+  const combined=SEARCH.rank(query,[...corrected,...cityCandidates,...known,...streetResults],{limit:limit*3}),seen=new Set(),results=[];
   for(const item of combined){const key=`${item.kind}:${item.name}:${item.city}:${item.region||''}`;if(seen.has(key))continue;seen.add(key);results.push(item);if(results.length===limit)break;}
   return results;
 }
