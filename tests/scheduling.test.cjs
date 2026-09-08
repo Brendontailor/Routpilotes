@@ -23,6 +23,22 @@ test('capacidade mista usa uma carga única',()=>{
   assert.equal(core.hasCapacity([...current,order(3,'installation')],order(4,'connector_pickup')),false);
 });
 
+test('instalação de dois tempos ocupa o turno inteiro',()=>{
+  const doubleInstallation=order(5,'installation',{timeUnits:2});
+  assert.equal(core.workOrderTimeUnits(doubleInstallation),2);
+  assert.equal(core.workOrderLoad(doubleInstallation),1);
+  assert.equal(core.workOrderDuration(doubleInstallation),200);
+  assert.equal(core.hasCapacity([],doubleInstallation),true);
+  assert.equal(core.hasCapacity([order(6,'maintenance')],doubleInstallation),false);
+});
+
+test('OS antigas continuam usando um tempo por padrão',()=>{
+  const legacy=order(7,'installation');
+  assert.equal(core.workOrderTimeUnits(legacy),1);
+  assert.equal(core.workOrderLoad(legacy),.5);
+  assert.equal(core.workOrderDuration(legacy),100);
+});
+
 test('horário exato e janela são respeitados',()=>{
   const fixed=core.placeInTimeline(order(1,'maintenance',{timeConstraint:{type:'fixed',start:'10:30'}}),8*60,config.SHIFTS.morning);
   assert.equal(fixed.valid,true);assert.equal(fixed.start,630);

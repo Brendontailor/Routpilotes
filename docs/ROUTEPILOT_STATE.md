@@ -316,3 +316,13 @@ Ultima atualizacao: 2026-09-04
 - O detalhe de uma visita agendada oferece `Reagendar` e `Cancelar visita`, ambas com confirmação explícita.
 - Reagendar retira a visita da rota, recalcula a coluna e devolve a OS à gaveta de não agendadas; cancelar arquiva o atendimento e o retira da agenda sem exclusão silenciosa do registro.
 - Cache do Service Worker atualizado para `routepilot-shell-v27`.
+
+## 2026-09-08 — Serviços de dois tempos e confirmação rápida de endereço
+
+- O cadastro de atendimento recebeu a opção `Dois tempos`, aplicável a qualquer tipo de serviço.
+- Uma OS de dois tempos consome o dobro da carga e da duração base; uma instalação passa de 50% para 100% da capacidade e de 100 para 200 minutos.
+- Registros antigos sem essa propriedade continuam equivalendo a um tempo, sem necessidade de migração.
+- Cartões, distribuição, Agenda e detalhes identificam quando a OS usa dois tempos.
+- Clicar em uma sugestão de endereço agora preenche e confirma o resultado em uma única ação; o melhor resultado automático continua apenas como prévia até uma escolha explícita.
+- O botão de confirmação direta foi renomeado para `Usar este endereço`, mantendo `Ajustar no mapa` para correções manuais.
+- Cache do Service Worker atualizado para `routepilot-shell-v28`.

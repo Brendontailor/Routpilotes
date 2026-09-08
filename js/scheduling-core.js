@@ -9,8 +9,12 @@
   function timeToMinutes(value){const match=/^(\d{1,2}):(\d{2})$/.exec(String(value||''));if(!match)return null;const minutes=Number(match[1])*60+Number(match[2]);return minutes>=0&&minutes<1440?minutes:null;}
   /** Formata minutos desde meia-noite como HH:MM. */
   function minutesToTime(value){const safe=Math.max(0,Math.round(value));return `${String(Math.floor(safe/60)%24).padStart(2,'0')}:${String(safe%60).padStart(2,'0')}`;}
-  /** Retorna a carga normalizada de uma OS. */
-  function workOrderLoad(order){return SERVICE_TYPES[order.serviceType]?.load??Infinity;}
+  /** Normaliza a quantidade de tempos de uma OS para um ou dois. */
+  function workOrderTimeUnits(order){return Number(order?.timeUnits)===2?2:1;}
+  /** Retorna a carga normalizada da OS considerando um ou dois tempos. */
+  function workOrderLoad(order){const base=SERVICE_TYPES[order.serviceType]?.load;return Number.isFinite(base)?base*workOrderTimeUnits(order):Infinity;}
+  /** Retorna a duracao total do atendimento considerando um ou dois tempos. */
+  function workOrderDuration(order){const base=SERVICE_TYPES[order.serviceType]?.durationMinutes;return Number.isFinite(base)?base*workOrderTimeUnits(order):Infinity;}
   /** Soma a carga de tipos mistos no mesmo turno. */
   function calculateLoad(orders){return orders.reduce((total,order)=>total+workOrderLoad(order),0);}
   /** Informa se uma nova OS ainda cabe na capacidade única do turno. */
@@ -48,7 +52,7 @@
       if(constraint.start===null||constraint.end===null)return {valid:false,reason:'TIME_WINDOW_CONFLICT'};
       start=Math.max(start,constraint.start);if(start>constraint.end)return {valid:false,reason:'TIME_WINDOW_CONFLICT'};
     }
-    const duration=SERVICE_TYPES[order.serviceType]?.durationMinutes,allowedEnd=constraint.type==='window'&&constraint.start<shiftEnd?Math.max(shiftEnd,constraint.end):shiftEnd;
+    const duration=workOrderDuration(order),allowedEnd=constraint.type==='window'&&constraint.start<shiftEnd?Math.max(shiftEnd,constraint.end):shiftEnd;
     if(!Number.isFinite(duration)||start+duration>allowedEnd)return {valid:false,reason:'SHIFT_CONFLICT'};
     return {valid:true,start,end:start+duration};
   }
@@ -192,5 +196,5 @@
     }
     return options.sort((a,b)=>a.score-b.score||a.totalDistance-b.totalDistance||a.technician.displayOrder-b.technician.displayOrder);
   }
-  return {timeToMinutes,minutesToTime,workOrderLoad,calculateLoad,hasCapacity,findDuplicateWorkOrder,matrixDistance,travelMinutes,normalizeTimeConstraint,allowedShiftIds,placeInTimeline,operationalOrder,workOrderArea,assignmentReminder,evaluateAppend,allocateWorkOrders,recalculateSchedule,assignWorkOrderToSchedule,moveWorkOrderBetweenSchedules,scheduleWorkOrderAtTime,removeWorkOrderFromSchedule,recommendWorkOrderAssignments};
+  return {timeToMinutes,minutesToTime,workOrderTimeUnits,workOrderLoad,workOrderDuration,calculateLoad,hasCapacity,findDuplicateWorkOrder,matrixDistance,travelMinutes,normalizeTimeConstraint,allowedShiftIds,placeInTimeline,operationalOrder,workOrderArea,assignmentReminder,evaluateAppend,allocateWorkOrders,recalculateSchedule,assignWorkOrderToSchedule,moveWorkOrderBetweenSchedules,scheduleWorkOrderAtTime,removeWorkOrderFromSchedule,recommendWorkOrderAssignments};
 });
