@@ -376,3 +376,12 @@ Ultima atualizacao: 2026-09-04
 - A altura das horas continua sendo calculada automaticamente para manter toda a agenda visível em diferentes resoluções desktop.
 - Os turnos operacionais existentes não foram alterados.
 - Cache do Service Worker atualizado para `routepilot-shell-v34`.
+
+## 2026-09-08 — Aplicação direta das opções da Agenda
+
+- Ao escolher `Reotimizar agenda atual + novas OS` ou `Manter agenda e encaixar novas`, o RoutePilot agora calcula e salva a Agenda imediatamente.
+- O fluxo não exige mais localizar um segundo botão de aplicação depois da escolha inicial.
+- O cálculo usa uma matriz que inclui as OS existentes e as novas, evitando distâncias ausentes durante o encaixe ou a reotimização.
+- Técnicos que já possuem programação são preservados mesmo quando não participam da seleção usada para distribuir as novas OS.
+- Falhas de cálculo ou persistência mantêm a Agenda anterior e exibem uma mensagem clara.
+- Cache do Service Worker atualizado para `routepilot-shell-v35`.
