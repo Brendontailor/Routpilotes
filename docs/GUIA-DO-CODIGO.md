@@ -42,7 +42,7 @@ Nunca criar número, bloco ou coordenada por suposição. Tags externas como `ad
 ## Cache
 
 - Respostas Overpass usam memória e `localStorage`; duração, prefixo e quantidade máxima ficam em `CONFIGURACAO_OVERPASS`.
-- Anotações operacionais usam IndexedDB por meio de `js/notes-storage.js`.
+- Anotações operacionais usam IndexedDB por meio de `js/notes-storage.js` e sincronizam por usuário autenticado.
 - O cache do aplicativo offline é separado e pertence ao `service-worker.js`.
 
 ## Regiões e localidades
@@ -113,7 +113,7 @@ O cache híbrido fica somente em memória, usa consulta normalizada + contexto +
 
 - `js/scheduling-config.js`: técnicos padrão, turnos, duração e carga dos tipos de serviço.
 - `js/scheduling-core.js`: valida capacidade e horários, distribui OS e gera lembretes de deslocamento entre cidades.
-- `js/agenda-storage.js`: isola o IndexedDB usado por técnicos, OS e agenda diária.
+- `js/agenda-storage.js`: isola o IndexedDB, a fila offline e a sincronização de técnicos, OS, agenda diária e preferências.
 - `js/agenda-ui.js`: formulário, distribuição, prévia, grade diária e gerenciamento da equipe no desktop.
 - `js/agenda-map.js`: desenha marcadores e uma camada de rota separada por técnico e turno.
 - `js/work-order-search.js`: corrige abreviações somente para comparação, pontua candidatos locais e evita que respostas antigas substituam buscas novas.

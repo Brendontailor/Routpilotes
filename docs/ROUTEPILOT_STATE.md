@@ -2,7 +2,7 @@
 
 Versao atual: V2 oficial - navegacao desktop e painel contextual
 
-Ultima atualizacao: 2026-09-04
+Ultima atualizacao: 2026-09-08
 
 ## Concluido
 
@@ -395,3 +395,20 @@ Ultima atualizacao: 2026-09-04
 - Os vínculos usam IDs estáveis e ignoram técnicos que não estejam mais ativos.
 - Aplicar ou editar um filtro preserva os campos de uma OS que esteja sendo preenchida e invalida somente uma distribuição antiga.
 - Cache do Service Worker atualizado para `routepilot-shell-v36`.
+
+## 2026-09-08 — Login Google e operação compartilhada no Neon
+
+- A Agenda desktop agora exige login Google por Netlify Identity; mapa, busca, regiões, rotas e PWA continuam independentes do login.
+- A autorização é confirmada no servidor por `ROUTEPILOT_ALLOWED_EMAILS` ou pelos papéis `routepilot` e `admin`; um login Google sem autorização recebe `403`.
+- Técnicos, ordens de serviço, agendas diárias e correções manuais de endereço são coleções compartilhadas entre todos os usuários autorizados.
+- Filtros/preferências e anotações operacionais são privados por usuário. O servidor deriva o autor da sessão e ignora qualquer `userId` enviado pelo navegador.
+- A conexão usa exclusivamente `DATABASE_URL` nas Netlify Functions; senha, string do Neon e segredos não entram no frontend nem no Git.
+- `js/agenda-storage.js` mantém IndexedDB e uma fila idempotente de alterações offline. Falhas não apagam os dados locais e a fila é retomada quando a conexão volta.
+- Exclusões compartilhadas geram tombstones no Neon para impedir que uma cópia local antiga recrie o registro em outro computador.
+- Anotações registram estado de sincronização `pending`, `synced` ou `failed`, sem se tornarem automaticamente dados geográficos estruturais.
+- A API `/api/data` sanitiza novamente cada coleção, limita corpos a 512 KB, usa IDs estáveis e possui rate limiting por IP e domínio.
+- `/api/database-status` é protegido, cria/migra o esquema de forma idempotente e informa apenas totais de registros ativos.
+- `netlify.toml` executa o build do cliente local de Identity e da configuração pública do Geoapify.
+- Variáveis necessárias no Netlify: `DATABASE_URL` e `ROUTEPILOT_ALLOWED_EMAILS`. `GEOAPIFY_API_KEY` permanece opcional.
+- Cache do Service Worker atualizado para `routepilot-shell-v38`; respostas de `/api/` nunca entram no cache do Service Worker.
+- Limitação atual: conflitos simultâneos do mesmo registro usam `updatedAt` (última alteração vence), ainda sem tela manual de conciliação.

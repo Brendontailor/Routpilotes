@@ -140,16 +140,22 @@ if(manifest?.start_url!=='./')failures.push(`unexpected manifest start_url: ${ma
 const serviceWorker=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
 const shellAssets=[...serviceWorker.matchAll(/\s+'\.\/([^']+)'/g)].map(match=>match[1]);
 for(const asset of shellAssets)if(!fs.existsSync(path.resolve(root,asset)))failures.push(`missing service worker asset: ${asset}`);
-if(!serviceWorker.includes("routepilot-shell-v36"))failures.push('service worker cache is not v36');
+if(!serviceWorker.includes("routepilot-shell-v38"))failures.push('service worker cache is not v38');
 if(/tile\.openstreetmap\.org/.test(serviceWorker))failures.push('service worker must not mass-cache OSM tiles');
+if(!serviceWorker.includes("url.pathname.startsWith('/api/')"))failures.push('service worker must bypass database API responses');
 
-const requiredV2=['runtime-config.js','config.js','notes-storage.js','area-inspector.js','area-intelligence.js','radius-search.js','address-radius.js','sharing.js','map-point-actions.js','notes-ui.js','data-review.js','open-address-tiles.js','address-corrections-storage.js','local-routing.js','route-distance.js','route-optimizer.js','landmark-ranking.js','location-share-core.js','route-map.js','route-planner.js','scheduling-config.js','scheduling-core.js','work-order-search.js','work-order-import.js','geocoding-core.js','geocoding-providers.js','geocoding-service.js','agenda-filters.js','agenda-storage.js','agenda-map.js','agenda-ui.js'];
+const requiredV2=['runtime-config.js','config.js','auth.js','notes-storage.js','area-inspector.js','area-intelligence.js','radius-search.js','address-radius.js','sharing.js','map-point-actions.js','notes-ui.js','data-review.js','open-address-tiles.js','cloud-sync.js','address-corrections-storage.js','local-routing.js','route-distance.js','route-optimizer.js','landmark-ranking.js','location-share-core.js','route-map.js','route-planner.js','scheduling-config.js','scheduling-core.js','work-order-search.js','work-order-import.js','geocoding-core.js','geocoding-providers.js','geocoding-service.js','agenda-filters.js','agenda-storage.js','agenda-map.js','agenda-ui.js'];
 for(const file of requiredV2)if(!index.includes(`js/${file}`))failures.push(`V2 script not loaded: ${file}`);
 
 const runtimeConfig=fs.readFileSync(path.join(root,'js','runtime-config.js'),'utf8');
 if(!/["']?geoapifyApiKey["']?\s*:\s*['"]{2}/.test(runtimeConfig))failures.push('runtime config must not contain a Geoapify client key');
 if(!fs.existsSync(path.join(root,'netlify','functions','geocode.mjs')))failures.push('missing optional Netlify geocoding proxy');
+if(!fs.existsSync(path.join(root,'netlify','functions','operational-data.mjs')))failures.push('missing Neon operational data function');
+if(!fs.existsSync(path.join(root,'netlify','functions','database-status.mjs')))failures.push('missing Neon database status function');
+if(!fs.existsSync(path.join(root,'db','schema.sql')))failures.push('missing Neon database schema');
+if(!fs.existsSync(path.join(root,'package.json')))failures.push('missing serverless dependency manifest');
 if(!fs.existsSync(path.join(root,'netlify.toml')))failures.push('missing Netlify build configuration');
+if(!fs.existsSync(path.join(root,'vendor','netlify-identity.js')))failures.push('missing bundled Netlify Identity client');
 
 const report={
   root,

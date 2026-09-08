@@ -26,7 +26,8 @@
     if(!formattedAddress)throw new Error('Informe o endereco que deve aparecer no RoutePilot.');
     if(!city)throw new Error('Selecione a cidade do endereco.');
     const numberMatch=formattedAddress.match(/,\s*([0-9]+[a-z]?)\s*$/i),now=new Date().toISOString();
-    return {id:safeText(input.id,120)||makeId(),kind:'address',name:formattedAddress,formattedAddress,street:numberMatch?formattedAddress.slice(0,numberMatch.index).trim():formattedAddress,houseNumber:numberMatch?.[1]||'',aliases:[formattedAddress],city,cityName:city,region:safeText(input.region,100)||null,locality,context:[locality,city].filter(Boolean).join(', '),coords,boundaryId:null,source:'manual_correction',status:'pending',approximate:false,localPriority:185,createdAt:input.createdAt||now,updatedAt:now};
+    const aliases=Array.isArray(input.aliases)&&input.aliases.length?input.aliases.map(value=>safeText(value,180)).filter(Boolean):[formattedAddress];
+    return {id:safeText(input.id,120)||makeId(),kind:'address',name:formattedAddress,formattedAddress,street:safeText(input.street,160)||(numberMatch?formattedAddress.slice(0,numberMatch.index).trim():formattedAddress),houseNumber:safeText(input.houseNumber,24)||(numberMatch?.[1]||''),aliases:[...new Set(aliases)],city,cityName:city,region:safeText(input.region,100)||null,locality,context:safeText(input.context,200)||[locality,city].filter(Boolean).join(', '),coords,boundaryId:null,source:'manual_correction',status:'pending',approximate:false,localPriority:185,createdAt:input.createdAt||now,updatedAt:input.updatedAt||now};
   }
 
   /** Abre um banco separado da agenda e das anotacoes operacionais. */
@@ -35,8 +36,20 @@
   /** Executa uma operacao no IndexedDB e sempre fecha a conexao. */
   async function transaction(mode,operation){const db=await openDatabase();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE_NAME,mode),request=operation(tx.objectStore(STORE_NAME));tx.oncomplete=()=>{db.close();resolve(request?.result);};tx.onerror=()=>{db.close();reject(tx.error||new Error('Falha ao salvar ajuste local'));};});}
 
-  /** Carrega as correcoes uma vez e as disponibiliza para a busca sincrona. */
-  async function init(){addressCache=(await transaction('readonly',store=>store.getAll())).map(buildRecord);return cached();}
+  /** Incorpora correcoes do Neon e envia registros locais mais recentes. */
+  async function syncCloud(local){
+    const cloud=globalThis.RoutePilotCloudSync;
+    if(!cloud)return local;
+    try{
+      const remote=(await cloud.list('addressCorrections')).map(buildRecord),merged=new Map(local.map(item=>[item.id,item]));
+      for(const item of remote){const current=merged.get(item.id);if(!current||String(item.updatedAt)>String(current.updatedAt)){await transaction('readwrite',store=>store.put(item));merged.set(item.id,item);}}
+      for(const item of local){const current=merged.get(item.id);if(current===item||String(item.updatedAt)>=String(current?.updatedAt||''))await cloud.upsert('addressCorrections',item);}
+      return [...merged.values()];
+    }catch(error){return local;}
+  }
+
+  /** Carrega correcoes locais e sincroniza a copia geografica quando houver rede. */
+  async function init(){const local=(await transaction('readonly',store=>store.getAll())).map(buildRecord);addressCache=await syncCloud(local);return cached();}
 
   /** Devolve copias para impedir alteracao acidental da memoria interna. */
   function cached(){return addressCache.map(item=>({...item,aliases:[...item.aliases],coords:[...item.coords]}));}
@@ -45,7 +58,7 @@
   async function save(input){
     let record=buildRecord(input),existing=addressCache.find(item=>item.city===record.city&&item.formattedAddress.toLocaleLowerCase('pt-BR')===record.formattedAddress.toLocaleLowerCase('pt-BR')&&Math.abs(item.coords[0]-record.coords[0])<1e-7&&Math.abs(item.coords[1]-record.coords[1])<1e-7);
     if(existing)record=buildRecord({...record,id:existing.id,createdAt:existing.createdAt});
-    await transaction('readwrite',store=>store.put(record));addressCache=[...addressCache.filter(item=>item.id!==record.id),record];return {...record,aliases:[...record.aliases],coords:[...record.coords]};
+    await transaction('readwrite',store=>store.put(record));addressCache=[...addressCache.filter(item=>item.id!==record.id),record];globalThis.RoutePilotCloudSync?.upsert('addressCorrections',record).catch(()=>false);return {...record,aliases:[...record.aliases],coords:[...record.coords]};
   }
 
   /** Cria um arquivo completo para localizar e importar cada ponto posteriormente. */

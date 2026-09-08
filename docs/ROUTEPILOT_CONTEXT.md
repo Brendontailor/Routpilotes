@@ -7,7 +7,8 @@ RoutePilot is a static geographic consultation tool for locating service areas, 
 ## Architecture
 
 - Static HTML, CSS, and modular JavaScript.
-- Git-connected deployment to Netlify, with an optional serverless geocoding proxy.
+- Git-connected deployment to Netlify, with an optional geocoding proxy and authenticated operational functions.
+- Netlify Identity provides Google login; Neon Postgres stores authorized shared operational data through server-side functions only.
 - Installable PWA with a versioned service worker.
 - Leaflet 1.9.4 stored locally; OpenStreetMap supplies online map tiles.
 - No mandatory backend, database, build step, API key, or paid API.
@@ -46,7 +47,9 @@ RoutePilot is a static geographic consultation tool for locating service areas, 
 - `area-inspector.js` and `area-intelligence.js`: coordinate identification and contextual area knowledge.
 - `radius-search.js`: on-demand Haversine radius consultation and map circle.
 - `address-radius.js`: focused 100-500 m address and reference consultation.
-- `notes-storage.js` and `notes-ui.js`: isolated local operational-note storage and validation workflow.
+- `auth.js`: Netlify Identity/Google session and account controls.
+- `cloud-sync.js`: authenticated browser client for the protected Netlify API.
+- `notes-storage.js` and `notes-ui.js`: user-scoped operational-note storage, offline state, synchronization, and validation workflow.
 - `ui-shell.js`: desktop workspace shell, contextual-panel header, toolbar state, and Layers popover.
 - `osm-addresses.js`: bounded Overpass requests, address/building association, labels, cache, and request cancellation.
 - `open-address-tiles.js`: lazy bbox loading and in-memory cache for tiled IBGE/Overture addresses.
@@ -111,7 +114,13 @@ The desktop planner accepts a separate origin and up to 24 appointments. It buil
 
 Desktop navigation also provides `Criar rota` and `Agenda`. Work orders use normalized per-shift capacity, optional time constraints, an optional required technician, locking and fixed route positions. Distribution first assigns work orders, then reuses the local distance matrix and route optimizer for each technician. A technician's base is a preference only: travel to another city remains allowed and produces a non-blocking reminder.
 
-Technicians, customer names, work orders and daily agendas are stored locally through `js/agenda-storage.js`. Existing days require a preview before reoptimization or fitting only new work orders. The mobile interface remains unchanged.
+Technicians, operational customer names, work orders and daily agendas use IndexedDB through `js/agenda-storage.js` and synchronize as shared records through authenticated Netlify Functions and Neon. Agenda filters and route-team filters are private to the authenticated user. Existing days require a preview before reoptimization or fitting only new work orders. The mobile interface remains unchanged.
+
+## Authentication And Shared Persistence
+
+Google login is provided by Netlify Identity. Server functions derive the user from the authenticated Netlify context and then require either an email listed in `ROUTEPILOT_ALLOWED_EMAILS` or the `routepilot`/`admin` role. The browser never receives `DATABASE_URL`.
+
+Shared collections are `technicians`, `workOrders`, `agendas`, and `addressCorrections`. User collections are `settings` and `notes`. IndexedDB remains the offline source, with stable IDs, pending/failed synchronization state, an idempotent queue for Agenda data, and server tombstones for deletions.
 
 Work-order location search normalizes accents and abbreviations internally, tolerates misspellings and reordered tokens, prioritizes the local service catalog, and requires explicit coordinate confirmation. It searches the 122,919 integrated open addresses first, uses Photon to expand weak searches, and can use Geoapify as an optional third provider. Results share one internal model and pass through RoutePilot ranking and deduplication. The Geoapify key is read only by an optional Netlify function; the browser receives no key. Provider failure never blocks local or manual selection. The Google Maps link remains manual verification only; no Google API data is copied into RoutePilot. The original typed text is preserved separately. Work orders may use `any` as their shift so the scheduler chooses one compatible morning or afternoon slot. Saved Agenda filters affect only visible columns and reference technicians by stable ID.
 

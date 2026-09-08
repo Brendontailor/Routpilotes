@@ -1,0 +1,41 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+
+const apiPromise=import('../netlify/functions/operational-data.mjs');
+
+test('API do Neon remove campos pessoais de uma anotacao',async()=>{
+  const {sanitizeNote}=await apiPromise,record=sanitizeNote({id:'note_1',userId:'usuario_falso',latitude:-31.7,longitude:-52.3,type:'warning',text:'Ponte interditada',status:'validated',customerName:'Nao armazenar',phone:'Nao armazenar'},'usuario_autenticado');
+  assert.equal(record.text,'Ponte interditada');
+  assert.equal(record.status,'validated');
+  assert.equal(record.userId,'usuario_autenticado');
+  assert.equal(Object.hasOwn(record,'customerName'),false);
+  assert.equal(Object.hasOwn(record,'phone'),false);
+});
+
+test('API do Neon conserva somente os dados geograficos da correcao',async()=>{
+  const {sanitizeAddressCorrection}=await apiPromise,record=sanitizeAddressCorrection({id:'address_1',formattedAddress:'Rua Teste, 20',street:'Rua Teste',houseNumber:'20',city:'Pelotas',locality:'Centro',coords:[-31.7,-52.3],customerName:'Nao armazenar'});
+  assert.deepEqual(record.coords,[-31.7,-52.3]);
+  assert.equal(record.formattedAddress,'Rua Teste, 20');
+  assert.equal(Object.hasOwn(record,'customerName'),false);
+});
+
+test('API do Neon rejeita colecao e coordenadas invalidas',async()=>{
+  const {sanitizeRecord,sanitizeNote}=await apiPromise;
+  assert.throws(()=>sanitizeRecord('work_orders',{}),/invalid_collection/);
+  assert.throws(()=>sanitizeNote({id:'note_2',text:'Teste',latitude:200,longitude:0}),/invalid_coordinates/);
+});
+
+test('API conserva somente os campos operacionais necessarios da OS',async()=>{
+  const {sanitizeWorkOrder}=await apiPromise,record=sanitizeWorkOrder({id:'os_1',customerName:'Cliente autorizado',date:'2026-09-08',serviceType:'maintenance',address:'Rua Teste, 20',coords:[-31.7,-52.3],city:'Pelotas',locality:'Centro',login:'nao_salvar',password:'nao_salvar',apiKey:'nao_salvar'});
+  assert.equal(record.customerName,'Cliente autorizado');
+  assert.equal(record.address,'Rua Teste, 20');
+  assert.equal(Object.hasOwn(record,'login'),false);
+  assert.equal(Object.hasOwn(record,'password'),false);
+  assert.equal(Object.hasOwn(record,'apiKey'),false);
+});
+
+test('preferencia privada aceita IDs estaveis de tecnicos',async()=>{
+  const {sanitizeSetting}=await apiPromise,record=sanitizeSetting({id:'filtro_1',type:'routeTechnicianFilter',name:'Equipe A',technicianIds:['tecnico_1','tecnico_2'],isDefault:true});
+  assert.deepEqual(record.technicianIds,['tecnico_1','tecnico_2']);
+  assert.equal(record.isDefault,true);
+});

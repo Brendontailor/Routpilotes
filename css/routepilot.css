@@ -129,6 +129,7 @@ header p { font-size:12px;color:var(--muted); }
 .brand-logo img { width:194px;height:194px; }
 .header-actions { margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap; }
 .header-actions button { margin:0;min-height:38px;border-radius:6px;padding:8px 13px;font-size:12px;font-weight:600; }
+.auth-control{position:relative}.auth-button{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.auth-button.is-authenticated{border-color:#9bcbd4;background:#e8f6f8;color:#086b7d}.auth-menu{position:absolute;z-index:1300;top:calc(100% + 7px);right:0;width:230px;padding:11px;border:1px solid #cbdde1;border-radius:7px;background:#fff;box-shadow:0 14px 35px rgba(12,40,51,.2)}.auth-menu strong,.auth-menu small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.auth-menu strong{color:#214c58;font-size:11px}.auth-menu small{margin-top:3px;color:#6d838a;font-size:9px}.auth-menu button{width:100%;margin-top:9px!important;min-height:30px!important;padding:6px 9px!important}
 .compare-button { background:#008aaa;color:#fff;border-color:#008aaa; }
 .compare-button:hover,.compare-button[aria-pressed="true"] { background:#00748f;color:#fff;border-color:#00748f; }
 .map-visibility-button { background:#fff;color:#42616c;border-color:#c9dade; }

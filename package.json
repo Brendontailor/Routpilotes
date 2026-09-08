@@ -1,0 +1,22 @@
+{
+  "name": "routepilot",
+  "version": "2.0.0",
+  "private": true,
+  "description": "RoutePilot - rotas, regioes tecnicas e conhecimento operacional",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "node scripts/build-client-auth.mjs && node scripts/generate-runtime-config.mjs",
+    "test": "node --test tests/*.test.cjs",
+    "validate": "node scripts/validate-routepilot-v2.mjs ."
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "1.1.0",
+    "@netlify/identity": "2.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.9",
+    "fake-indexeddb": "^6.2.5"
+  }
+}

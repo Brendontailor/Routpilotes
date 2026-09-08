@@ -2,7 +2,7 @@
 const RoutePilotAgenda=(()=>{
   const CONFIG=RoutePilotSchedulingConfig,CORE=RoutePilotSchedulingCore;
   const AGENDA_LAYOUT=Object.freeze({startHour:6,endHour:20,minHourHeight:28,maxHourHeight:64,reservedViewportHeight:250,timeAxisWidth:50,minColumnWidth:102});
-  let agendaResizeTimer=null;
+  let agendaResizeTimer=null,bound=false,authListenerBound=false,initializedUserId=null;
   const state={tab:'map',date:new Date().toISOString().slice(0,10),technicians:[],orders:[],addressCorrections:[],selected:new Set(),routeFilters:[],activeRouteFilterId:null,techniciansExpanded:false,confirmedLocation:null,locationCandidate:null,searchResults:[],searchTimer:null,geocodingService:null,searchCanExpand:false,searchWarning:'',generated:null,agenda:null,manager:false,detailId:null,pendingAgenda:null,pendingMove:null,pendingVisitAction:null,pendingSuggestion:null,drag:null,unassignedOpen:true,filters:[],visibleTechnicianIds:new Set(),showUnassigned:true,filterOpen:false,filterQuery:'',filterEditor:false,editFilterId:null,activeFilterId:null};
   const $agenda=id=>document.getElementById(id);
   const makeId=prefix=>crypto.randomUUID?`${prefix}_${crypto.randomUUID()}`:`${prefix}_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
@@ -20,15 +20,19 @@ const RoutePilotAgenda=(()=>{
   /** Carrega técnicos, OS e agenda persistidos sem sobrescrever cadastros existentes. */
   async function init(){
     if(!window.matchMedia('(min-width:901px)').matches)return;
+    bind();renderTabs();
+    if(!authListenerBound){authListenerBound=true;globalThis.RoutePilotAuth?.onChange(async user=>{initializedUserId=null;RoutePilotAgendaStorage.resetSync();if(!user){state.technicians=[];state.orders=[];state.agenda=null;await open('map');return;}await init();});}
+    const userId=globalThis.RoutePilotAuth?.currentUser()?.id;if(!userId||initializedUserId===userId)return;initializedUserId=userId;
     await RoutePilotAgendaStorage.ensureDefaultTechnicians();state.technicians=await RoutePilotAgendaStorage.ensureTechnicianDisplayOrder();state.orders=await RoutePilotAgendaStorage.all('workOrders');state.routeFilters=await RoutePilotAgendaStorage.getRouteTechnicianFilters();const activeIds=activeTechnicians().map(item=>item.id),defaultRouteFilter=state.routeFilters.find(filter=>filter.isDefault),initialRouteFilter=defaultRouteFilter&&RoutePilotAgendaFilters.normalizeFilter(defaultRouteFilter,activeIds);state.selected=new Set(initialRouteFilter?.technicianIds||activeIds);state.activeRouteFilterId=initialRouteFilter?.id||null;state.agenda=await RoutePilotAgendaStorage.getAgenda(state.date)||null;state.filters=await RoutePilotAgendaStorage.getAgendaFilters();
     try{state.addressCorrections=await RoutePilotAddressCorrectionsStorage.init();}catch(error){state.addressCorrections=[];}
     const defaultFilter=state.filters.find(filter=>filter.isDefault);state.visibleTechnicianIds=new Set(defaultFilter?.technicianIds||activeTechnicians().map(item=>item.id));state.showUnassigned=defaultFilter?.showUnassigned!==false;state.activeFilterId=defaultFilter?.id||null;
     const operationContext=RoutePilotGeocodingCore.createOperationContext(regions,cityNames,CONFIGURACAO_GEOCODIFICACAO.centroPreferencial);
     state.geocodingService=RoutePilotGeocodingService.create({config:CONFIGURACAO_GEOCODIFICACAO,context:operationContext,localSearch:query=>searchLocalRouteLocations(query,{limit:CONFIGURACAO_GEOCODIFICACAO.maximoSugestoes}),localReverse:coords=>RoutePilotOpenAddresses.reverse(coords),photon:new RoutePilotGeocodingProviders.PhotonProvider(CONFIGURACAO_GEOCODIFICACAO.photon),geoapify:new RoutePilotGeocodingProviders.GeoapifyProvider(CONFIGURACAO_GEOCODIFICACAO.geoapify)});
-    bind();renderTabs();
+    renderTabs();
   }
   /** Registra os eventos próprios uma única vez. */
   function bind(){
+    if(bound)return;bound=true;
     document.addEventListener('click',handleClick);document.addEventListener('submit',handleSubmit);document.addEventListener('reset',handleReset);document.addEventListener('input',handleInput);document.addEventListener('change',handleChange);document.addEventListener('dragstart',handleDragStart);document.addEventListener('dragover',handleDragOver);document.addEventListener('drop',handleDrop);document.addEventListener('dragend',handleDragEnd);document.addEventListener('keydown',handleKeydown);window.addEventListener('resize',handleAgendaResize);
   }
   /** Recalcula a densidade da grade quando a janela muda de tamanho. */
@@ -36,6 +40,8 @@ const RoutePilotAgenda=(()=>{
   /** Troca entre mapa, criação de rota e agenda somente no desktop. */
   async function open(tab){
     if(!['map','create','agenda'].includes(tab)||!window.matchMedia('(min-width:901px)').matches)return;
+    if(tab!=='map'&&!globalThis.RoutePilotAuth?.isAuthenticated()){showToast('Entre com Google para acessar a operação compartilhada');globalThis.RoutePilotAuth?.signIn();return;}
+    if(tab!=='map'&&initializedUserId!==globalThis.RoutePilotAuth.currentUser().id)await init();
     state.tab=tab;document.body.classList.toggle('operations-active',tab!=='map');$agenda('app').hidden=tab!=='map';$agenda('operationsWorkspace').hidden=tab==='map';$agenda('toggleMap').hidden=tab!=='map';
     if(tab!=='map'){state.agenda=await RoutePilotAgendaStorage.getAgenda(state.date)||null;render();$agenda('operationsWorkspace').scrollTop=0;}
     else{RoutePilotAgendaMap.clear();renderTabs();}
@@ -492,3 +498,4 @@ const RoutePilotAgenda=(()=>{
   function handleKeydown(event){if(event.key!=='Escape')return;const correctionModal=document.querySelector('.address-correction-modal');if(correctionModal){correctionModal.remove();return;}if(state.pendingMove){state.pendingMove=null;render({preserveAgendaScroll:state.tab==='agenda'});}else if(state.pendingVisitAction){state.pendingVisitAction=null;render({preserveAgendaScroll:state.tab==='agenda'});}else if(state.pendingSuggestion){state.pendingSuggestion=null;render({preserveAgendaScroll:state.tab==='agenda'});}}
   return {state,init,open,render,generateRoutes};
 })();
+globalThis.RoutePilotAgenda=RoutePilotAgenda;

@@ -35,11 +35,12 @@ function renderToolsMenu() {
   const panel=$('toolsPanel');panel.hidden=false;
   panel.innerHTML=`<div class="inspector-heading"><div><small>ROUTEPILOT V2</small><h2>Ferramentas</h2></div><button data-action="closeTools" aria-label="Fechar ferramentas">&times;</button></div>
     <div class="tool-list"><button data-action="annotatePoint">${iconSvg('pin')}<span><b>Anotar ponto</b><small>Clique no mapa e salve a informação como pendente</small></span></button><button data-action="activateIdentify">${iconSvg('pin')}<span><b>Identificar ponto</b><small>Clique no mapa ou pesquise coordenadas</small></span></button><button data-action="reviewNotes">${iconSvg('check')}<span><b>Validar anotações</b><small>Revisar conhecimento operacional pendente</small></span></button><button data-action="reviewData">${iconSvg('list')}<span><b>Revisar dados</b><small>Erros, avisos e informações da base</small></span></button></div>
-    <p class="local-storage-note">Anotações armazenadas neste computador.</p>`;
+    <p class="local-storage-note">Anotações disponíveis offline e sincronizadas quando a nuvem estiver acessível.</p>`;
 }
 
 /** Guia: Inicia o fluxo do recurso em interface de anotações (`startAnnotatePoint`). */
 function startAnnotatePoint() {
+  if(!globalThis.RoutePilotAuth?.isAuthenticated()){showToast('Entre com Google para criar anotações privadas');globalThis.RoutePilotAuth?.signIn();return;}
   if(annotatePointMode){cancelAnnotatePoint(false);setIdentifyPointMode(false);return;}
   if(comparisonActive())goBack();
   cancelMapInteraction('identify');closeTools(false);
@@ -69,11 +70,12 @@ function noteTypeLabel(type) {
 
 /** Guia: Registra um novo item em interface de anotações (`addNoteSection`). */
 function addNoteSection(lat,lng,showButton=true) {
-  return `<div class="add-note-area">${showButton?'<button type="button" data-action="showAddNote" class="add-note-button">+ Adicionar anotação</button>':''}<div id="addNoteFormHost"></div><div id="nearbyOperationalNotes" class="nearby-notes"></div><p class="local-storage-note">Anotações armazenadas neste computador.</p></div>`;
+  return `<div class="add-note-area">${showButton?'<button type="button" data-action="showAddNote" class="add-note-button">+ Adicionar anotação</button>':''}<div id="addNoteFormHost"></div><div id="nearbyOperationalNotes" class="nearby-notes"></div><p class="local-storage-note">Disponível offline; sincroniza com o Neon quando houver conexão.</p></div>`;
 }
 
 /** Guia: Exibe o conteúdo solicitado em interface de anotações (`showAddNoteForm`). */
 function showAddNoteForm() {
+  if(!globalThis.RoutePilotAuth?.isAuthenticated()){showToast('Entre com Google para criar anotações privadas');globalThis.RoutePilotAuth?.signIn();return;}
   const context=identifiedArea||areaUnderstandingContext||currentAreaContext();
   if(!context)return;
   const host=$('addNoteFormHost');if(!host)return;
@@ -116,9 +118,10 @@ function nearestKnownLocations(note) {
 
 /** Guia: Renderiza a parte correspondente da interface em interface de anotações (`renderNotesReview`). */
 async function renderNotesReview() {
+  if(!globalThis.RoutePilotAuth?.isAuthenticated()){showToast('Entre com Google para revisar suas anotações');globalThis.RoutePilotAuth?.signIn();return;}
   toolsOpen=true;$('toolsButton').setAttribute('aria-pressed','true');renderDesktopShell();
   const panel=$('toolsPanel');panel.hidden=false;
-  panel.innerHTML='<div class="inspector-heading"><div><small>CONHECIMENTO OPERACIONAL</small><h2>Validar anotações</h2></div><button data-action="closeTools" aria-label="Fechar">&times;</button></div><p class="local-storage-note">Anotações armazenadas neste computador.</p><div id="pendingNotesList"><p class="empty">Carregando...</p></div>';
+  panel.innerHTML='<div class="inspector-heading"><div><small>CONHECIMENTO OPERACIONAL</small><h2>Validar anotações</h2></div><button data-action="closeTools" aria-label="Fechar">&times;</button></div><p class="local-storage-note">Disponível offline; sincroniza com o Neon quando houver conexão.</p><div id="pendingNotesList"><p class="empty">Carregando...</p></div>';
   try {
     const pending=await getPendingNotes(),target=$('pendingNotesList');if(!target)return;
     target.innerHTML=pending.length?pending.map(note=>{
@@ -126,7 +129,7 @@ async function renderNotesReview() {
       const approximate=area.insideCoverage?`${area.region.name} · ${cityName(area.city)}`:'Fora da cobertura cadastrada';
       return `<article class="review-note" data-note-id="${esc(note.id)}"><div class="note-state is-pending">Pendente de validação</div><h3>${esc(note.text)}</h3><p><b>Tipo:</b> ${esc(noteTypeLabel(note.type))}</p><p><b>Coordenadas:</b> ${note.latitude.toFixed(6)}, ${note.longitude.toFixed(6)}</p><p><b>Localização aproximada:</b> ${esc(approximate)}</p><p><b>Localidades conhecidas:</b> ${near.map(item=>`${esc(item.point.name)} (${distanceLabel(item.km)})`).join(' · ')}</p><div class="review-links"><button data-action="openNoteMap" data-id="${esc(note.id)}" data-lat="${note.latitude}" data-lng="${note.longitude}">Abrir no mapa</button><a href="${googleMapsPointUrl(note.latitude,note.longitude)}" target="_blank" rel="noopener noreferrer">Google Maps</a><button data-action="noteStreetView" data-lat="${note.latitude}" data-lng="${note.longitude}">Street View</button></div><div class="review-actions"><button data-action="validateOperationalNote" data-id="${esc(note.id)}">Validar</button><button data-action="editOperationalNote" data-id="${esc(note.id)}">Editar</button><button data-action="rejectOperationalNote" data-id="${esc(note.id)}">Rejeitar</button></div><div class="note-edit-host"></div></article>`;
     }).join(''):'<p class="empty">Nenhuma anotação pendente.</p>';
-  } catch(error) { $('pendingNotesList').innerHTML='<p class="empty">Não foi possível acessar as anotações deste computador.</p>'; }
+  } catch(error) { $('pendingNotesList').innerHTML='<p class="empty">Não foi possível acessar as anotações locais.</p>'; }
 }
 
 /** Guia: Exibe o conteúdo solicitado em interface de anotações (`openOperationalNote`). */

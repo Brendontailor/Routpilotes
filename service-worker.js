@@ -1,5 +1,5 @@
 /* Recurso RoutePilot: instalação e cache offline da PWA. */
-const CACHE_NAME='routepilot-shell-v36';
+const CACHE_NAME='routepilot-shell-v38';
 const CACHE_PREFIX='routepilot-shell-';
 const APP_SHELL=[
   './',
@@ -7,6 +7,7 @@ const APP_SHELL=[
   './css/routepilot.css',
   './vendor/leaflet.css',
   './vendor/leaflet.js',
+  './vendor/netlify-identity.js',
   './vendor/images/marker-icon.png',
   './vendor/images/marker-icon-2x.png',
   './vendor/images/marker-shadow.png',
@@ -27,6 +28,7 @@ const APP_SHELL=[
   './js/icons.js',
   './js/data-validation.js',
   './js/app.js',
+  './js/auth.js',
   './js/search.js',
   './js/work-order-search.js',
   './js/work-order-import.js',
@@ -38,6 +40,7 @@ const APP_SHELL=[
   './js/route-optimizer.js',
   './js/landmark-ranking.js',
   './js/location-share-core.js',
+  './js/cloud-sync.js',
   './js/address-corrections-storage.js',
   './js/local-routing.js',
   './js/geocoding-service.js',
@@ -106,5 +109,6 @@ self.addEventListener('fetch',event=>{
   if(request.method!=='GET')return;
   const url=new URL(request.url);
   if(url.origin!==self.location.origin)return;
+  if(url.pathname.startsWith('/api/')||url.pathname.startsWith('/.netlify/functions/'))return;
   event.respondWith(networkFirst(request,request.mode==='navigate'?'./index.html':null));
 });

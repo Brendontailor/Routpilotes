@@ -57,9 +57,11 @@ O RoutePilot atende Pelotas, Capão do Leão, Morro Redondo, Canguçu e Cerrito.
 - OpenStreetMap;
 - IndexedDB;
 - Service Worker;
-- Netlify.
+- Netlify;
+- Netlify Identity com login Google;
+- Neon Postgres para sincronização operacional autenticada.
 
-O projeto não exige framework, banco de dados, chave de API ou serviço pago. A função serverless do Netlify é opcional e serve apenas para proteger a chave do Geoapify quando esse complemento estiver habilitado.
+O mapa e os recursos geográficos continuam úteis sem login e sem banco. A área operacional usa login Google, Netlify Functions e Neon para que técnicos, OS, correções de endereço e agendas sejam iguais para os usuários autorizados. Preferências e anotações são privadas por conta, e o IndexedDB continua sendo a camada offline.
 
 ## Execução local
 
@@ -81,6 +83,15 @@ Para habilitar o Geoapify sem expor a chave no navegador, crie no Netlify a vari
 
 Sem essa variável, o sistema continua usando os 122.919 endereços locais, Photon e seleção manual no mapa.
 
+Para habilitar a área operacional:
+
+1. ative o Netlify Identity e o provedor Google no painel do site;
+2. configure `DATABASE_URL` com a conexão pooled do Neon;
+3. configure `ROUTEPILOT_ALLOWED_EMAILS` com os e-mails autorizados separados por vírgula;
+4. execute um novo deploy pelo Git.
+
+As funções também aceitam usuários com o papel `routepilot` ou `admin`. O endpoint protegido `/api/database-status` cria o esquema idempotente e confirma a conexão. A API `/api/data` sanitiza todas as coleções e nunca aceita login de cliente, senha, token ou chave de API.
+
 ZIPs de publicação são artefatos gerados e não fazem parte do código-fonte versionado.
 
 ## Estrutura
@@ -94,6 +105,7 @@ RoutePilot/
 |-- data/
 |-- js/
 |-- netlify/functions/
+|-- db/
 |-- vendor/
 |-- docs/
 |-- scripts/
@@ -123,8 +135,14 @@ RoutePilot/
 - `js/geocoding-providers.js`: adaptadores independentes do Photon e Geoapify;
 - `js/geocoding-service.js`: ordem local → Photon → Geoapify e fallback manual;
 - `netlify/functions/geocode.mjs`: proxy opcional que mantém a chave Geoapify fora do cliente;
+- `netlify/functions/operational-data.mjs`: API autenticada para registros compartilhados e privados;
+- `netlify/functions/database-status.mjs`: cria e verifica o esquema Neon sem revelar credenciais;
+- `netlify/functions/_lib/authorization.mjs`: autorização por e-mail ou papel validada no servidor;
+- `db/schema.sql`: referência versionada das tabelas do RoutePilot;
+- `js/auth.js`: estado de login Google e menu da conta;
+- `js/cloud-sync.js`: cliente único das funções protegidas;
 - `js/agenda-filters.js`: regras puras dos filtros visuais de técnicos;
-- `js/agenda-storage.js`: persistência local de técnicos, OS e agendas no IndexedDB;
+- `js/agenda-storage.js`: IndexedDB, fila offline e sincronização de técnicos, OS, agendas e filtros;
 - `js/agenda-ui.js` e `js/agenda-map.js`: fluxo desktop de criação de rotas, gaveta de pendências, transferência entre técnicos, recomendação e agenda diária;
 - `js/location-share-core.js` e `js/landmark-ranking.js`: mensagens geográficas e referências úteis;
 - `data/routing/`: malha viária e índice fragmentado de ruas e números, carregados sob demanda;
@@ -141,8 +159,9 @@ RoutePilot/
 - a comparação de dois locais usa a malha viária local; se ela não puder calcular um caminho, o sistema identifica claramente o fallback em linha reta;
 - a malha considera sentidos de circulação disponíveis na fonte, mas não substitui a conferência de bloqueios, obras ou condições atuais;
 - informações operacionais cadastradas precisam ser revisadas antes de serem tratadas como validadas;
-- as anotações ficam no IndexedDB do navegador e do computador atual enquanto não houver sincronização em nuvem;
-- técnicos, ordens de serviço e agendas também ficam somente no IndexedDB deste navegador, sem sincronização entre computadores;
+- a primeira autenticação e a sincronização entre computadores exigem internet;
+- alterações operacionais feitas offline entram em fila e chegam aos demais usuários somente após a reconexão;
+- conflitos usam `updatedAt`; não há uma tela de resolução manual para edições simultâneas do mesmo registro;
 - dados de acesso, fonte ou confiança desconhecidos permanecem como não informados.
 
 ## Autor
