@@ -294,3 +294,10 @@ test('filtro persistido pode ser carregado novamente por ID',async()=>{
   await store.put('settings',filter);const reloaded=(await store.all('settings')).find(item=>item.id===filter.id);
   assert.deepEqual(reloaded.technicianIds,['a']);assert.equal(reloaded.isDefault,true);
 });
+
+test('filtro de técnicos da rota preserva IDs válidos e fica separado da Agenda',async()=>{
+  global.structuredClone??=(value)=>JSON.parse(JSON.stringify(value));global.RoutePilotSchedulingConfig=config;
+  const storage=require('../js/agenda-storage.js'),store=storage.createMemoryStore(),routeFilter={id:'route_filter_1',type:'routeTechnicianFilter',name:'Equipe reduzida',technicianIds:['a','b','a'],isDefault:true};
+  await store.put('settings',routeFilter);const saved=await store.all('settings'),normalized=filters.normalizeFilter(saved[0],['a','b']);
+  assert.equal(saved[0].type,'routeTechnicianFilter');assert.deepEqual(normalized.technicianIds,['a','b']);assert.equal(typeof storage.getRouteTechnicianFilters,'function');
+});

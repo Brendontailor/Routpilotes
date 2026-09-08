@@ -29,8 +29,14 @@ const RoutePilotAgendaStorage=(()=>{
   function saveAgendaFilter(filter){return put('settings',{...filter,type:'agendaTechnicianFilter'});}
   /** Remove um filtro visual sem alterar técnicos, OS ou agendas. */
   function removeAgendaFilter(id){return remove('settings',id);}
+  /** Lista filtros reutilizáveis da equipe escolhida para gerar rotas. */
+  async function getRouteTechnicianFilters(){return (await all('settings')).filter(item=>item.type==='routeTechnicianFilter');}
+  /** Persiste um filtro de distribuição usando IDs estáveis dos técnicos. */
+  function saveRouteTechnicianFilter(filter){return put('settings',{...filter,type:'routeTechnicianFilter'});}
+  /** Remove somente o filtro da equipe de rota informado. */
+  function removeRouteTechnicianFilter(id){return remove('settings',id);}
   /** Adaptador em memória usado pelos testes da persistência. */
   function createMemoryStore(seed={}){const stores=Object.fromEntries(STORES.map(name=>[name,new Map((seed[name]||[]).map(item=>[item.id,structuredClone(item)]))]));return {async all(name){return [...stores[name].values()].map(value=>structuredClone(value));},async put(name,value){stores[name].set(value.id,structuredClone(value));return value;},async get(name,id){return structuredClone(stores[name].get(id));},async remove(name,id){stores[name].delete(id);}};}
-  return {all,put,remove,putMany,ensureDefaultTechnicians,ensureTechnicianDisplayOrder,orderTechnicians,getAgenda,saveAgenda,getAgendaFilters,saveAgendaFilter,removeAgendaFilter,createMemoryStore};
+  return {all,put,remove,putMany,ensureDefaultTechnicians,ensureTechnicianDisplayOrder,orderTechnicians,getAgenda,saveAgenda,getAgendaFilters,saveAgendaFilter,removeAgendaFilter,getRouteTechnicianFilters,saveRouteTechnicianFilter,removeRouteTechnicianFilter,createMemoryStore};
 })();
 if(typeof module==='object'&&module.exports)module.exports=RoutePilotAgendaStorage;

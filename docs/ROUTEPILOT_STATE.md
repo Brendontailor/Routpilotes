@@ -385,3 +385,13 @@ Ultima atualizacao: 2026-09-04
 - Técnicos que já possuem programação são preservados mesmo quando não participam da seleção usada para distribuir as novas OS.
 - Falhas de cálculo ou persistência mantêm a Agenda anterior e exibem uma mensagem clara.
 - Cache do Service Worker atualizado para `routepilot-shell-v35`.
+
+## 2026-09-08 — Filtros da equipe de distribuição
+
+- A seleção de técnicos usada para gerar rotas pode ser salva como um filtro com nome próprio.
+- Filtros de rota são separados dos filtros que controlam somente as colunas visíveis da Agenda.
+- O painel permite aplicar, atualizar com a seleção atual, definir como padrão e excluir um filtro.
+- O filtro padrão é carregado automaticamente ao abrir o RoutePilot; sem padrão, todos os técnicos ativos continuam selecionados.
+- Os vínculos usam IDs estáveis e ignoram técnicos que não estejam mais ativos.
+- Aplicar ou editar um filtro preserva os campos de uma OS que esteja sendo preenchida e invalida somente uma distribuição antiga.
+- Cache do Service Worker atualizado para `routepilot-shell-v36`.
