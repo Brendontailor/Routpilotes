@@ -28,3 +28,28 @@ test('rotas protegidas precedem o fallback de navegacao do Netlify',()=>{
   assert.match(config,/to = "\/\.netlify\/functions\/operational-data"/);
   assert.match(config,/to = "\/index\.html"\s+status = 200/);
 });
+
+test('sessao autenticada usa renovacao oficial ao retomar a aplicacao',()=>{
+  const entry=read('scripts/auth-provider-entry.mjs'),auth=read('js/auth.js');
+  assert.match(entry,/refreshSession/);
+  assert.match(auth,/SESSION_REFRESH_INTERVAL_MS/);
+  assert.match(auth,/visibilitychange/);
+  assert.match(auth,/window\.addEventListener\('online',refreshConnectedSession\)/);
+  assert.match(auth,/\['nf_jwt','nf_refresh'\]/);
+  assert.match(auth,/finally\{/);
+});
+
+test('Netlify envia cabecalhos defensivos sem liberar scripts externos',()=>{
+  const config=read('netlify.toml');
+  assert.match(config,/Content-Security-Policy = "[^"]*script-src 'self'/);
+  assert.match(config,/frame-ancestors 'none'/);
+  assert.match(config,/X-Content-Type-Options = "nosniff"/);
+  assert.match(config,/Permissions-Policy = "camera=\(\), microphone=\(\), geolocation=\(self\)"/);
+});
+
+test('comparacao aceita coordenadas validadas sem servico externo',()=>{
+  const comparison=read('js/comparison.js');
+  assert.match(comparison,/function coordinateComparisonEntry\(query\)/);
+  assert.match(comparison,/parseCoordinateQuery\(query\)/);
+  assert.match(comparison,/coordinateComparisonEntry\(compareDrafts\[slot\]\)\|\|await resolveLocalRouteAddress/);
+});

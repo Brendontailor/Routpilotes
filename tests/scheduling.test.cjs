@@ -177,6 +177,24 @@ test('reorganização manual preserva posições bloqueadas',()=>{
   assert.equal(result.schedules[0].items[1].order.id,blocked.id);
 });
 
+test('reorganização manual altera somente os técnicos selecionados',()=>{
+  const firstTech=technician('t1'),secondTech=technician('t2'),a=order(80),b=order(81),c=order(82),d=order(83),matrix=matrixFor([a,b,c,d]),optimizer=require('../js/route-optimizer.js').optimizeRoute;
+  matrix[a.id][b.id]=10;matrix[b.id][a.id]=10;matrix[a.id][c.id]=1;matrix[c.id][a.id]=1;matrix[c.id][b.id]=1;matrix[b.id][c.id]=1;
+  const first=core.recalculateSchedule([a,b,c],firstTech,'morning',{matrix}).schedule,second=core.recalculateSchedule([d],secondTech,'morning',{matrix}).schedule;
+  const result=core.reorganizeTechnicianSchedules([first,second],{matrix,optimizeRoute:optimizer,selectedTechnicianIds:['t2'],selectedShiftIds:['morning']});
+  assert.deepEqual(result.schedules[0].items.map(item=>item.order.id),[a.id,b.id,c.id]);
+  assert.equal(result.schedules[1],second);
+  assert.equal(result.changedSchedules,0);
+});
+
+test('distribuição pode ficar restrita a um técnico e um turno',()=>{
+  const first=technician('t1'),second=technician('t2'),morningOrder=order(90,'maintenance',{shift:'any'}),matrix=matrixFor([morningOrder]);
+  const result=core.allocateWorkOrders([morningOrder],[first,second],{matrix,selectedTechnicianIds:['t2'],selectedShiftIds:['afternoon']});
+  assert.equal(result.allocated,1);
+  assert.equal(result.schedules[0].technician.id,'t2');
+  assert.equal(result.schedules[0].shiftId,'afternoon');
+});
+
 test('sugestão de técnico considera distância, área, turno e capacidade',()=>{
   const pelotas=technician('pelotas',{serviceArea:'Pelotas',displayOrder:0}),morro=technician('morro',{serviceArea:'Morro Redondo',displayOrder:1});
   const current=order(30),candidate=order(31,'maintenance',{city:'Morro Redondo',locality:'Morro Redondo'}),matrix=matrixFor([current,candidate]);

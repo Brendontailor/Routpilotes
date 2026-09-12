@@ -111,11 +111,11 @@ function renderCompareSuggestions(slot) {
   const matches=comparePlaceMatches(compareDrafts[slot]);
   const exact=matches.filter(e=>(e.aliases||[e.name]).some(n=>clean(n)===clean(compareDrafts[slot])));
   const ambiguous=new Set(exact.map(e=>e.city)).size>1;
-  const addressDraft=/\d/.test(compareDrafts[slot]);
+  const coordinate=parseCoordinateQuery(compareDrafts[slot]),addressDraft=/\d/.test(compareDrafts[slot]);
   const panel=$('compareSuggestions'+slot);
   panel.hidden=!clean(compareDrafts[slot])||Boolean(state.compareStops[slot]);
   $('compareInput'+slot).setAttribute('aria-expanded',String(!panel.hidden));
-  panel.innerHTML=(ambiguous?'<p class="compare-ambiguity">Em qual cidade fica esse local?</p>':'')+(matches.length?matches.map(e=>`<button type="button" class="compare-suggestion" data-action="comparePlace" data-slot="${slot}" data-value="${esc(e.key)}"><strong>${esc(e.name)}</strong><small>${esc(cityName(e.city))} · ${esc(byRegion[e.region].name)}</small></button>`).join(''):addressDraft?'<p class="empty">Endereço exato: informe também a cidade e use “Calcular por estradas”.</p>':'<p class="empty">Nenhum bairro ou região encontrado.</p>');
+  panel.innerHTML=coordinate.matched?`<p class="empty">${coordinate.valid?'Coordenadas reconhecidas. Use “Calcular” para comparar o ponto.':'Coordenadas inválidas. Confira latitude e longitude.'}</p>`:(ambiguous?'<p class="compare-ambiguity">Em qual cidade fica esse local?</p>':'')+(matches.length?matches.map(e=>`<button type="button" class="compare-suggestion" data-action="comparePlace" data-slot="${slot}" data-value="${esc(e.key)}"><strong>${esc(e.name)}</strong><small>${esc(cityName(e.city))} · ${esc(byRegion[e.region].name)}</small></button>`).join(''):addressDraft?'<p class="empty">Endereço exato: informe também a cidade e use “Calcular por estradas”.</p>':'<p class="empty">Nenhum bairro ou região encontrado.</p>');
 }
 /** Guia: Atualiza o estado e a interface em comparação de locais e regiões (`updateCompareButton`). */
 function updateCompareButton() {
@@ -125,6 +125,14 @@ function updateCompareButton() {
 /** Guia: Registra um novo item em comparação de locais e regiões (`addTransientComparePlace`). */
 function addTransientComparePlace(entry){
   transientComparePlaces=[...transientComparePlaces.filter(item=>item.key!==entry.key),entry];compareCatalogCache=null;
+}
+/** Converte coordenadas digitadas em um ponto temporario validado da cobertura. */
+function coordinateComparisonEntry(query){
+  const parsed=parseCoordinateQuery(query);if(!parsed.matched)return null;
+  if(!parsed.valid)throw new Error('Coordenadas inválidas. Confira latitude e longitude.');
+  const region=regionAtCoordinates(parsed.lat,parsed.lng);if(!region)throw new Error('As coordenadas estão fora das regiões atendidas pelo RoutePilot.');
+  const id=`${parsed.lat.toFixed(6)},${parsed.lng.toFixed(6)}`;
+  return {kind:'coordinate',id,key:`coordinate:${id}`,name:`${parsed.lat.toFixed(6)}, ${parsed.lng.toFixed(6)}`,aliases:[query],city:region.city,region:region.id,context:`${cityName(region.city)} ${region.name}`,sub:'Coordenadas informadas',coords:[parsed.lat,parsed.lng],boundaryId:null};
 }
 /** Guia: Calcula o resultado solicitado em comparação de locais e regiões (`calculatePlaceComparison`). */
 async function calculatePlaceComparison() {
@@ -136,7 +144,7 @@ async function calculatePlaceComparison() {
     const stopKeys=[...(state.compareStops||[null,null])];
     for(let slot=0;slot<compareDrafts.length;slot++){
       if(comparePlace(stopKeys[slot]))continue;
-      const entry=await resolveLocalRouteAddress(compareDrafts[slot]);
+      const entry=coordinateComparisonEntry(compareDrafts[slot])||await resolveLocalRouteAddress(compareDrafts[slot]);
       if(token!==compareRequestToken)return;
       addTransientComparePlace(entry);stopKeys[slot]=entry.key;compareDrafts[slot]=entry.name;
     }
@@ -233,8 +241,8 @@ function renderComparison() {
   if(placeComparison()){
     const stops=comparisonStops();
     $('comparison').innerHTML='<div class="nav-top"><h2>Comparar locais</h2></div>'+modes+
-      compareDrafts.map((draft,i)=>`<div class="compare-stop"><label for="compareInput${i}"><span class="stop-letter stop-${i%6}">${dynamic?i+1:(i?'B':'A')}</span>${dynamic?`Local ${i+1}`:(i?'Destino':'Origem')}${dynamic&&compareDrafts.length>2?`<button type="button" class="compare-remove" data-action="compareRemoveStop" data-slot="${i}" aria-label="Remover local ${i+1}">&times;</button>`:''}</label><input id="compareInput${i}" data-compare-slot="${i}" value="${esc(draft)}" placeholder="Bairro, região ou rua, número, cidade" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="compareSuggestions${i}" aria-expanded="false"><div id="compareSelected${i}" class="compare-selected">${stops[i]?`${esc(cityName(stops[i].city))} · ${esc(byRegion[stops[i].region].name)}`:''}</div><div id="compareSuggestions${i}" class="compare-suggestions" hidden></div></div>`).join('')+
-      `${dynamic?`<button type="button" class="compare-add" data-action="compareAddStop" ${compareDrafts.length>=MAX_COMPARE_LOCATIONS?'disabled':''}>+ Adicionar local</button>`:''}<p class="compare-address-hint">Para endereço exato, informe rua, número e cidade.${dynamic?` Até ${MAX_COMPARE_LOCATIONS} locais.`:''}</p><button type="button" class="compare-calculate" id="compareCalculate" data-action="compareCalculate">${dynamic?'Calcular proximidade':'Calcular por estradas'}</button>`+
+      compareDrafts.map((draft,i)=>`<div class="compare-stop"><label for="compareInput${i}"><span class="stop-letter stop-${i%6}">${dynamic?i+1:(i?'B':'A')}</span>${dynamic?`Local ${i+1}`:(i?'Destino':'Origem')}${dynamic&&compareDrafts.length>2?`<button type="button" class="compare-remove" data-action="compareRemoveStop" data-slot="${i}" aria-label="Remover local ${i+1}">&times;</button>`:''}</label><input id="compareInput${i}" data-compare-slot="${i}" value="${esc(draft)}" placeholder="Endereço ou -31.7392, -52.3985" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="compareSuggestions${i}" aria-expanded="false"><div id="compareSelected${i}" class="compare-selected">${stops[i]?`${esc(cityName(stops[i].city))} · ${esc(byRegion[stops[i].region].name)}`:''}</div><div id="compareSuggestions${i}" class="compare-suggestions" hidden></div></div>`).join('')+
+      `${dynamic?`<button type="button" class="compare-add" data-action="compareAddStop" ${compareDrafts.length>=MAX_COMPARE_LOCATIONS?'disabled':''}>+ Adicionar local</button>`:''}<p class="compare-address-hint">Informe endereço completo ou latitude e longitude separadas por vírgula.${dynamic?` Até ${MAX_COMPARE_LOCATIONS} locais.`:''}</p><button type="button" class="compare-calculate" id="compareCalculate" data-action="compareCalculate">${dynamic?'Calcular proximidade':'Calcular por estradas'}</button>`+
       `<div class="compare-controls"><label for="compareRadius">Perto até <input id="compareRadius" type="number" min="1" max="100" step="1" value="${compareRadiusKm}"> km</label><button data-action="compareClear">Limpar</button></div><div id="compareResults" aria-live="polite"></div>`;
     updateCompareButton();renderCompareResults();return;
   }

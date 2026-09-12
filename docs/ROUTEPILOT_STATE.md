@@ -431,3 +431,19 @@ Ultima atualizacao: 2026-09-08
 - Horários fixos, janelas, bloqueios e posições fixas são preservados. Uma rota incompatível permanece inalterada e é informada no resultado.
 - A Agenda reorganizada é salva pelo mesmo armazenamento compartilhado já usado pelas demais alterações.
 - Cache do Service Worker atualizado para `routepilot-shell-v40`.
+
+## 2026-09-12 — Comparação por coordenadas e recálculo seletivo
+
+- A comparação de locais aceita latitude e longitude diretamente nos campos de origem e destino, valida os limites e exige que o ponto pertença a uma região atendida.
+- Duas coordenadas usam o mesmo cálculo por estradas da malha local; o RoutePilot só recorre à distância direta quando a rota local não está disponível.
+- O recálculo manual da Agenda permite selecionar um ou vários técnicos e incluir somente manhã, somente tarde ou os dois turnos.
+- O modo `Ordenar cada rota` preserva técnico e turno; o modo `Redistribuir entre selecionados` pode trocar OS livres somente dentro do escopo escolhido.
+- Toda alteração passa por uma prévia com mudanças de técnico, turno, horário e distância antes de ser salva na Agenda compartilhada.
+- Capacidade, duração de um ou dois tempos, técnico obrigatório, prioridade, horários fixos, janelas e área-base continuam sendo avaliados pelo agendador.
+- Rotas com OS bloqueada ou posição fixa permanecem inteiras e inalteradas durante a redistribuição entre técnicos. Uma redistribuição que deixe qualquer OS sem encaixe é recusada.
+- Rotas e turnos fora da seleção permanecem intocados, identificados por IDs estáveis de técnico e turno.
+- O cliente oficial do Netlify Identity continua renovando tokens automaticamente e agora também solicita renovação silenciosa ao retomar a aba ou recuperar a conexão, sem encerrar a sessão por uma falha temporária de rede.
+- A ação de sair bloqueia a interface e remove os cookies locais mesmo se o serviço de logout estiver temporariamente indisponível.
+- A proteção real dos dados permanece nas Netlify Functions: cada chamada exige sessão válida e autorização por e-mail ou papel; credenciais do Neon continuam exclusivas do servidor.
+- O Netlify passou a enviar CSP, HSTS, proteção contra enquadramento, bloqueio de MIME incorreto, política de referência e restrições de câmera/microfone; scripts externos permanecem bloqueados.
+- Cache do Service Worker atualizado para `routepilot-shell-v41`.

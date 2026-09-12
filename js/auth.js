@@ -1,7 +1,8 @@
 /* Login Google do RoutePilot, isolado da Agenda, do mapa e da persistencia. */
 const RoutePilotAuth=(()=>{
-  let user=null,initialized=false,menuOpen=false,providerPromise=null,accessState='checking',accessMessage='';
+  let user=null,initialized=false,menuOpen=false,providerPromise=null,accessState='checking',accessMessage='',lastSessionRefresh=0,sessionRefreshPromise=null;
   const listeners=new Set();
+  const SESSION_REFRESH_INTERVAL_MS=5*60*1000;
 
   /** Carrega a biblioteca local de identidade somente em HTTPS, como exigido pelo provedor. */
   function loadProvider(){
@@ -81,8 +82,21 @@ const RoutePilotAuth=(()=>{
 
   /** Encerra a sessao e fecha imediatamente as areas protegidas. */
   async function signOut(){
-    try{await globalThis.RoutePilotIdentityProvider?.logout();user=null;menuOpen=false;globalThis.RoutePilotAgenda?.open?.('map');notify();}
-    catch(error){showToast('Não foi possível sair agora');}
+    try{await globalThis.RoutePilotIdentityProvider?.logout();}
+    catch(error){showToast('A sessão foi encerrada neste computador, mas o servidor não respondeu.');}
+    finally{
+      ['nf_jwt','nf_refresh'].forEach(name=>{document.cookie=`${name}=; path=/; secure; samesite=lax; expires=Thu, 01 Jan 1970 00:00:00 GMT`;});
+      user=null;menuOpen=false;globalThis.RoutePilotAgenda?.open?.('map');notify();
+    }
+  }
+
+  /** Renova silenciosamente o token ao retomar a aba sem desconectar por falha de rede. */
+  async function refreshConnectedSession(){
+    if(!user||Date.now()-lastSessionRefresh<SESSION_REFRESH_INTERVAL_MS)return;
+    if(sessionRefreshPromise)return sessionRefreshPromise;
+    lastSessionRefresh=Date.now();
+    sessionRefreshPromise=(async()=>{try{const provider=await loadProvider();await provider?.refreshSession?.();}catch(error){console.warn('Não foi possível renovar a sessão agora',error?.message||error);}finally{sessionRefreshPromise=null;}})();
+    return sessionRefreshPromise;
   }
 
   /** Registra eventos do pequeno menu de conta apenas uma vez. */
@@ -93,6 +107,8 @@ const RoutePilotAuth=(()=>{
     gateButton?.addEventListener('click',signIn);
     menu.addEventListener('click',event=>{if(event.target.closest('[data-auth-action="logout"]'))signOut();});
     document.addEventListener('click',event=>{if(!menuOpen||event.target.closest('#authButton,#authMenu'))return;menuOpen=false;render();});
+    window.addEventListener('online',refreshConnectedSession);
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshConnectedSession();});
   }
 
   /** Permite que a persistencia atualize seu estado apos login ou logout. */

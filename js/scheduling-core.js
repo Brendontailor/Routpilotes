@@ -76,11 +76,12 @@
     return {...placement,travelKm:previous?matrixDistance(matrix,previous,order):0,travelMinutes:travel};
   }
   /** Distribui OS entre técnicos ativos sem ultrapassar carga ou horários. */
-  function allocateWorkOrders(orders,technicians,{matrix={},selectedTechnicianIds=null,settings=OPERATIONAL_SETTINGS,initialSchedules=[]}={}){
+  function allocateWorkOrders(orders,technicians,{matrix={},selectedTechnicianIds=null,selectedShiftIds=null,settings=OPERATIONAL_SETTINGS,initialSchedules=[]}={}){
     const selected=new Set(selectedTechnicianIds||technicians.filter(item=>item.active).map(item=>item.id));
+    const selectedShifts=new Set(selectedShiftIds||Object.keys(SHIFTS).filter(id=>id!=='any'));
     const available=technicians.filter(item=>item.active&&selected.has(item.id));
     const schedules=new Map(),unallocated=[];
-    available.forEach(technician=>(technician.defaultShifts||[]).forEach(shiftId=>schedules.set(`${technician.id}:${shiftId}`,{technician,shiftId,items:[],load:0,distanceKm:0})));
+    available.forEach(technician=>(technician.defaultShifts||[]).filter(shiftId=>selectedShifts.has(shiftId)).forEach(shiftId=>schedules.set(`${technician.id}:${shiftId}`,{technician,shiftId,items:[],load:0,distanceKm:0})));
     initialSchedules.forEach(initial=>{
       const target=schedules.get(`${initial.technician.id}:${initial.shiftId}`);if(!target)return;
       target.items=(initial.items||[]).map(item=>({...item}));target.load=calculateLoad(target.items.map(item=>item.order));target.distanceKm=Number(initial.distanceKm)||0;
@@ -168,10 +169,12 @@
     return result.valid?{valid:true,order,schedule:result.schedule}:result;
   }
   /** Reorganiza cada rota sem transferir atendimentos entre tecnicos ou turnos. */
-  function reorganizeTechnicianSchedules(schedules,{matrix={},optimizeRoute,settings=OPERATIONAL_SETTINGS}={}){
+  function reorganizeTechnicianSchedules(schedules,{matrix={},optimizeRoute,settings=OPERATIONAL_SETTINGS,selectedTechnicianIds=null,selectedShiftIds=null}={}){
     if(typeof optimizeRoute!=='function')throw new Error('ROUTE_OPTIMIZER_REQUIRED');
+    const selectedTechnicians=selectedTechnicianIds?new Set(selectedTechnicianIds):null,selectedShifts=selectedShiftIds?new Set(selectedShiftIds):null;
     let changedSchedules=0,failedSchedules=0;
     const reorganized=(Array.isArray(schedules)?schedules:[]).map(schedule=>{
+      if(selectedTechnicians&&!selectedTechnicians.has(schedule.technician.id)||selectedShifts&&!selectedShifts.has(schedule.shiftId))return schedule;
       const orders=(schedule.items||[]).map(item=>item.order);
       if(orders.length<2)return schedule;
       const occupied=new Set(),lockedPositions={};let invalidLocks=false;
