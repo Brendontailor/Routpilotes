@@ -460,3 +460,5 @@ Ultima atualizacao: 2026-09-08
 - O modo escuro é salvo localmente e adapta interface, Agenda, modais e tiles do OpenStreetMap com contraste próprio; a impressão permanece clara.
 - Nenhum limite, endereço ou coordenada estrutural foi alterado nesta etapa. A auditoria municipal dos territórios de Pelotas permanece separada para evitar correções sem fonte verificável.
 - Cache do Service Worker atualizado para `routepilot-shell-v42`; respostas autenticadas continuam fora do cache.
+- Se o navegador encerrar somente os cookies de sessão, o cliente recompõe os cookies a partir da sessão persistida oficial do Netlify Identity antes de validar o usuário, evitando exigir novo login a cada abertura.
+- Cache do Service Worker atualizado para `routepilot-shell-v43`.

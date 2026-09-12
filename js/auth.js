@@ -4,12 +4,26 @@ const RoutePilotAuth=(()=>{
   const listeners=new Set();
   const SESSION_REFRESH_INTERVAL_MS=5*60*1000;
   const REMEMBER_SESSION_SECONDS=30*24*60*60;
+  const IDENTITY_STORAGE_KEY='gotrue.user';
 
   /** Le um cookie de autenticacao sem expor seu valor fora deste modulo. */
-  function authCookie(name){const match=document.cookie.match(new RegExp(`(?:^|; )${name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}=([^;]*)`));return match?.[1]||'';}
+  function authCookie(name){const match=document.cookie.match(new RegExp(`(?:^|; )${name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}=([^;]*)`));if(!match)return '';try{return decodeURIComponent(match[1]);}catch{return match[1];}}
+
+  /** Grava um token de sessao persistente sem registra-lo nem expo-lo a outros modulos. */
+  function persistAuthCookie(name,value){if(!value||location.protocol!=='https:')return;document.cookie=`${name}=${encodeURIComponent(value)}; path=/; secure; samesite=lax; max-age=${REMEMBER_SESSION_SECONDS}`;}
 
   /** Mantem a sessao renovavel por 30 dias neste computador. */
-  function rememberSessionCookies(){if(location.protocol!=='https:')return;['nf_jwt','nf_refresh'].forEach(name=>{const value=authCookie(name);if(value)document.cookie=`${name}=${value}; path=/; secure; samesite=lax; max-age=${REMEMBER_SESSION_SECONDS}`;});}
+  function rememberSessionCookies(){['nf_jwt','nf_refresh'].forEach(name=>persistAuthCookie(name,authCookie(name)));}
+
+  /** Restaura os cookies quando o navegador preservou a sessao oficial no armazenamento local. */
+  function restorePersistedSessionCookies(){
+    if(location.protocol!=='https:'||authCookie('nf_jwt'))return;
+    try{
+      const saved=JSON.parse(localStorage.getItem(IDENTITY_STORAGE_KEY)||'null'),token=saved?.token;
+      if(typeof token?.access_token!=='string'||typeof token?.refresh_token!=='string')return;
+      persistAuthCookie('nf_jwt',token.access_token);persistAuthCookie('nf_refresh',token.refresh_token);
+    }catch{}
+  }
 
   /** Consulta capacidades calculadas pelo servidor para esta conta. */
   async function loadPermissions(){
@@ -87,6 +101,7 @@ const RoutePilotAuth=(()=>{
     let provider;try{provider=await loadProvider();}catch(error){accessState='required';accessMessage='Não foi possível carregar o login. Atualize a página e tente novamente.';render();return null;}
     if(!provider){accessState='required';accessMessage='Abra a versão HTTPS publicada no Netlify para entrar.';render();return null;}
     try{await provider.handleAuthCallback();rememberSessionCookies();}catch(error){accessState='required';accessMessage='O retorno do Google não pôde ser concluído. Tente entrar novamente.';console.warn('Não foi possível concluir o login',error?.message||error);}
+    restorePersistedSessionCookies();
     user=await provider.getUser();
     if(user){await provider.refreshSession?.();rememberSessionCookies();user={...user,permissions:await loadPermissions()};}
     provider.onAuthChange(async (_event,nextUser)=>{user=nextUser?{...nextUser,permissions:await loadPermissions()}:null;if(nextUser)rememberSessionCookies();menuOpen=false;notify();});

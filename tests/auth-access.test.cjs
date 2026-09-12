@@ -2,6 +2,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
+const vm=require('node:vm');
 
 const root=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
@@ -39,6 +40,31 @@ test('sessao autenticada usa renovacao oficial ao retomar a aplicacao',()=>{
   assert.match(auth,/finally\{/);
   assert.match(auth,/REMEMBER_SESSION_SECONDS=30\*24\*60\*60/);
   assert.match(auth,/max-age=\$\{REMEMBER_SESSION_SECONDS\}/);
+  assert.match(auth,/IDENTITY_STORAGE_KEY='gotrue\.user'/);
+  assert.match(auth,/restorePersistedSessionCookies\(\);\s*user=await provider\.getUser\(\)/);
+  assert.match(auth,/token\?\.access_token/);
+});
+
+test('sessao persistida restaura os cookies antes de consultar o usuario',async()=>{
+  const cookies=new Map(),writes=[];
+  const document={
+    get cookie(){return [...cookies].map(([name,value])=>`${name}=${value}`).join('; ');},
+    set cookie(value){writes.push(value);const pair=value.split(';',1)[0],separator=pair.indexOf('='),name=pair.slice(0,separator),content=pair.slice(separator+1);cookies.set(name,content);},
+    getElementById(){return null;},querySelector(){return null;},querySelectorAll(){return [];},addEventListener(){}
+  };
+  let cookieAtGetUser='';
+  const context={
+    document,location:{protocol:'https:'},localStorage:{getItem:key=>key==='gotrue.user'?JSON.stringify({token:{access_token:'header.payload.signature',refresh_token:'refresh-token'}}):null},
+    fetch:async()=>({ok:true,json:async()=>({permissions:{canUseSharedOperations:true}})}),console,URL,
+    RoutePilotIdentityProvider:{handleAuthCallback:async()=>null,getUser:async()=>{cookieAtGetUser=document.cookie;return{id:'user-1',email:'user@example.com'};},refreshSession:async()=>null,onAuthChange(){}},
+    setTimeout,clearTimeout
+  };
+  vm.runInNewContext(read('js/auth.js'),context);
+  const user=await context.RoutePilotAuth.init();
+  assert.equal(user.id,'user-1');
+  assert.match(cookieAtGetUser,/nf_jwt=header\.payload\.signature/);
+  assert.match(cookieAtGetUser,/nf_refresh=refresh-token/);
+  assert.ok(writes.some(value=>/nf_jwt=.*max-age=2592000/.test(value)));
 });
 
 test('permissoes geograficas sao consultadas no servidor',()=>{
