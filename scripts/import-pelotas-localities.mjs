@@ -43,7 +43,8 @@ function buildOutput(features){
     `for(let index=points.length-1;index>=0;index--){if(points[index].city==='Pelotas'&&['pelotas_urbana','laranjal'].includes(points[index].region)&&points[index].kind==='bairro')points.splice(index,1);}\n`+
     `for(let index=boundaries.features.length-1;index>=0;index--){const item=boundaries.features[index].properties;if(item.city==='Pelotas'&&item.category==='bairro')boundaries.features.splice(index,1);}\n`+
     `pelotasOfficialLocalities.features.forEach(feature=>{const item=feature.properties;boundaries.features.push(feature);points.push({id:item.pointId,name:item.name,aliases:[item.officialCode,item.macroRegion],city:item.city,region:item.region,lat:item.point[0],lon:item.point[1],roads:'',kind:'bairro',boundaryId:item.id,source:item.source,sourceUrl:item.sourceUrl});});\n`+
-    `const validPointIds=new Set(points.map(point=>point.id));points.forEach(point=>{if(Array.isArray(point.nearby))point.nearby=point.nearby.filter(pointId=>validPointIds.has(pointId));});\n`;
+    `const validPointIds=new Set(points.map(point=>point.id));points.forEach(point=>{if(Array.isArray(point.nearby))point.nearby=point.nearby.filter(pointId=>validPointIds.has(pointId));});\n`+
+    `boundaries.features.forEach(feature=>{if(feature.properties.pointId&&!validPointIds.has(feature.properties.pointId))feature.properties.pointId=null;});\n`;
 }
 
 const features=await loadOfficialFeatures();

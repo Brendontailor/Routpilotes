@@ -486,4 +486,5 @@ Ultima atualizacao: 2026-09-12
 - Usuários comuns podem editar somente suas próprias anotações, não podem validar/rejeitar e enxergam observações de outras contas apenas depois da validação.
 - As regras de autoria e moderação são aplicadas nas Netlify Functions; ocultar a aba no frontend não é usado como barreira de segurança.
 - O tema claro é o padrão, a tela de login continua clara, o tema escuro recebeu contraste reforçado e o mapa-base mantém sua aparência original.
-- Cache do Service Worker atualizado para `routepilot-shell-v45`.
+- Referências de contornos amplos aos antigos marcadores aproximados são removidas na importação; o contorno continua disponível sem apontar para uma localidade inexistente.
+- Cache do Service Worker atualizado para `routepilot-shell-v46`.
