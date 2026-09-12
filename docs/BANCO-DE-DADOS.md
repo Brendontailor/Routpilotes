@@ -15,12 +15,15 @@ O mapa e os dados geográficos estáticos continuam funcionando sem login. A ár
 - técnicos;
 - ordens de serviço;
 - agendas diárias;
-- correções manuais de endereço sem dados de cliente.
+- pontos, ruas, bairros e endereços aprovados pelo administrador geográfico.
 
 ## Dados privados por usuário
 
 - filtros e preferências;
 - anotações operacionais vinculadas a coordenadas.
+- ajustes geográficos pessoais ainda não publicados.
+
+Solicitações de alteração ficam em escopo de revisão. Cada usuário enxerga as próprias solicitações; o administrador geográfico enxerga todas, pode aprovar ou rejeitar e somente uma aprovação cria uma feição compartilhada.
 
 Anotações nunca são ligadas diretamente a clientes e sua validação não modifica automaticamente o mapa estrutural.
 
@@ -30,9 +33,10 @@ Anotações nunca são ligadas diretamente a clientes e sua validação não mod
 2. Ative o provedor externo Google.
 3. Configure `DATABASE_URL` com a conexão pooled do Neon.
 4. Configure `ROUTEPILOT_ALLOWED_EMAILS` com os e-mails permitidos, separados por vírgula.
-5. Faça um novo deploy pelo Git.
+5. Configure `ROUTEPILOT_MAP_ADMIN_EMAILS` com `brendontailor040@gmail.com`.
+6. Faça um novo deploy pelo Git.
 
-Usuários com papel `routepilot` ou `admin` também são autorizados. O Geoapify é independente e usa a variável opcional `GEOAPIFY_API_KEY`.
+Usuários com papel `routepilot` podem operar a agenda. Somente o e-mail configurado, ou os papéis `map-admin`/`admin`, podem publicar e revisar o mapa. O Geoapify é independente e usa a variável opcional `GEOAPIFY_API_KEY`.
 
 Nunca grave valores dessas variáveis em arquivos do projeto, commits ou código enviado ao navegador.
 
@@ -43,11 +47,12 @@ Nunca grave valores dessas variáveis em arquivos do projeto, commits ou código
 - `netlify/functions/_lib/authorization.mjs`: autenticação e autorização no servidor;
 - `netlify/functions/database-status.mjs`: diagnóstico protegido e sem segredos;
 - `netlify/functions/operational-data.mjs`: leitura, sanitização, gravação e tombstones;
+- `netlify/functions/session.mjs`: capacidades da conta calculadas no servidor;
 - `js/auth.js`: login e sessão no navegador;
 - `js/cloud-sync.js`: cliente único da API protegida;
 - `js/agenda-storage.js`: IndexedDB e fila offline da operação;
 - `js/notes-storage.js`: anotações privadas e estados de sincronização;
-- `js/address-corrections-storage.js`: correções geográficas compartilhadas.
+- `js/address-corrections-storage.js`: ajustes privados, solicitações e feições aprovadas.
 
 ## Verificação após o deploy
 
@@ -71,4 +76,4 @@ Conflitos usam `updatedAt`: a versão mais recente vence. Ainda não existe uma 
 
 ## Segurança
 
-A função aceita somente coleções conhecidas, deriva a identidade da sessão, aplica autorização no servidor, descarta campos não permitidos, limita o tamanho das requisições e usa consultas parametrizadas. Senhas, logins de clientes, tokens, chaves e credenciais nunca são aceitos como parte das OS.
+A função aceita somente coleções conhecidas, deriva a identidade da sessão, aplica autorização por coleção no servidor, descarta campos não permitidos, limita o tamanho das requisições e usa consultas parametrizadas. Senhas, logins de clientes, tokens, chaves e credenciais nunca são aceitos como parte das OS. A interface não é a barreira de segurança: uma tentativa direta de publicar no mapa por conta comum recebe `403`.

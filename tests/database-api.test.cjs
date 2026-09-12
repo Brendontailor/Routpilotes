@@ -39,3 +39,18 @@ test('preferencia privada aceita IDs estaveis de tecnicos',async()=>{
   assert.deepEqual(record.technicianIds,['tecnico_1','tecnico_2']);
   assert.equal(record.isDefault,true);
 });
+
+test('solicitacao comum permanece pendente e usa a identidade autenticada',async()=>{
+  const {sanitizeMapChangeRequest}=await apiPromise,user={id:'user_1',email:'user@example.com'};
+  const record=sanitizeMapChangeRequest({id:'request_1',entityType:'neighborhood',name:'Bairro conferido',city:'Pelotas',coords:[-31.7,-52.3],status:'approved',requestedBy:'outro_usuario'},user);
+  assert.equal(record.status,'pending');
+  assert.equal(record.requestedBy,'user_1');
+  assert.deepEqual(record.geometry,{type:'Point',coordinates:[-52.3,-31.7]});
+});
+
+test('administrador pode aprovar uma feicao sem campos de cliente',async()=>{
+  const {sanitizeMapFeature}=await apiPromise,record=sanitizeMapFeature({id:'map_feature_1',entityType:'street',name:'Rua Conferida',city:'Pelotas',geometry:{type:'Point',coordinates:[-52.3,-31.7]},customerName:'Nao armazenar'}, {id:'admin_1'});
+  assert.equal(record.status,'approved');
+  assert.equal(record.approvedBy,'admin_1');
+  assert.equal(Object.hasOwn(record,'customerName'),false);
+});

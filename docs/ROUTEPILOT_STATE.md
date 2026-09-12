@@ -447,3 +447,16 @@ Ultima atualizacao: 2026-09-08
 - A proteção real dos dados permanece nas Netlify Functions: cada chamada exige sessão válida e autorização por e-mail ou papel; credenciais do Neon continuam exclusivas do servidor.
 - O Netlify passou a enviar CSP, HSTS, proteção contra enquadramento, bloqueio de MIME incorreto, política de referência e restrições de câmera/microfone; scripts externos permanecem bloqueados.
 - Cache do Service Worker atualizado para `routepilot-shell-v41`.
+
+## 2026-09-12 — Administração geográfica, sessão persistente e tema escuro
+
+- `brendontailor040@gmail.com` é o administrador geográfico padrão. A variável `ROUTEPILOT_MAP_ADMIN_EMAILS` permite declarar essa autorização no Netlify sem confiar em controles do frontend.
+- Somente o administrador pode publicar pontos, endereços, ruas ou bairros no mapa compartilhado e aprovar/rejeitar solicitações de outros usuários.
+- Ajustes comuns passaram a ser privados por conta. Um usuário pode mantê-los somente para si ou enviá-los ao escopo de revisão; aprovar uma solicitação cria uma feição compartilhada sanitizada.
+- As novas coleções `mapChangeRequests` e `mapFeatures` usam IDs estáveis, identidade derivada da sessão e autorização por coleção nas Netlify Functions.
+- A sessão renovável passa a ser lembrada por até 30 dias no mesmo computador. `Sair` remove cookies e armazenamento da sessão; expiração ou revogação continuam exigindo novo login.
+- Contas autenticadas sem autorização operacional podem usar o mapa e dados privados, mas não recebem acesso à Agenda compartilhada.
+- Os cartões das cinco cidades exibem miniaturas produzidas dos contornos geográficos já cadastrados, sem imagens ou APIs externas.
+- O modo escuro é salvo localmente e adapta interface, Agenda, modais e tiles do OpenStreetMap com contraste próprio; a impressão permanece clara.
+- Nenhum limite, endereço ou coordenada estrutural foi alterado nesta etapa. A auditoria municipal dos territórios de Pelotas permanece separada para evitar correções sem fonte verificável.
+- Cache do Service Worker atualizado para `routepilot-shell-v42`; respostas autenticadas continuam fora do cache.

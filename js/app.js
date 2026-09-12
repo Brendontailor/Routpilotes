@@ -29,6 +29,15 @@ const ruralPoint=p=>p&&['localidade','distrito','centro','estrada'].includes(p.k
 /** Guia: Executa uma etapa auxiliar em inicialização da aplicação (`streetNames`). */
 const streetNames = p => p.roads.split(',').map(s => s.trim()).filter(Boolean);
 const boundaryById=Object.fromEntries(boundaries.features.map(f=>[f.properties.id,f]));
+/** Desenha uma miniatura cartografica a partir dos limites reais cadastrados da cidade. */
+function cityMapThumbnail(city){
+  let rings=boundaries.features.filter(feature=>feature.properties.city===city).flatMap(feature=>feature.geometry.type==='Polygon'?[feature.geometry.coordinates[0]]:feature.geometry.coordinates.map(polygon=>polygon[0])).filter(ring=>ring.length>2);
+  if(!rings.length)rings=regions.filter(region=>region.city===city&&Array.isArray(region.polygon)).map(region=>region.polygon.map(([lat,lng])=>[lng,lat]));
+  if(!rings.length)return iconSvg('pin');
+  const all=rings.flat(),xs=all.map(point=>point[0]),ys=all.map(point=>point[1]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),width=Math.max(maxX-minX,.0001),height=Math.max(maxY-minY,.0001),scale=Math.min(38/width,38/height),offsetX=(48-width*scale)/2,offsetY=(48-height*scale)/2;
+  const paths=rings.map(ring=>{const step=Math.max(1,Math.ceil(ring.length/36)),sampled=ring.filter((_,index)=>index%step===0),last=ring[ring.length-1];if(sampled[sampled.length-1]!==last)sampled.push(last);return sampled.map((point,index)=>`${index?'L':'M'}${(offsetX+(point[0]-minX)*scale).toFixed(1)} ${(offsetY+(maxY-point[1])*scale).toFixed(1)}`).join(' ')+' Z';}).join(' ');
+  return `<svg class="city-map-thumbnail" viewBox="0 0 48 48" aria-hidden="true"><path d="${paths}"></path><circle cx="24" cy="24" r="2.5"></circle></svg>`;
+}
 /** Guia: Obtém o valor atual em inicialização da aplicação (`boundaryForPoint`). */
 const boundaryForPoint=p=>p && boundaries.features.find(f=>f.properties.pointId===p.id);
 /** Guia: Executa uma etapa auxiliar em inicialização da aplicação (`linkedPoint`). */

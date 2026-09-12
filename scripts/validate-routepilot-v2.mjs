@@ -140,7 +140,7 @@ if(manifest?.start_url!=='./')failures.push(`unexpected manifest start_url: ${ma
 const serviceWorker=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
 const shellAssets=[...serviceWorker.matchAll(/\s+'\.\/([^']+)'/g)].map(match=>match[1]);
 for(const asset of shellAssets)if(!fs.existsSync(path.resolve(root,asset)))failures.push(`missing service worker asset: ${asset}`);
-if(!serviceWorker.includes("routepilot-shell-v41"))failures.push('service worker cache is not v41');
+if(!serviceWorker.includes("routepilot-shell-v42"))failures.push('service worker cache is not v42');
 if(/tile\.openstreetmap\.org/.test(serviceWorker))failures.push('service worker must not mass-cache OSM tiles');
 if(!serviceWorker.includes("url.pathname.startsWith('/api/')"))failures.push('service worker must bypass database API responses');
 

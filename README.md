@@ -47,6 +47,9 @@ O RoutePilot atende Pelotas, Capão do Leão, Morro Redondo, Canguçu e Cerrito.
 - revisão e validação das anotações sem alterar o mapa automaticamente;
 - ferramenta de revisão da qualidade dos dados;
 - instalação como PWA e impressão em A4.
+- miniaturas cartográficas das cidades geradas dos contornos cadastrados;
+- modo claro/escuro persistente com mapa adaptado para alto contraste;
+- ajustes geográficos privados e solicitações de publicação moderadas.
 
 ## Tecnologias
 
@@ -61,7 +64,7 @@ O RoutePilot atende Pelotas, Capão do Leão, Morro Redondo, Canguçu e Cerrito.
 - Netlify Identity com login Google;
 - Neon Postgres para sincronização operacional autenticada.
 
-O acesso ao RoutePilot exige login Google. Depois da autenticação, os recursos geográficos continuam independentes do banco, enquanto Netlify Functions e Neon mantêm técnicos, OS, correções de endereço e agendas iguais para os usuários autorizados. Preferências e anotações são privadas por conta, e o IndexedDB continua sendo a camada offline.
+O acesso ao RoutePilot exige login Google. A sessão é lembrada por até 30 dias no mesmo computador e é encerrada imediatamente ao usar `Sair`. Depois da autenticação, os recursos geográficos continuam independentes do banco, enquanto Netlify Functions e Neon mantêm técnicos, OS e agendas iguais para os operadores autorizados. Preferências, anotações e ajustes geográficos privados ficam isolados por conta, e o IndexedDB continua sendo a camada offline.
 
 ## Execução local
 
@@ -89,9 +92,10 @@ Para habilitar a área operacional:
 2. confirme em Identity que a URL principal do site aponta para o domínio de produção atual;
 3. configure `DATABASE_URL` com a conexão pooled do Neon;
 4. configure `ROUTEPILOT_ALLOWED_EMAILS` com os e-mails autorizados separados por vírgula;
-5. execute um novo deploy pelo Git.
+5. configure `ROUTEPILOT_MAP_ADMIN_EMAILS` com `brendontailor040@gmail.com` para a administração exclusiva do mapa;
+6. execute um novo deploy pelo Git.
 
-As funções também aceitam usuários com o papel `routepilot` ou `admin`. O endpoint protegido `/api/database-status` cria o esquema idempotente e confirma a conexão. A API `/api/data` sanitiza todas as coleções e nunca aceita login de cliente, senha, token ou chave de API.
+O papel `routepilot` libera a operação compartilhada; `map-admin` ou `admin` também libera a administração geográfica. Usuários autenticados sem esses papéis continuam limitados ao mapa, aos próprios dados e às solicitações de aprovação. O endpoint protegido `/api/database-status` cria o esquema idempotente e confirma a conexão. A API `/api/data` sanitiza todas as coleções e nunca aceita login de cliente, senha, token ou chave de API.
 
 ZIPs de publicação são artefatos gerados e não fazem parte do código-fonte versionado.
 
@@ -141,6 +145,7 @@ RoutePilot/
 - `netlify/functions/_lib/authorization.mjs`: autorização por e-mail ou papel validada no servidor;
 - `db/schema.sql`: referência versionada das tabelas do RoutePilot;
 - `js/auth.js`: estado de login Google e menu da conta;
+- `js/theme.js`: modo claro/escuro persistido localmente;
 - `js/cloud-sync.js`: cliente único das funções protegidas;
 - `js/agenda-filters.js`: regras puras dos filtros visuais de técnicos;
 - `js/agenda-storage.js`: IndexedDB, fila offline e sincronização de técnicos, OS, agendas e filtros;
@@ -164,6 +169,7 @@ RoutePilot/
 - alterações operacionais feitas offline entram em fila e chegam aos demais usuários somente após a reconexão;
 - conflitos usam `updatedAt`; não há uma tela de resolução manual para edições simultâneas do mesmo registro;
 - dados de acesso, fonte ou confiança desconhecidos permanecem como não informados.
+- alterações estruturais de bairro, rua ou ponto só se tornam compartilhadas depois da aprovação do administrador geográfico.
 
 ## Autor
 

@@ -30,11 +30,20 @@ export function ensureSchema(sql=getDatabase()){
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         PRIMARY KEY (scope, owner_id, collection, record_id),
-        CONSTRAINT routepilot_scope_allowed CHECK (scope IN ('shared', 'user')),
-        CONSTRAINT routepilot_collection_allowed CHECK (collection IN ('technicians', 'workOrders', 'agendas', 'settings', 'notes', 'addressCorrections')),
+        CONSTRAINT routepilot_scope_allowed CHECK (scope IN ('shared', 'user', 'review')),
+        CONSTRAINT routepilot_collection_allowed CHECK (collection IN ('technicians', 'workOrders', 'agendas', 'settings', 'notes', 'addressCorrections', 'mapChangeRequests', 'mapFeatures')),
         CONSTRAINT routepilot_payload_is_object CHECK (jsonb_typeof(payload) = 'object')
       )`;
       await sql`ALTER TABLE routepilot_records ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE`;
+      const constraints=await sql`SELECT conname,pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conrelid='routepilot_records'::regclass AND conname IN ('routepilot_scope_allowed','routepilot_collection_allowed')`;
+      const definitions=Object.fromEntries(constraints.map(item=>[item.conname,item.definition]));
+      if(!definitions.routepilot_scope_allowed?.includes("'review'")||!definitions.routepilot_collection_allowed?.includes("'mapFeatures'"))await sql.transaction(tx=>[
+        tx`LOCK TABLE routepilot_records IN ACCESS EXCLUSIVE MODE`,
+        tx`ALTER TABLE routepilot_records DROP CONSTRAINT IF EXISTS routepilot_scope_allowed`,
+        tx`ALTER TABLE routepilot_records ADD CONSTRAINT routepilot_scope_allowed CHECK (scope IN ('shared', 'user', 'review'))`,
+        tx`ALTER TABLE routepilot_records DROP CONSTRAINT IF EXISTS routepilot_collection_allowed`,
+        tx`ALTER TABLE routepilot_records ADD CONSTRAINT routepilot_collection_allowed CHECK (collection IN ('technicians', 'workOrders', 'agendas', 'settings', 'notes', 'addressCorrections', 'mapChangeRequests', 'mapFeatures'))`
+      ]);
       await sql`CREATE INDEX IF NOT EXISTS routepilot_records_updated_at_idx
         ON routepilot_records (scope, owner_id, collection, updated_at DESC)`;
       await sql`CREATE INDEX IF NOT EXISTS routepilot_records_collection_idx

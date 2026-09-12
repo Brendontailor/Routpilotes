@@ -45,7 +45,7 @@ function searchAll(query) {
 /** Guia: Executa uma etapa auxiliar em pesquisa geral (`actionButton`). */
 function actionButton(action, value, title, subtitle='', extra='') {
   const city=action==='city'?cityStyles[value]:null;
-  return `<button type="button" class="nav-row ${city?'city-option':''}" data-action="${action}" data-value="${esc(value)}" ${extra}>${city?`<span class="city-monogram" style="--city-color:${city.color}" aria-hidden="true">${city.initials}</span>`:''}<span class="nav-copy">${esc(title)}${subtitle ? `<small>${esc(subtitle)}</small>` : ''}</span><span class="chevron" aria-hidden="true">›</span></button>`;
+  return `<button type="button" class="nav-row ${city?'city-option':''}" data-action="${action}" data-value="${esc(value)}" ${extra}>${city?`<span class="city-monogram" style="--city-color:${city.color}" title="Mapa cadastrado de ${esc(title)}">${cityMapThumbnail(value)}</span>`:''}<span class="nav-copy">${esc(title)}${subtitle ? `<small>${esc(subtitle)}</small>` : ''}</span><span class="chevron" aria-hidden="true">›</span></button>`;
 }
 /** Guia: Executa uma etapa auxiliar em pesquisa geral (`nearButtons`). */
 function nearButtons(ids=[], unresolved=[]) {

@@ -13,9 +13,9 @@ CREATE TABLE IF NOT EXISTS routepilot_records (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (scope, owner_id, collection, record_id),
-  CONSTRAINT routepilot_scope_allowed CHECK (scope IN ('shared', 'user')),
+  CONSTRAINT routepilot_scope_allowed CHECK (scope IN ('shared', 'user', 'review')),
   CONSTRAINT routepilot_collection_allowed CHECK (
-    collection IN ('technicians', 'workOrders', 'agendas', 'settings', 'notes', 'addressCorrections')
+    collection IN ('technicians', 'workOrders', 'agendas', 'settings', 'notes', 'addressCorrections', 'mapChangeRequests', 'mapFeatures')
   ),
   CONSTRAINT routepilot_payload_is_object CHECK (jsonb_typeof(payload) = 'object')
 );

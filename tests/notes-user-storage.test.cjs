@@ -20,7 +20,7 @@ global.RoutePilotCloudSync={
 
 require('../js/notes-storage.js');
 const notes=global.RoutePilotNotes;
-const waitForBackground=()=>new Promise(resolve=>setTimeout(resolve,20));
+const waitForBackground=()=>new Promise(resolve=>setTimeout(resolve,100));
 
 /** Simula a troca de conta emitida pelo cliente de identidade. */
 function switchUser(id){currentUser={id};for(const listener of authListeners)listener(currentUser);}

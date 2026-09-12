@@ -37,6 +37,25 @@ test('sessao autenticada usa renovacao oficial ao retomar a aplicacao',()=>{
   assert.match(auth,/window\.addEventListener\('online',refreshConnectedSession\)/);
   assert.match(auth,/\['nf_jwt','nf_refresh'\]/);
   assert.match(auth,/finally\{/);
+  assert.match(auth,/REMEMBER_SESSION_SECONDS=30\*24\*60\*60/);
+  assert.match(auth,/max-age=\$\{REMEMBER_SESSION_SECONDS\}/);
+});
+
+test('permissoes geograficas sao consultadas no servidor',()=>{
+  const auth=read('js/auth.js'),config=read('netlify.toml');
+  assert.match(auth,/fetch\('\/api\/session'/);
+  assert.match(auth,/hasCapability/);
+  assert.match(config,/from = "\/api\/session"/);
+  assert.match(config,/to = "\/\.netlify\/functions\/session"/);
+});
+
+test('tema escuro e miniaturas cartograficas usam arquivos locais',()=>{
+  const html=read('index.html'),theme=read('js/theme.js'),app=read('js/app.js'),styles=read('css/routepilot.css');
+  assert.match(html,/id="themeButton"/);
+  assert.match(html,/src="js\/theme\.js"/);
+  assert.match(theme,/routepilot-theme/);
+  assert.match(app,/function cityMapThumbnail\(city\)/);
+  assert.match(styles,/html\[data-theme="dark"\] \.leaflet-tile-pane/);
 });
 
 test('Netlify envia cabecalhos defensivos sem liberar scripts externos',()=>{

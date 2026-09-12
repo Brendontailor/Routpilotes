@@ -3,6 +3,19 @@ const RoutePilotAuth=(()=>{
   let user=null,initialized=false,menuOpen=false,providerPromise=null,accessState='checking',accessMessage='',lastSessionRefresh=0,sessionRefreshPromise=null;
   const listeners=new Set();
   const SESSION_REFRESH_INTERVAL_MS=5*60*1000;
+  const REMEMBER_SESSION_SECONDS=30*24*60*60;
+
+  /** Le um cookie de autenticacao sem expor seu valor fora deste modulo. */
+  function authCookie(name){const match=document.cookie.match(new RegExp(`(?:^|; )${name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}=([^;]*)`));return match?.[1]||'';}
+
+  /** Mantem a sessao renovavel por 30 dias neste computador. */
+  function rememberSessionCookies(){if(location.protocol!=='https:')return;['nf_jwt','nf_refresh'].forEach(name=>{const value=authCookie(name);if(value)document.cookie=`${name}=${value}; path=/; secure; samesite=lax; max-age=${REMEMBER_SESSION_SECONDS}`;});}
+
+  /** Consulta capacidades calculadas pelo servidor para esta conta. */
+  async function loadPermissions(){
+    try{const response=await fetch('/api/session',{credentials:'same-origin',headers:{accept:'application/json'},cache:'no-store'}),body=await response.json().catch(()=>({}));return response.ok?body.permissions||{}:{};}
+    catch{return {};}
+  }
 
   /** Carrega a biblioteca local de identidade somente em HTTPS, como exigido pelo provedor. */
   function loadProvider(){
@@ -17,6 +30,9 @@ const RoutePilotAuth=(()=>{
 
   /** Indica se existe uma sessao autenticada neste navegador. */
   function isAuthenticated(){return Boolean(user?.id);}
+
+  /** Confirma uma permissao recebida do servidor. */
+  function hasCapability(name){return Boolean(user?.permissions?.[name]);}
 
   /** Bloqueia todos os recursos do sistema ate a autenticacao ser confirmada. */
   function setApplicationLocked(locked){
@@ -51,13 +67,16 @@ const RoutePilotAuth=(()=>{
   function render(){
     const button=document.getElementById('authButton'),menu=document.getElementById('authMenu');
     renderAccessGate();
+    const sharedOperations=Boolean(user?.permissions?.canUseSharedOperations);
+    document.querySelectorAll('[data-main-tab="create"],[data-main-tab="agenda"]').forEach(tab=>{tab.hidden=Boolean(user)&&!sharedOperations;});
     if(!button||!menu)return;
     button.textContent=user?(user.name||user.email||'Minha conta'):'Entrar com Google';
     button.setAttribute('aria-expanded',String(Boolean(user&&menuOpen)));
     button.classList.toggle('is-authenticated',Boolean(user));
     if(!user){menu.hidden=true;menu.innerHTML='';return;}
     menu.hidden=!menuOpen;
-    menu.innerHTML=`<strong>${esc(user.name||'Usuário RoutePilot')}</strong><small>${esc(user.email||'')}</small><button type="button" data-auth-action="logout">Sair</button>`;
+    const role=user.permissions?.canManageSharedMap?'Administrador do mapa':sharedOperations?'Operador':'Usuário do mapa';
+    menu.innerHTML=`<strong>${esc(user.name||'Usuário RoutePilot')}</strong><small>${esc(user.email||'')}</small><small>${esc(role)}</small><button type="button" data-auth-action="logout">Sair</button>`;
   }
 
   /** Conclui retornos OAuth e recupera a sessao mantida pelo Netlify Identity. */
@@ -67,9 +86,10 @@ const RoutePilotAuth=(()=>{
     bind();
     let provider;try{provider=await loadProvider();}catch(error){accessState='required';accessMessage='Não foi possível carregar o login. Atualize a página e tente novamente.';render();return null;}
     if(!provider){accessState='required';accessMessage='Abra a versão HTTPS publicada no Netlify para entrar.';render();return null;}
-    try{await provider.handleAuthCallback();}catch(error){accessState='required';accessMessage='O retorno do Google não pôde ser concluído. Tente entrar novamente.';console.warn('Não foi possível concluir o login',error?.message||error);}
+    try{await provider.handleAuthCallback();rememberSessionCookies();}catch(error){accessState='required';accessMessage='O retorno do Google não pôde ser concluído. Tente entrar novamente.';console.warn('Não foi possível concluir o login',error?.message||error);}
     user=await provider.getUser();
-    provider.onAuthChange((_event,nextUser)=>{user=nextUser||null;menuOpen=false;notify();});
+    if(user){await provider.refreshSession?.();rememberSessionCookies();user={...user,permissions:await loadPermissions()};}
+    provider.onAuthChange(async (_event,nextUser)=>{user=nextUser?{...nextUser,permissions:await loadPermissions()}:null;if(nextUser)rememberSessionCookies();menuOpen=false;notify();});
     notify();return currentUser();
   }
 
@@ -95,7 +115,7 @@ const RoutePilotAuth=(()=>{
     if(!user||Date.now()-lastSessionRefresh<SESSION_REFRESH_INTERVAL_MS)return;
     if(sessionRefreshPromise)return sessionRefreshPromise;
     lastSessionRefresh=Date.now();
-    sessionRefreshPromise=(async()=>{try{const provider=await loadProvider();await provider?.refreshSession?.();}catch(error){console.warn('Não foi possível renovar a sessão agora',error?.message||error);}finally{sessionRefreshPromise=null;}})();
+    sessionRefreshPromise=(async()=>{try{const provider=await loadProvider();await provider?.refreshSession?.();rememberSessionCookies();}catch(error){console.warn('Não foi possível renovar a sessão agora',error?.message||error);}finally{sessionRefreshPromise=null;}})();
     return sessionRefreshPromise;
   }
 
@@ -115,6 +135,6 @@ const RoutePilotAuth=(()=>{
   function onChange(listener){listeners.add(listener);return()=>listeners.delete(listener);}
 
   renderAccessGate();
-  return {init,currentUser,isAuthenticated,signIn,signOut,onChange};
+  return {init,currentUser,isAuthenticated,hasCapability,signIn,signOut,onChange};
 })();
 globalThis.RoutePilotAuth=RoutePilotAuth;
