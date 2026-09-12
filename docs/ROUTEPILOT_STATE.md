@@ -499,3 +499,11 @@ Ultima atualizacao: 2026-09-12
 - O modo escuro usa superfícies azul-carvão neutras, textos claros, campos e bordas mais distintos, estados ativos em ciano e cores próprias para aviso, erro e aprovação.
 - Cabeçalho, busca, cartões de cidades, painel contextual, ferramentas, modais, filtros e Agenda receberam contraste consistente. O mapa do OpenStreetMap, a impressão e a tela de login mantêm a aparência clara original.
 - Cache do Service Worker atualizado para `routepilot-shell-v47`; respostas autenticadas e tiles do mapa continuam fora do cache da aplicação.
+
+## 2026-09-12 — Hierarquia de cores do modo escuro
+
+- O painel lateral, a busca inicial, os indicadores, o botão de mapa geral e os controles flutuantes deixam de herdar superfícies brancas no modo escuro.
+- Títulos e ações principais usam ciano luminoso; nomes de locais e itens usam azul-claro; rótulos de seção usam âmbar; textos auxiliares usam azul acinzentado com contraste maior.
+- Estados de validação, atenção e erro preservam verde, âmbar e vermelho para não depender somente da luminosidade do texto.
+- O mapa-base, seus rótulos geográficos, a impressão e a tela de login permanecem claros e sem filtros de cor.
+- Cache do Service Worker atualizado para `routepilot-shell-v48`.
