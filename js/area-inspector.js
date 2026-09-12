@@ -20,6 +20,12 @@ function regionAtCoordinates(lat,lng) {
   return matches.sort((a,b)=>distanceKm([lat,lng],a.center)-distanceKm([lat,lng],b.center))[0]||null;
 }
 
+/** Localiza o contorno verificável que contém exatamente a coordenada consultada. */
+function boundaryAtCoordinates(lat,lng) {
+  const matches=boundaries.features.filter(feature=>insideGeometry(lat,lng,feature.geometry));
+  return matches.sort((a,b)=>Number(/oficial/i.test(b.properties.category||''))-Number(/oficial/i.test(a.properties.category||'')))[0]||null;
+}
+
 /** Guia: Localiza o item correspondente em identificação de pontos e áreas (`nearestItem`). */
 function nearestItem(items,lat,lng,coordinates=item=>[item.lat,item.lon]) {
   return items.reduce((best,item)=>{
@@ -31,14 +37,15 @@ function nearestItem(items,lat,lng,coordinates=item=>[item.lat,item.lon]) {
 /** Guia: Executa uma etapa auxiliar em identificação de pontos e áreas (`analyzeCoordinates`). */
 function analyzeCoordinates(lat,lng) {
   const region=regionAtCoordinates(lat,lng);
+  const boundary=boundaryAtCoordinates(lat,lng);
   const scopedPoints=region?points.filter(point=>point.region===region.id&&point.kind!=='referencia'):[];
   const scopedReferences=region?(mapDetails.pois||[]).filter(reference=>regionContainsPoint(region,reference.lat,reference.lon)):[];
   const nearestPoint=nearestItem(scopedPoints,lat,lng);
   const nearestReference=nearestItem(scopedReferences,lat,lng);
   return {
-    lat,lng,insideCoverage:Boolean(region),region,city:region?.city||null,
+    lat,lng,insideCoverage:Boolean(region),region,city:region?.city||boundary?.properties.city||null,boundary,
     nearestPoint,nearestReference,
-    areaType:nearestPoint?areaTypeLabels[nearestPoint.item.kind]||null:null,
+    areaType:boundary?.properties.classification||boundary?.properties.category||(nearestPoint?areaTypeLabels[nearestPoint.item.kind]||null:null),
     source:'coordinate'
   };
 }
@@ -112,16 +119,17 @@ function renderAreaInspector() {
   if(typeof renderAreaIntelligencePanel==='function'&&renderAreaIntelligencePanel(panel))return;
   panel.hidden=!identifiedArea;
   if(!identifiedArea){panel.innerHTML='';return;}
-  const item=identifiedArea,region=item.region,nearest=item.nearestPoint,reference=item.nearestReference;
+  const item=identifiedArea,region=item.region,nearest=item.nearestPoint,reference=item.nearestReference,boundary=item.boundary?.properties;
   const mapsUrl=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${item.lat},${item.lng}`)}`;
   const rows=item.insideCoverage?`
     <dl class="inspection-grid">
       <div><dt>Latitude</dt><dd>${item.lat.toFixed(6)}</dd></div><div><dt>Longitude</dt><dd>${item.lng.toFixed(6)}</dd></div>
       <div><dt>Cidade</dt><dd>${esc(cityName(item.city))}</dd></div><div><dt>Região operacional</dt><dd>${esc(region.name)}</dd></div>
+      <div><dt>Localidade no ponto</dt><dd>${boundary?esc(boundary.name):'Sem contorno identificado'}</dd></div>
       <div><dt>Localidade mais próxima</dt><dd>${nearest?`${esc(nearest.item.name)} · ${distanceLabel(nearest.km)}`:'Não informado'}</dd></div>
       <div><dt>Referência mais próxima</dt><dd>${reference?`${esc(reference.item.name)} · ${distanceLabel(reference.km)}`:'Não informado'}</dd></div>
       <div><dt>Tipo de área</dt><dd>${esc(item.areaType||'Não informado')}</dd></div>
-    </dl>`:`<div class="coverage-warning"><b>Fora da cobertura</b><p>Este ponto está fora da cobertura cadastrada do RoutePilot.</p></div><dl class="inspection-grid"><div><dt>Latitude</dt><dd>${item.lat.toFixed(6)}</dd></div><div><dt>Longitude</dt><dd>${item.lng.toFixed(6)}</dd></div></dl>`;
+    </dl>${boundary?`<article class="locality-description"><strong>${esc(boundary.classification||boundary.category)}</strong><p>${esc(boundary.description)}</p><a href="${esc(boundary.sourceUrl)}" target="_blank" rel="noopener noreferrer">Fonte: ${esc(boundary.source)}</a></article>`:''}`:`<div class="coverage-warning"><b>Fora da cobertura</b><p>Este ponto está fora da cobertura cadastrada do RoutePilot.</p></div><dl class="inspection-grid"><div><dt>Latitude</dt><dd>${item.lat.toFixed(6)}</dd></div><div><dt>Longitude</dt><dd>${item.lng.toFixed(6)}</dd></div></dl>`;
   const note=item.note;
   const noteAdministrator=globalThis.RoutePilotAuth?.hasCapability('canReviewMapRequests'),ownNote=note?.userId===globalThis.RoutePilotAuth?.currentUser()?.id;
   const noteCard=note?`<article class="review-note selected-note" data-note-id="${esc(note.id)}"><div class="note-state is-${esc(note.status)}">${esc(noteStatusLabel(note.status))}</div><h3>${esc(note.text)}</h3><p><b>Tipo:</b> ${esc(noteTypeLabel(note.type))}</p><p><b>Coordenadas:</b> ${item.lat.toFixed(6)}, ${item.lng.toFixed(6)}</p><div class="review-actions">${note.status==='pending'&&noteAdministrator?`<button data-action="validateOperationalNote" data-id="${esc(note.id)}">Validar</button><button data-action="rejectOperationalNote" data-id="${esc(note.id)}">Rejeitar</button>`:''}${ownNote?`<button data-action="editOperationalNote" data-id="${esc(note.id)}">Editar</button>`:''}</div><div class="note-edit-host"></div></article>`:'';

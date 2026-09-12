@@ -869,22 +869,79 @@ header p { font-size:11px;color:#66808a; }
 .city-map-thumbnail{width:42px;height:42px;overflow:visible;fill:color-mix(in srgb,var(--city-color) 16%,transparent);stroke:var(--city-color);stroke-width:1.35;vector-effect:non-scaling-stroke}.city-map-thumbnail circle{fill:var(--city-color);stroke:#fff;stroke-width:1.5}.city-monogram:has(.city-map-thumbnail){background:color-mix(in srgb,var(--city-color) 8%,white);border-color:color-mix(in srgb,var(--city-color) 38%,white)}
 .theme-button{display:inline-flex;align-items:center;gap:6px}.theme-button .app-icon{width:15px;height:15px}.map-review-actions{display:flex!important;gap:4px}.map-review-actions button{padding:5px 7px;border-radius:5px;font-size:8px}.address-corrections-manager>h3{margin:14px 0 6px;color:#527079;font-size:9px;letter-spacing:.05em}.address-correction-list{max-height:180px}.address-correction-list article{grid-template-columns:minmax(0,1fr) auto auto auto}
 
-/* Tema escuro da interface. O mapa e a tela de login mantem as cores originais. */
-html[data-theme="dark"]{color-scheme:dark;--ink:#edf6f7;--muted:#bfd0d5;--line:#48636c;--bg:#0d161b;--accent:#5bd0e3;--route-navy:#edf6f7;--route-navy-strong:#fff;--route-cyan:#55cade;--route-cyan-dark:#79d9e8;--route-border:#48636c;--route-green:#65d3a7}
-html[data-theme="dark"] body,html[data-theme="dark"] .app.is-start,html[data-theme="dark"] .app.is-map-hidden,html[data-theme="dark"] .operations-workspace{background:#0d161b;color:#e7f1f3}
-html[data-theme="dark"] header,html[data-theme="dark"] aside,html[data-theme="dark"] .system-footer,html[data-theme="dark"] .map-context,html[data-theme="dark"] .map-note,html[data-theme="dark"] .auth-menu,html[data-theme="dark"] .agenda-modal,html[data-theme="dark"] .agenda-board,html[data-theme="dark"] .route-builder-panel,html[data-theme="dark"] .operations-map-panel{background:#17272e;color:#edf6f7;border-color:#48636c}
+/* Tema escuro com superficies neutras e hierarquia clara. O mapa e o login ficam originais. */
+html[data-theme="dark"]{color-scheme:dark;--ink:#eef4f7;--muted:#a9bac3;--line:#314552;--bg:#0b1218;--accent:#25b8d0;--route-navy:#eaf2f5;--route-navy-strong:#f7fbfc;--route-cyan:#25b8d0;--route-cyan-dark:#54cade;--route-border:#314552;--route-green:#55c99a}
+html[data-theme="dark"] body,html[data-theme="dark"] .app.is-start,html[data-theme="dark"] .app.is-map-hidden,html[data-theme="dark"] .operations-workspace{background:#0b1218;color:#dce7eb}
+html[data-theme="dark"] header{background:#101920;color:#eef4f7;border-color:#293d49;box-shadow:inset 0 3px #18a9c2}
+html[data-theme="dark"] aside,html[data-theme="dark"] .system-footer,html[data-theme="dark"] .map-context,html[data-theme="dark"] .map-note{background:#111b23;color:#dce7eb;border-color:#2a3d48}
 html[data-theme="dark"] .brand-logo{background-image:url("../routepilot-logo-dark.svg")}
-html[data-theme="dark"] :where(h1,h2,h3,strong,label,legend,.nav-copy,.agenda-tech-header strong,.order-details dd,.unassigned-drawer-heading strong){color:#f4fafb}
-html[data-theme="dark"] :where(p,small,dt,.empty,.address-note,.boundary-source,.map-caution,.local-storage-note,.agenda-empty,.selected-technician-names,.agenda-toolbar span,.address-correction-dialog>p,.address-corrections-manager>p){color:#bfd0d5}
-html[data-theme="dark"] :where(button,input,select,textarea,.nav-row,.reference-row,.compare-suggestion,.work-order-card,.schedule-result,.unassigned-card,.agenda-block,.agenda-choice button,.technician-suggestion-list button,.route-reorganization-modes label,.route-reorganization-technicians label,.technician-chip,.address-correction-list article,.admin-review-section,.admin-review-summary>div,.admin-review-card){background:#20343d;color:#edf6f7;border-color:#55727c}
-html[data-theme="dark"] :where(input,select,textarea)::placeholder{color:#9eb4ba}html[data-theme="dark"] :where(input,select,textarea):focus{outline:2px solid #55cade;outline-offset:1px;border-color:#55cade}html[data-theme="dark"] :where(button,.nav-row,.reference-row,.compare-suggestion):hover{background:#2a424c;color:#fff;border-color:#74a0aa}
-html[data-theme="dark"] :where(.is-start .city-grid .nav-row,.city-monogram:has(.city-map-thumbnail)){background:#1e3139;border-color:#4f6c76}html[data-theme="dark"] .is-start .city-grid .nav-row:hover{background:#29414a;border-color:#69a9b5}html[data-theme="dark"] .city-map-thumbnail{filter:brightness(1.3) saturate(1.15)}html[data-theme="dark"] .city-map-thumbnail circle{stroke:#17272e}
-html[data-theme="dark"] :where(.search-field,.search-field input,.search-field button,.agenda-filter-popover,.unassigned-drawer,.agenda-time-axis,.agenda-time-header,.agenda-tech-header,.schedule-title,.technician-drop-target,.agenda-choice button,.route-reorganization-modes label,.route-reorganization-technicians label){background:#1b2d35;color:#edf6f7;border-color:#4b6872}
-html[data-theme="dark"] :where(.selection-note,.boundary-source,.work-order-location-status,.address-correction-note,.route-recalculation-notice,.preview-scope,.preview-summary p,.distribution-summary>div,.agenda-reorganize-button){background:#173941!important;color:#d2edf1!important;border-color:#53828c!important}
-html[data-theme="dark"] :where(.compare-suggestions,.map-guide,.layers-popover,.tools-panel,.area-inspector){background:#1b2d35;color:#edf6f7;border-color:#4f6c76}
-html[data-theme="dark"] .agenda-column{background-color:#16272e;background-image:linear-gradient(to bottom,transparent calc(100% - 1px),#405b64 1px);border-color:#405b64}html[data-theme="dark"] .agenda-block{background:#253b44;color:#fff}html[data-theme="dark"] .agenda-column.is-drop-target{background-color:#1b4049}
-html[data-theme="dark"] a{color:#7bdaea}html[data-theme="dark"] kbd{background:#2a3e46;color:#edf6f7;border-color:#5a7781}
-html[data-theme="dark"] .auth-button.is-authenticated{background:#1d4048;color:#a1ebf6;border-color:#5a8790}html[data-theme="dark"] .theme-button[aria-pressed="true"]{background:#2b4c55;color:#b9f0f8;border-color:#67949d}
-html[data-theme="dark"] :where(.agenda-primary,.primary-tabs button[aria-pressed="true"],.share-mode-tabs button[aria-pressed="true"],.map-toolbar button[aria-pressed="true"],.radius-options button[aria-pressed="true"]){background:#0d8da7!important;color:#fff!important;border-color:#2bb8cf!important}
+html[data-theme="dark"] .header-copy{border-color:#334651}html[data-theme="dark"] header p,html[data-theme="dark"] .system-footer,html[data-theme="dark"] .system-footer strong{color:#aebec6}
+
+html[data-theme="dark"] :where(h1,h2,h3,.context-heading h2,.operations-heading h2,.modal-heading h2,.section-title,.nav-copy,.work-order-card strong,.unassigned-card strong,.agenda-tech-header strong,.agenda-block strong,.order-details dd,.unassigned-drawer-heading strong,.admin-review-card h3){color:#f1f6f8}
+html[data-theme="dark"] :where(p,small,dt,.empty,.address-note,.map-caution,.local-storage-note,.agenda-empty,.selected-technician-names,.agenda-toolbar span,.panel-intro,.context-heading small,.operations-heading small,.modal-heading small,.nav-row small,.work-order-card small,.work-order-card p,.unassigned-card small,.unassigned-card span,.agenda-tech-header small,.agenda-time-axis span,.agenda-choice span,.admin-review-card p,.admin-review-card small){color:#a9bac3}
+html[data-theme="dark"] :where(.context-breadcrumb,.context-breadcrumb span){color:#8fa3ad}html[data-theme="dark"] .context-breadcrumb button{color:#70c8d8}
+
+html[data-theme="dark"] :where(.auth-menu,.agenda-modal,.route-builder-panel>section,.work-order-form,.operations-map-panel,.admin-review-section,.admin-review-summary>div){background:#131f28;color:#dce7eb;border-color:#314552;box-shadow:0 12px 32px rgba(0,0,0,.24)}
+html[data-theme="dark"] :where(.work-order-card,.schedule-result,.unassigned-card,.agenda-choice button,.technician-suggestion-list button,.technician-chip,.address-correction-list article,.admin-review-card,.saved-filter-list article){background:#182630;color:#dce7eb;border-color:#354b58;box-shadow:none}
+html[data-theme="dark"] :where(.compare-suggestions,.map-guide,.layers-popover,.agenda-filter-popover,.unassigned-drawer,.tools-panel,.area-inspector){background:#131f28;color:#dce7eb;border-color:#354b58;box-shadow:0 14px 34px rgba(0,0,0,.3)}
+html[data-theme="dark"] :where(.context-section,.tools-panel .inspector-heading,.modal-heading,.order-details dt,.order-details dd,.agenda-filter-list,.preview-changes li){border-color:#2c414d}
+
+html[data-theme="dark"] :where(button,input,select,textarea){background:#17242d;color:#eaf2f5;border-color:#3b5260}
+html[data-theme="dark"] :where(input,select,textarea)::placeholder{color:#8297a2;opacity:1}
+html[data-theme="dark"] :where(input,select,textarea):focus{outline:2px solid #25b8d0;outline-offset:1px;border-color:#25b8d0;box-shadow:0 0 0 4px rgba(37,184,208,.12)}
+html[data-theme="dark"] select option{background:#17242d;color:#eaf2f5}
+html[data-theme="dark"] :where(button,.nav-row,.reference-row,.compare-suggestion):hover{background:#22343f;color:#fff;border-color:#527080}
+html[data-theme="dark"] :where(button,input,select,textarea):disabled{background:#111b22;color:#6f838d;border-color:#293b45;opacity:1}
+html[data-theme="dark"] input[type="checkbox"],html[data-theme="dark"] input[type="radio"]{accent-color:#25b8d0}
+
+html[data-theme="dark"] .primary-tabs{background:#0d161d;border-color:#2c404b}
+html[data-theme="dark"] .primary-tabs button{background:transparent;color:#aabcc5;border-color:transparent}
+html[data-theme="dark"] .primary-tabs button:hover{background:#1b2a33;color:#edf5f7}
+html[data-theme="dark"] :where(.agenda-primary,.compare-button,.primary-tabs button[aria-pressed="true"],.share-mode-tabs button[aria-pressed="true"],.map-toolbar button[aria-pressed="true"],.radius-options button[aria-pressed="true"]){background:#078ba4!important;color:#fff!important;border-color:#24b7cf!important;box-shadow:0 2px 9px rgba(0,150,180,.2)}
+html[data-theme="dark"] :where(.agenda-primary,.compare-button):hover{background:#0a7890!important;border-color:#38c5db!important}
+html[data-theme="dark"] .map-visibility-button{background:#17242d;color:#cce8ed;border-color:#3b5663}
+html[data-theme="dark"] .theme-button[aria-pressed="true"],html[data-theme="dark"] .auth-button.is-authenticated{background:#16323b;color:#9fe4ef;border-color:#3f7180}
+
+html[data-theme="dark"] :where(.search-field,#contextSidebar .search-field){background:#121e26;border-color:#405864;box-shadow:0 5px 18px rgba(0,0,0,.2)}
+html[data-theme="dark"] :where(.search-field input,.search-field button){background:transparent;color:#eaf2f5;border-color:transparent;box-shadow:none}
+html[data-theme="dark"] .search-field:focus-within{border-color:#25b8d0;box-shadow:0 0 0 3px rgba(37,184,208,.15),0 8px 22px rgba(0,0,0,.24)}
+html[data-theme="dark"] .is-start .city-grid .nav-row{background:#131f28;color:#eaf2f5;border-color:#2f4551;box-shadow:0 4px 16px rgba(0,0,0,.16)}
+html[data-theme="dark"] .is-start .city-grid .nav-row:hover{background:#192a34;border-color:#4e7481;box-shadow:0 7px 22px rgba(0,0,0,.22)}
+html[data-theme="dark"] .city-monogram:has(.city-map-thumbnail){background:#0f1a21;border-color:#3b5561}
+html[data-theme="dark"] .city-map-thumbnail{filter:brightness(1.35) saturate(1.1)}html[data-theme="dark"] .city-map-thumbnail circle{stroke:#101920}
+html[data-theme="dark"] .is-start .chevron{background:#182a33;color:#73d1e0}html[data-theme="dark"] .is-start .nav-row:hover .chevron{background:#203944;color:#a7e8f1}
+
+html[data-theme="dark"] .nav-row,html[data-theme="dark"] .reference-row{background:transparent;color:#e4edf0;border-color:#293c47}
+html[data-theme="dark"] .nav-row:hover,html[data-theme="dark"] .reference-row:hover{background:#18262f}
+html[data-theme="dark"] .panel-back{background:transparent;color:#9fc4cd;border-color:transparent}html[data-theme="dark"] .panel-back:hover{background:#1a2a33;color:#8ee1ef}
+html[data-theme="dark"] .panel-back kbd{background:#182630;color:#b8c8cf;border-color:#3c5360}
+html[data-theme="dark"] .context-actions button,html[data-theme="dark"] .context-actions a,html[data-theme="dark"] .inspector-actions button,html[data-theme="dark"] .inspector-actions a{background:#172730;color:#8edbe7;border-color:#365361}
+html[data-theme="dark"] .context-actions button:hover,html[data-theme="dark"] .context-actions a:hover,html[data-theme="dark"] .inspector-actions button:hover,html[data-theme="dark"] .inspector-actions a:hover{background:#1e3640;color:#b9edf4;border-color:#4b8290}
+html[data-theme="dark"] .context-section>summary,html[data-theme="dark"] .layers-popover label{color:#c5d3d9}html[data-theme="dark"] .context-section>summary span{color:#8299a4}html[data-theme="dark"] .layers-popover label:hover{background:#1b2b34}
+
+html[data-theme="dark"] :where(.selection-note,.boundary-source,.work-order-location-status,.address-correction-note,.route-recalculation-notice,.preview-scope,.preview-summary p,.distribution-summary>div){background:#122b34!important;color:#cae8ee!important;border-color:#39707e!important}
+html[data-theme="dark"] .note-form,html[data-theme="dark"] .note-edit-form{background:#111c24;color:#dce7eb}
+html[data-theme="dark"] .note-summary{background:#302817;color:#f0d9a4;border-color:#d4a33c}html[data-theme="dark"] .note-summary.is-validated{background:#153126;color:#bce8d3;border-color:#49b887}
+html[data-theme="dark"] .note-state,.review-status{background:#392f18;color:#f2d18c}html[data-theme="dark"] .note-state.is-validated,html[data-theme="dark"] .review-status.is-approved,html[data-theme="dark"] .review-status.is-validated{background:#153429;color:#9fe0c2}html[data-theme="dark"] .note-state.is-rejected,html[data-theme="dark"] .review-status.is-rejected{background:#3a2022;color:#f0b1b5}
+html[data-theme="dark"] .agenda-warning{background:#392817!important;color:#ffd8a1!important;border-color:#b8792f!important}html[data-theme="dark"] .agenda-danger,html[data-theme="dark"] .admin-review-actions .agenda-danger{background:#3a2022!important;color:#ffc2c5!important;border-color:#a6545a!important}
+html[data-theme="dark"] .suggestion-positive{background:#153127!important;color:#bce8d3!important;border-color:#4bb887!important}
+
+html[data-theme="dark"] .agenda-board{background:#101a21;border-color:#314651;box-shadow:0 8px 24px rgba(0,0,0,.24)}
+html[data-theme="dark"] .agenda-time-header,html[data-theme="dark"] .agenda-tech-header,html[data-theme="dark"] .agenda-time-axis{background:#15232c;color:#dce7eb;border-color:#344b57}
+html[data-theme="dark"] .agenda-column{background-color:#101b22;background-image:linear-gradient(to bottom,transparent calc(100% - 1px),#304650 1px);border-color:#304650}
+html[data-theme="dark"] .agenda-block{background:#1d2d37;color:#f2f7f9;box-shadow:0 3px 9px rgba(0,0,0,.3)}html[data-theme="dark"] .agenda-block small,html[data-theme="dark"] .agenda-block span,html[data-theme="dark"] .agenda-block time{color:#c0cdd3}
+html[data-theme="dark"] .agenda-unassigned{background:#352124;color:#f4dfe0}html[data-theme="dark"] .agenda-column.is-drop-target{background-color:#17323a;outline-color:#27b9d0}
+html[data-theme="dark"] .agenda-filter-list label,html[data-theme="dark"] .agenda-filter-unassigned{color:#cbd8dd}html[data-theme="dark"] .agenda-filter-list label:hover,html[data-theme="dark"] .agenda-filter-unassigned:hover{background:#1c2d36}
+html[data-theme="dark"] .route-reorganization-modes label,html[data-theme="dark"] .route-reorganization-technicians label{background:#16242d;color:#dce7eb;border-color:#344b57}
+html[data-theme="dark"] .route-reorganization-modes label:has(input:checked),html[data-theme="dark"] .route-reorganization-technicians label:has(input:checked){background:#17353e;border-color:#3f8898}
+html[data-theme="dark"] .agenda-reorganize-button{background:#17343d!important;color:#a9e7f0!important;border-color:#3d7481!important}
+html[data-theme="dark"] .agenda-reorganize-button:disabled{background:#111b22!important;color:#71848d!important;border-color:#2a3c46!important}
+
+html[data-theme="dark"] a{color:#68cfdf}html[data-theme="dark"] kbd{background:#1b2a33;color:#dbe7eb;border-color:#415864}
+html[data-theme="dark"] .app-toast{background:#d9f3f7;color:#102d36;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+html[data-theme="dark"] ::-webkit-scrollbar{width:11px;height:11px}html[data-theme="dark"] ::-webkit-scrollbar-track{background:#0d161d}html[data-theme="dark"] ::-webkit-scrollbar-thumb{background:#3a505c;border:3px solid #0d161d;border-radius:8px}html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover{background:#506b78}
+
+.locality-description{margin-top:10px;padding:10px 11px;border-left:3px solid #168ba2;border-radius:5px;background:#f0f8fa}.locality-description strong,.locality-description p,.locality-description a{display:block}.locality-description strong{color:#275865;font-size:10px}.locality-description p{margin:4px 0;color:#526f78;font-size:10px;line-height:1.45}.locality-description a{font-size:9px}
+html[data-theme="dark"] .locality-description{background:#122b34;color:#cae8ee;border-color:#39707e}html[data-theme="dark"] .locality-description strong{color:#e5f4f7}html[data-theme="dark"] .locality-description p{color:#b6cbd2}
 html[data-theme="dark"] .auth-gate{color-scheme:light;background:#edf4f6;color:#173c49}html[data-theme="dark"] .auth-gate-card{background:#fff;color:#173c49;border-color:#c9dce2}html[data-theme="dark"] .auth-gate-logo{filter:none}html[data-theme="dark"] .auth-gate h1{color:#173c49}html[data-theme="dark"] .auth-gate #authGateMessage{color:#526b75}html[data-theme="dark"] .auth-gate small{color:#6b7e86}html[data-theme="dark"] .auth-gate button{background:#087f96;color:#fff;border-color:#087f96}
 @media print{html[data-theme="dark"]{color-scheme:light}html[data-theme="dark"] body{background:#fff;color:#111}}

@@ -488,3 +488,14 @@ Ultima atualizacao: 2026-09-12
 - O tema claro é o padrão, a tela de login continua clara, o tema escuro recebeu contraste reforçado e o mapa-base mantém sua aparência original.
 - Referências de contornos amplos aos antigos marcadores aproximados são removidas na importação; o contorno continua disponível sem apontar para uma localidade inexistente.
 - Cache do Service Worker atualizado para `routepilot-shell-v46`.
+
+## 2026-09-12 — Explicações das localidades e acabamento do tema escuro
+
+- Toda localidade navegável das cinco cidades passa a exibir uma classificação e uma descrição curta ao ser selecionada; o inspetor de coordenadas também informa o contorno que contém exatamente o ponto clicado.
+- As 94 micro-regiões de Pelotas preservam código, macrorregião, descrição e link para a camada oficial da Prefeitura.
+- Os bairros com contorno de Capão do Leão e Canguçu são descritos a partir da Malha de Bairros do Censo 2022 do IBGE.
+- Nomes de bairros e distritos publicados pela Prefeitura de Capão do Leão e as 15 localidades publicadas pela Prefeitura de Morro Redondo recebem a fonte nominal correspondente.
+- Pontos operacionais sem contorno verificável, inclusive em Cerrito e nas áreas rurais, são identificados claramente como referências operacionais; nenhum limite ou coordenada foi inventado ou alterado nesta etapa.
+- O modo escuro usa superfícies azul-carvão neutras, textos claros, campos e bordas mais distintos, estados ativos em ciano e cores próprias para aviso, erro e aprovação.
+- Cabeçalho, busca, cartões de cidades, painel contextual, ferramentas, modais, filtros e Agenda receberam contraste consistente. O mapa do OpenStreetMap, a impressão e a tela de login mantêm a aparência clara original.
+- Cache do Service Worker atualizado para `routepilot-shell-v47`; respostas autenticadas e tiles do mapa continuam fora do cache da aplicação.
