@@ -2,7 +2,7 @@
 
 Versao atual: V2 oficial - navegacao desktop e painel contextual
 
-Ultima atualizacao: 2026-09-08
+Ultima atualizacao: 2026-09-12
 
 ## Concluido
 
@@ -401,7 +401,7 @@ Ultima atualizacao: 2026-09-08
 - A Agenda desktop agora exige login Google por Netlify Identity; mapa, busca, regiões, rotas e PWA continuam independentes do login.
 - A autorização é confirmada no servidor por `ROUTEPILOT_ALLOWED_EMAILS` ou pelos papéis `routepilot` e `admin`; um login Google sem autorização recebe `403`.
 - Técnicos, ordens de serviço, agendas diárias e correções manuais de endereço são coleções compartilhadas entre todos os usuários autorizados.
-- Filtros/preferências e anotações operacionais são privados por usuário. O servidor deriva o autor da sessão e ignora qualquer `userId` enviado pelo navegador.
+- Filtros e preferências são privados por usuário. Anotações operacionais ficam vinculadas ao autor, entram como pendentes e somente passam a ser compartilhadas depois da revisão administrativa.
 - A conexão usa exclusivamente `DATABASE_URL` nas Netlify Functions; senha, string do Neon e segredos não entram no frontend nem no Git.
 - `js/agenda-storage.js` mantém IndexedDB e uma fila idempotente de alterações offline. Falhas não apagam os dados locais e a fila é retomada quando a conexão volta.
 - Exclusões compartilhadas geram tombstones no Neon para impedir que uma cópia local antiga recrie o registro em outro computador.
@@ -457,8 +457,33 @@ Ultima atualizacao: 2026-09-08
 - A sessão renovável passa a ser lembrada por até 30 dias no mesmo computador. `Sair` remove cookies e armazenamento da sessão; expiração ou revogação continuam exigindo novo login.
 - Contas autenticadas sem autorização operacional podem usar o mapa e dados privados, mas não recebem acesso à Agenda compartilhada.
 - Os cartões das cinco cidades exibem miniaturas produzidas dos contornos geográficos já cadastrados, sem imagens ou APIs externas.
-- O modo escuro é salvo localmente e adapta interface, Agenda, modais e tiles do OpenStreetMap com contraste próprio; a impressão permanece clara.
+- O modo escuro é salvo localmente e adapta interface, Agenda e modais; o mapa do OpenStreetMap e a impressão permanecem com as cores originais.
 - Nenhum limite, endereço ou coordenada estrutural foi alterado nesta etapa. A auditoria municipal dos territórios de Pelotas permanece separada para evitar correções sem fonte verificável.
 - Cache do Service Worker atualizado para `routepilot-shell-v42`; respostas autenticadas continuam fora do cache.
 - Se o navegador encerrar somente os cookies de sessão, o cliente recompõe os cookies a partir da sessão persistida oficial do Netlify Identity antes de validar o usuário, evitando exigir novo login a cada abertura.
 - Cache do Service Worker atualizado para `routepilot-shell-v43`.
+
+## 2026-09-12 — Contraste dos temas
+
+- O tema claro passa a ser o padrão no primeiro acesso, independentemente do tema do sistema operacional; uma escolha manual continua salva somente neste computador.
+- A tela de login permanece sempre clara para manter identidade e leitura consistentes.
+- O modo escuro ganhou contraste maior em textos, campos, bordas, botões ativos e miniaturas das cidades.
+- O cabeçalho usa uma variante local do logotipo preparada para fundo escuro, sem filtros que apaguem as cores da marca.
+- Tiles, controles, popups e rótulos do mapa não recebem mais alterações do tema escuro.
+- Cache do Service Worker atualizado para `routepilot-shell-v44`.
+
+## 2026-09-12 — Localidades oficiais, panorama e revisão administrativa
+
+- Os marcadores aproximados dos bairros urbanos de Pelotas foram substituídos pela camada oficial `micro_regioes`, publicada pela Prefeitura Municipal de Pelotas no Web Map `Mapa Urbano Básico`.
+- Fonte reproduzível: [item da camada municipal](https://www.arcgis.com/home/item.html?id=0eb6323abdd74aa3ad91012627a84be1) e [Mapa Urbano Básico](https://www.arcgis.com/home/item.html?id=c586609a253c430f8a9224f7b59f3e6a).
+- Foram integradas 94 localidades nomeadas, com código, polígono e centróide da fonte municipal. Treze feições sem rótulo ou declaradas `VAZIO URBANO` foram excluídas da navegação para não inventar bairros.
+- `DUNAS`, `JARDIM EUROPA`, `BOM JESUS`, `OBELISCO` e `VASCO PIRES` agora são localidades independentes, assim como todas as demais da mesma camada oficial.
+- `scripts/import-pelotas-localities.mjs` reproduz o arquivo estático `data/pelotas-localities.js`; o navegador não consulta o ArcGIS durante o uso normal.
+- `Ver mapa geral` abre um panorama abaixo da página inicial, com os pontos das cinco cidades disponíveis para navegação. `Mostrar mapa` continua abrindo o workspace cartográfico normal.
+- Um clique livre ou sobre um contorno identifica exatamente a coordenada, mantém a região no contexto e aproxima apenas dois níveis, limitado ao zoom detalhado; o marcador identificado permanece visível.
+- A aba `Revisões` aparece somente para a conta com permissão `canReviewMapRequests` e reúne solicitações de pontos/localidades e anotações pendentes.
+- Aprovar uma solicitação geográfica cria uma feição fixa compartilhada no Neon. Validar uma anotação apenas publica a observação operacional e nunca modifica limites, ruas ou pontos estruturais.
+- Usuários comuns podem editar somente suas próprias anotações, não podem validar/rejeitar e enxergam observações de outras contas apenas depois da validação.
+- As regras de autoria e moderação são aplicadas nas Netlify Functions; ocultar a aba no frontend não é usado como barreira de segurança.
+- O tema claro é o padrão, a tela de login continua clara, o tema escuro recebeu contraste reforçado e o mapa-base mantém sua aparência original.
+- Cache do Service Worker atualizado para `routepilot-shell-v45`.

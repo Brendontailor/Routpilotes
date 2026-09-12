@@ -80,8 +80,13 @@ test('tema escuro e miniaturas cartograficas usam arquivos locais',()=>{
   assert.match(html,/id="themeButton"/);
   assert.match(html,/src="js\/theme\.js"/);
   assert.match(theme,/routepilot-theme/);
+  assert.match(theme,/return \['light','dark'\]\.includes\(saved\)\?saved:'light'/);
+  assert.doesNotMatch(theme,/prefers-color-scheme/);
   assert.match(app,/function cityMapThumbnail\(city\)/);
-  assert.match(styles,/html\[data-theme="dark"\] \.leaflet-tile-pane/);
+  assert.match(styles,/routepilot-logo-dark\.svg/);
+  assert.match(styles,/html\[data-theme="dark"\] \.auth-gate\{color-scheme:light/);
+  assert.doesNotMatch(styles,/html\[data-theme="dark"\] \.leaflet-tile-pane/);
+  assert.doesNotMatch(styles,/html\[data-theme="dark"\] \.leaflet-popup/);
 });
 
 test('Netlify envia cabecalhos defensivos sem liberar scripts externos',()=>{

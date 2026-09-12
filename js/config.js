@@ -7,6 +7,7 @@ const CONFIGURACAO_MAPA=Object.freeze({
   zoomRegiao:14,
   zoomComparacao:15,
   zoomPontoIdentificado:15,
+  incrementoZoomClique:2,
   zoomBairro:16,
   zoomCliqueDetalhado:17,
   zoomNativoOsm:19,

@@ -3,7 +3,7 @@ const RoutePilotAgenda=(()=>{
   const CONFIG=RoutePilotSchedulingConfig,CORE=RoutePilotSchedulingCore;
   const AGENDA_LAYOUT=Object.freeze({startHour:6,endHour:20,minHourHeight:28,maxHourHeight:64,reservedViewportHeight:250,timeAxisWidth:50,minColumnWidth:102});
   let agendaResizeTimer=null,bound=false,authListenerBound=false,initializedUserId=null;
-  const state={tab:'map',date:new Date().toISOString().slice(0,10),technicians:[],orders:[],addressCorrections:[],selected:new Set(),routeFilters:[],activeRouteFilterId:null,techniciansExpanded:false,confirmedLocation:null,locationCandidate:null,searchResults:[],searchTimer:null,geocodingService:null,searchCanExpand:false,searchWarning:'',generated:null,agenda:null,manager:false,detailId:null,pendingAgenda:null,pendingMove:null,pendingVisitAction:null,pendingSuggestion:null,pendingRouteReorganization:null,drag:null,unassignedOpen:true,filters:[],visibleTechnicianIds:new Set(),showUnassigned:true,filterOpen:false,filterQuery:'',filterEditor:false,editFilterId:null,activeFilterId:null};
+  const state={tab:'map',date:new Date().toISOString().slice(0,10),technicians:[],orders:[],addressCorrections:[],reviewNotes:[],selected:new Set(),routeFilters:[],activeRouteFilterId:null,techniciansExpanded:false,confirmedLocation:null,locationCandidate:null,searchResults:[],searchTimer:null,geocodingService:null,searchCanExpand:false,searchWarning:'',generated:null,agenda:null,manager:false,detailId:null,pendingAgenda:null,pendingMove:null,pendingVisitAction:null,pendingSuggestion:null,pendingRouteReorganization:null,drag:null,unassignedOpen:true,filters:[],visibleTechnicianIds:new Set(),showUnassigned:true,filterOpen:false,filterQuery:'',filterEditor:false,editFilterId:null,activeFilterId:null};
   const $agenda=id=>document.getElementById(id);
   const makeId=prefix=>crypto.randomUUID?`${prefix}_${crypto.randomUUID()}`:`${prefix}_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
   const technicianById=id=>state.technicians.find(item=>item.id===id);
@@ -40,12 +40,13 @@ const RoutePilotAgenda=(()=>{
   function handleAgendaResize(){if(state.tab!=='agenda')return;clearTimeout(agendaResizeTimer);agendaResizeTimer=setTimeout(()=>render({preserveAgendaScroll:true}),120);}
   /** Troca entre mapa, criação de rota e agenda somente no desktop. */
   async function open(tab){
-    if(!['map','create','agenda'].includes(tab)||!window.matchMedia('(min-width:901px)').matches)return;
+    if(!['map','create','agenda','review'].includes(tab)||!window.matchMedia('(min-width:901px)').matches)return;
     if(tab!=='map'&&!globalThis.RoutePilotAuth?.isAuthenticated()){showToast('Entre com Google para acessar a operação compartilhada');globalThis.RoutePilotAuth?.signIn();return;}
+    if(tab==='review'&&!globalThis.RoutePilotAuth?.hasCapability('canReviewMapRequests')){showToast('Somente o administrador pode revisar o mapa');return;}
     if(tab!=='map'&&!globalThis.RoutePilotAuth?.hasCapability('canUseSharedOperations')){showToast('Sua conta não tem acesso à agenda compartilhada');return;}
     if(tab!=='map'&&initializedUserId!==globalThis.RoutePilotAuth.currentUser().id)await init();
     state.tab=tab;document.body.classList.toggle('operations-active',tab!=='map');$agenda('app').hidden=tab!=='map';$agenda('operationsWorkspace').hidden=tab==='map';$agenda('toggleMap').hidden=tab!=='map';
-    if(tab!=='map'){state.agenda=await RoutePilotAgendaStorage.getAgenda(state.date)||null;render();$agenda('operationsWorkspace').scrollTop=0;}
+    if(tab!=='map'){state.agenda=await RoutePilotAgendaStorage.getAgenda(state.date)||null;if(tab==='review')await loadReviewData(false);render();$agenda('operationsWorkspace').scrollTop=0;}
     else{RoutePilotAgendaMap.clear();renderTabs();}
   }
   /** Atualiza os botões de navegação principal. */
@@ -53,7 +54,7 @@ const RoutePilotAgenda=(()=>{
   /** Monta a área ativa e mantém o mapa operacional disponível. */
   function render({preserveAgendaScroll=false}={}){
     renderTabs();const root=$agenda('operationsContent');if(!root)return;const board=$agenda('operationsContent')?.querySelector('.agenda-board'),scroll=preserveAgendaScroll&&board?{top:board.scrollTop,left:board.scrollLeft}:null;
-    root.innerHTML=state.tab==='agenda'?renderAgenda():renderCreateRoute();
+    root.innerHTML=state.tab==='agenda'?renderAgenda():state.tab==='review'?renderAdminReview():renderCreateRoute();
     if(state.manager)root.insertAdjacentHTML('beforeend',renderTechnicianManager());
     if(state.detailId)root.insertAdjacentHTML('beforeend',renderOrderDetails(state.detailId));
     if(state.pendingAgenda)root.insertAdjacentHTML('beforeend',renderAgendaPreview());
@@ -67,6 +68,21 @@ const RoutePilotAgenda=(()=>{
   }
   /** Monta os controles de data compartilhados pelas duas áreas. */
   function dateToolbar(title){return `<div class="operations-heading"><div><small>OPERAÇÃO DIÁRIA</small><h2>${title}</h2></div><div class="agenda-date-nav"><button data-agenda-action="datePrevious" aria-label="Dia anterior">‹</button><label>Data<input type="date" id="agendaDate" value="${state.date}"></label><button data-agenda-action="dateNext" aria-label="Próximo dia">›</button></div></div>`;}
+
+  /** Atualiza as duas filas moderadas pelo administrador autenticado. */
+  async function loadReviewData(renderAfter=true){
+    await RoutePilotAddressCorrectionsStorage.init();
+    state.reviewNotes=await globalThis.RoutePilotNotes.getAllNotes();
+    if(renderAfter&&state.tab==='review')render();
+  }
+
+  /** Exibe solicitações geográficas e anotações sem misturá-las à agenda. */
+  function renderAdminReview(){
+    const requests=RoutePilotAddressCorrectionsStorage.requests(),pendingRequests=requests.filter(item=>item.status==='pending'),pendingNotes=state.reviewNotes.filter(item=>item.status==='pending'),recentNotes=state.reviewNotes.filter(item=>item.status!=='pending').slice(0,12);
+    const locationCard=item=>`<article class="admin-review-card"><div><span class="review-status is-${esc(item.status)}">${item.status==='pending'?'Aguardando':item.status==='approved'?'Aprovado':'Rejeitado'}</span><h3>${esc(item.formattedAddress||item.name)}</h3><p>${esc([item.entityType,item.locality,cityName(item.city)].filter(Boolean).join(' · '))}</p><small>Solicitado por ${esc(item.requestedByEmail||'usuário autenticado')}</small></div><code>${item.coords[0].toFixed(7)}, ${item.coords[1].toFixed(7)}</code><div class="admin-review-actions"><button data-agenda-action="openReviewPoint" data-lat="${item.coords[0]}" data-lng="${item.coords[1]}">Abrir no mapa</button><a href="${googleMapsPointUrl(item.coords[0],item.coords[1])}" target="_blank" rel="noopener noreferrer">Google Maps</a>${item.status==='pending'?`<button class="agenda-primary" data-agenda-action="approveMapRequest" data-id="${esc(item.id)}">Aprovar e fixar</button><button class="agenda-danger" data-agenda-action="rejectMapRequest" data-id="${esc(item.id)}">Rejeitar</button>`:''}</div></article>`;
+    const noteCard=note=>`<article class="admin-review-card"><div><span class="review-status is-${esc(note.status)}">${note.status==='pending'?'Aguardando':note.status==='validated'?'Validada':'Rejeitada'}</span><h3>${esc(note.text)}</h3><p>${esc(noteTypeLabel(note.type))}</p><small>Autor: ${esc(note.userId)}</small></div><code>${note.latitude.toFixed(7)}, ${note.longitude.toFixed(7)}</code><div class="admin-review-actions"><button data-agenda-action="openReviewPoint" data-lat="${note.latitude}" data-lng="${note.longitude}">Abrir no mapa</button><a href="${googleMapsPointUrl(note.latitude,note.longitude)}" target="_blank" rel="noopener noreferrer">Google Maps</a>${note.status==='pending'?`<button class="agenda-primary" data-agenda-action="approveReviewNote" data-id="${esc(note.id)}">Validar anotação</button><button class="agenda-danger" data-agenda-action="rejectReviewNote" data-id="${esc(note.id)}">Rejeitar</button>`:''}</div></article>`;
+    return `<section class="admin-review-view"><div class="operations-heading"><div><small>ADMINISTRAÇÃO DO MAPA</small><h2>Revisões</h2><p>Pontos aprovados entram na base compartilhada. Anotações validadas permanecem observações operacionais.</p></div><button data-agenda-action="refreshAdminReview">Atualizar</button></div><div class="admin-review-summary"><div><strong>${pendingRequests.length}</strong><span>pontos pendentes</span></div><div><strong>${pendingNotes.length}</strong><span>anotações pendentes</span></div><div><strong>${RoutePilotAddressCorrectionsStorage.approvedRecords().length}</strong><span>pontos compartilhados</span></div></div><section class="admin-review-section"><h3>Solicitações de pontos e localidades</h3><div class="admin-review-list">${pendingRequests.length?pendingRequests.map(locationCard).join(''):'<p class="agenda-empty">Nenhuma solicitação geográfica pendente.</p>'}</div></section><section class="admin-review-section"><h3>Anotações para validar</h3><div class="admin-review-list">${pendingNotes.length?pendingNotes.map(noteCard).join(''):'<p class="agenda-empty">Nenhuma anotação pendente.</p>'}</div></section>${recentNotes.length?`<section class="admin-review-section"><h3>Anotações revisadas recentemente</h3><div class="admin-review-list">${recentNotes.map(noteCard).join('')}</div></section>`:''}</section>`;
+  }
   /** Renderiza seleção de técnicos, formulário de OS e resultado da distribuição. */
   function renderCreateRoute(){
     const orders=pendingDayOrders(),technicians=activeTechnicians(),selectedCount=technicians.filter(item=>state.selected.has(item.id)).length;
@@ -194,7 +210,13 @@ const RoutePilotAgenda=(()=>{
   }
 
   /** Revisa uma solicitacao e atualiza as listas sem fechar o contexto. */
-  async function reviewMapRequest(id,status){try{await RoutePilotAddressCorrectionsStorage.reviewRequest(id,status);state.geocodingService?.clearCache();openAddressCorrectionsManager();showToast(status==='approved'?'Alteração aprovada e publicada':'Solicitação rejeitada');}catch(error){showToast(error.message||'Não foi possível revisar a solicitação');}}
+  async function reviewMapRequest(id,status){try{await RoutePilotAddressCorrectionsStorage.reviewRequest(id,status);state.geocodingService?.clearCache();if(state.tab==='review')await loadReviewData();else openAddressCorrectionsManager();showToast(status==='approved'?'Alteração aprovada e publicada':'Solicitação rejeitada');}catch(error){showToast(error.message||'Não foi possível revisar a solicitação');}}
+
+  /** Modera uma anotação sem convertê-la em dado geográfico estrutural. */
+  async function reviewOperationalNote(id,status){try{if(status==='validated')await RoutePilotNotes.validateNote(id);else await RoutePilotNotes.rejectNote(id);await loadReviewData();showToast(status==='validated'?'Anotação validada':'Anotação rejeitada');}catch(error){showToast(error.message||'Não foi possível revisar a anotação');}}
+
+  /** Volta ao mapa principal mantendo a coordenada escolhida na revisão. */
+  function openReviewPoint(latitude,longitude){open('map');setTimeout(()=>identifyCoordinates(Number(latitude),Number(longitude),{source:'review'}),0);}
 
   /** Baixa um JSON completo e independente dos dados pessoais das ordens de servico. */
   function exportAddressCorrections(){
@@ -488,6 +510,10 @@ const RoutePilotAgenda=(()=>{
     if(action==='exportAddressCorrections')exportAddressCorrections();
     if(action==='approveMapRequest')await reviewMapRequest(button.dataset.id,'approved');
     if(action==='rejectMapRequest')await reviewMapRequest(button.dataset.id,'rejected');
+    if(action==='approveReviewNote')await reviewOperationalNote(button.dataset.id,'validated');
+    if(action==='rejectReviewNote')await reviewOperationalNote(button.dataset.id,'rejected');
+    if(action==='refreshAdminReview')await loadReviewData();
+    if(action==='openReviewPoint')openReviewPoint(button.dataset.lat,button.dataset.lng);
     if(action==='selectLocationOnMap'){RoutePilotAgendaMap.pickNextPoint(selectManualLocation);showToast('Clique no mapa para selecionar o ponto');}
     if(action==='toggleAgendaFilter'){state.filterOpen=!state.filterOpen;render({preserveAgendaScroll:true});}
     if(action==='toggleUnassignedDrawer'){state.unassignedOpen=!state.unassignedOpen;render({preserveAgendaScroll:true});}

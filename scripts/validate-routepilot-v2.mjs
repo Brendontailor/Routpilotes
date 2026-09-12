@@ -8,7 +8,7 @@ const failures=[];
 const context={console:{groupCollapsed(){},groupEnd(){},info(){},warn(){},error(){}}};
 vm.createContext(context);
 
-for(const file of ['regions.js','locations.js','routes.js','boundaries.js','map-details.js','v2-metadata.js','priority-areas.js','coab-duque-addresses.js','osm-address-snapshot.js','open-address-tiles-index.js','routing-index.js','address-corrections.js']){
+for(const file of ['regions.js','locations.js','routes.js','boundaries.js','pelotas-localities.js','map-details.js','v2-metadata.js','priority-areas.js','coab-duque-addresses.js','osm-address-snapshot.js','open-address-tiles-index.js','routing-index.js','address-corrections.js']){
   const source=fs.readFileSync(path.join(root,'data',file),'utf8').replace(/^const /gm,'var ');
   vm.runInContext(source,context,{filename:file});
 }
@@ -140,7 +140,7 @@ if(manifest?.start_url!=='./')failures.push(`unexpected manifest start_url: ${ma
 const serviceWorker=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
 const shellAssets=[...serviceWorker.matchAll(/\s+'\.\/([^']+)'/g)].map(match=>match[1]);
 for(const asset of shellAssets)if(!fs.existsSync(path.resolve(root,asset)))failures.push(`missing service worker asset: ${asset}`);
-if(!serviceWorker.includes("routepilot-shell-v43"))failures.push('service worker cache is not v43');
+if(!serviceWorker.includes("routepilot-shell-v45"))failures.push('service worker cache is not v45');
 if(/tile\.openstreetmap\.org/.test(serviceWorker))failures.push('service worker must not mass-cache OSM tiles');
 if(!serviceWorker.includes("url.pathname.startsWith('/api/')"))failures.push('service worker must bypass database API responses');
 

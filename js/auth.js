@@ -83,6 +83,7 @@ const RoutePilotAuth=(()=>{
     renderAccessGate();
     const sharedOperations=Boolean(user?.permissions?.canUseSharedOperations);
     document.querySelectorAll('[data-main-tab="create"],[data-main-tab="agenda"]').forEach(tab=>{tab.hidden=Boolean(user)&&!sharedOperations;});
+    document.querySelectorAll('[data-main-tab="review"]').forEach(tab=>{tab.hidden=!Boolean(user?.permissions?.canReviewMapRequests);});
     if(!button||!menu)return;
     button.textContent=user?(user.name||user.email||'Minha conta'):'Entrar com Google';
     button.setAttribute('aria-expanded',String(Boolean(user&&menuOpen)));

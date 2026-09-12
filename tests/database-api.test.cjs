@@ -3,10 +3,10 @@ const assert=require('node:assert/strict');
 
 const apiPromise=import('../netlify/functions/operational-data.mjs');
 
-test('API do Neon remove campos pessoais de uma anotacao',async()=>{
+test('API do Neon remove campos pessoais e impede autovalidacao de anotacao',async()=>{
   const {sanitizeNote}=await apiPromise,record=sanitizeNote({id:'note_1',userId:'usuario_falso',latitude:-31.7,longitude:-52.3,type:'warning',text:'Ponte interditada',status:'validated',customerName:'Nao armazenar',phone:'Nao armazenar'},'usuario_autenticado');
   assert.equal(record.text,'Ponte interditada');
-  assert.equal(record.status,'validated');
+  assert.equal(record.status,'pending');
   assert.equal(record.userId,'usuario_autenticado');
   assert.equal(Object.hasOwn(record,'customerName'),false);
   assert.equal(Object.hasOwn(record,'phone'),false);
@@ -38,6 +38,16 @@ test('preferencia privada aceita IDs estaveis de tecnicos',async()=>{
   const {sanitizeSetting}=await apiPromise,record=sanitizeSetting({id:'filtro_1',type:'routeTechnicianFilter',name:'Equipe A',technicianIds:['tecnico_1','tecnico_2'],isDefault:true});
   assert.deepEqual(record.technicianIds,['tecnico_1','tecnico_2']);
   assert.equal(record.isDefault,true);
+});
+
+test('administrador modera sem trocar autor ou conteudo da anotacao',async()=>{
+  const {sanitizeNote}=await apiPromise,existing={id:'note_3',userId:'autor_1',latitude:-31.7,longitude:-52.3,type:'access',text:'Entrada lateral',status:'pending',createdAt:'2026-09-12T10:00:00.000Z',updatedAt:'2026-09-12T10:00:00.000Z'};
+  const record=sanitizeNote({id:'note_3',text:'Texto adulterado',latitude:0,longitude:0,status:'validated',updatedAt:'2026-09-12T11:00:00.000Z'},{id:'admin_1'},{administrator:true,existing});
+  assert.equal(record.status,'validated');
+  assert.equal(record.userId,'autor_1');
+  assert.equal(record.text,'Entrada lateral');
+  assert.deepEqual([record.latitude,record.longitude],[-31.7,-52.3]);
+  assert.equal(record.reviewedBy,'admin_1');
 });
 
 test('solicitacao comum permanece pendente e usa a identidade autenticada',async()=>{

@@ -24,8 +24,8 @@ function updateLayers() {
       show=$('toggleNeighborhoods').checked&&(state.boundary?x.boundary===state.boundary:state.region?x.region===state.region:state.city?x.city===state.city:zoom>=CONFIGURACAO_MAPA.zoomLocalidades);
       x.layer.setStyle({color:x.color,weight:state.boundary===x.boundary?4:2,opacity:state.boundary?1:.8,fill:true,fillOpacity:0});
     }
-    if(x.kind==='point') show=show&&(Boolean(state.region)||zoom>=CONFIGURACAO_MAPA.zoomLocalidades);
-    if(x.kind==='reference') show=show&&$('toggleRefs').checked;
+    if(x.kind==='point') show=(state.overview||show)&&(Boolean(state.region)||state.overview||zoom>=CONFIGURACAO_MAPA.zoomLocalidades);
+    if(x.kind==='reference') show=(state.overview||show)&&$('toggleRefs').checked;
     sincronizarCamada(x.layer,show);
     if(x.kind==='outline') x.layer.setStyle({weight:state.region?4:3,opacity:.95});
   });
@@ -38,7 +38,7 @@ function updateLabels() {
   if(comparisonActive()){labelRecords.forEach(x=>sincronizarCamada(x.layer,false));updateMapDetails();return;}
   const occupied=[], size=map.getSize(), zoom=map.getZoom();
   labelRecords.slice().sort((a,b)=>(b.p.id===state.point)-(a.p.id===state.point)||(b.p.kind==='referencia')-(a.p.kind==='referencia')).forEach(({p,layer})=>{
-    const relevant=state.region ? p.region===state.region : state.city===p.city&&zoom>=CONFIGURACAO_MAPA.zoomLocalidades;
+    const relevant=state.overview?true:state.region ? p.region===state.region : state.city===p.city&&zoom>=CONFIGURACAO_MAPA.zoomLocalidades;
     let show=relevant&&$('toggleLabels').checked&&(p.kind!=='referencia'||$('toggleRefs').checked);
     if(p.boundaryId)show=show&&$('toggleNeighborhoods').checked&&(!state.boundary||p.boundaryId===state.boundary);
     const pos=map.latLngToContainerPoint([p.lat,p.lon]);
@@ -98,7 +98,7 @@ function initMap() {
   boundaries.features.forEach(feature=>{
     const b=feature.properties;
     const layer=registrarCamada(L.geoJSON(feature,{pane:'neighborhoodAreas',bubblingMouseEvents:false,style:{color:b.color,weight:2,fill:true,fillOpacity:0}}),{city:b.city,region:b.region,kind:'neighborhood',boundary:b.id,color:b.color});
-    layer.bindTooltip(`${esc(b.name)} · ${esc(cityName(b.city))}<br>${b.category} · ${esc(b.source)}`,{sticky:true}).on('click',event=>identifyPointMode||map.getZoom()>=CONFIGURACAO_MAPA.zoomCliqueDetalhado?identifyCoordinates(event.latlng.lat,event.latlng.lng,{source:'map'}):mapBoundaryClick(b.id));
+    layer.bindTooltip(`${esc(b.name)} · ${esc(cityName(b.city))}<br>${b.category} · ${esc(b.source)}`,{sticky:true}).on('click',event=>identifyCoordinates(event.latlng.lat,event.latlng.lng,{source:'map'}));
     boundaryLayers[b.id]=layer;
     if(!linkedPoint(feature)){
       const center=layer.getBounds().getCenter();
@@ -108,7 +108,7 @@ function initMap() {
     }
   });
   regions.forEach(r=>{
-    regionLayers[r.id]=registrarCamada(L.polygon(r.polygon,{pane:'regionAreas',bubblingMouseEvents:false,color:r.color,weight:2,fill:true,fillOpacity:0}),{city:r.city,region:r.id,kind:'outline'}).bindTooltip(esc(r.name),{sticky:true}).on('click',event=>identifyPointMode||map.getZoom()>=CONFIGURACAO_MAPA.zoomCliqueDetalhado?identifyCoordinates(event.latlng.lat,event.latlng.lng,{source:'map'}):selectRegion(r.id));
+    regionLayers[r.id]=registrarCamada(L.polygon(r.polygon,{pane:'regionAreas',bubblingMouseEvents:false,color:r.color,weight:2,fill:true,fillOpacity:0}),{city:r.city,region:r.id,kind:'outline'}).bindTooltip(esc(r.name),{sticky:true}).on('click',event=>identifyCoordinates(event.latlng.lat,event.latlng.lng,{source:'map'}));
     registrarCamada(L.marker(r.center,{title:r.name,icon:L.divIcon({className:'',html:`<div class="region-number" style="background:${r.color}">${regionCode(r)}</div>`,iconSize:[28,28],iconAnchor:[14,14]})}),{city:r.city,region:r.id,kind:'regionNumber'}).bindTooltip(esc(r.name)).on('click',()=>selectRegion(r.id));
   });
   points.forEach(p=>{

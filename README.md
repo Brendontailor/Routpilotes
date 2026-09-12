@@ -137,6 +137,8 @@ RoutePilot/
 - `js/work-order-search.js`: normalização, ranking tolerante, cache e controle de respostas antigas na busca de OS;
 - `js/work-order-import.js`: tratamento dos textos de OS copiados do sistema externo, sem guardar login ou campos extras;
 - `js/geocoding-core.js`: modelo interno, ranking e deduplicação entre fontes;
+- `data/pelotas-localities.js`: 94 localidades urbanas oficiais de Pelotas, geradas da camada municipal `micro_regioes`;
+- `scripts/import-pelotas-localities.mjs`: reproduz a importação estática da fonte oficial sem consultar o ArcGIS durante o uso;
 - `js/geocoding-providers.js`: adaptadores independentes do Photon e Geoapify;
 - `js/geocoding-service.js`: ordem local → Photon → Geoapify e fallback manual;
 - `netlify/functions/geocode.mjs`: proxy opcional que mantém a chave Geoapify fora do cliente;

@@ -93,7 +93,7 @@ document.addEventListener('submit',event=>{
 $('q').addEventListener('input',()=>{ clearTimeout(searchTimer); doSearch(); searchTimer=setTimeout(()=>doSearch(true),CONFIGURACAO_PESQUISA.debounceMs); });
 $('searchForm').addEventListener('submit',event=>{event.preventDefault();clearTimeout(searchTimer);doSearch();const coordinate=parseCoordinateQuery(state.query);if(coordinate.matched&&coordinate.valid)identifyCoordinates(coordinate.lat,coordinate.lng);else if(searchAll(state.query).length)openResult(0);});
 $('clearSearch').addEventListener('click',()=>{clearTimeout(searchTimer);$('q').value='';doSearch();$('q').focus();});
-$('reset').addEventListener('click',generalMap);
+$('reset').addEventListener('click',openEmbeddedGeneralMap);
 $('toggleMap').addEventListener('click',toggleMapVisibility);
 $('compareButton').addEventListener('click',()=>{if(comparisonActive()){goBack();return;}cancelMapInteraction('compare');startCompare();});
 $('identifyPointButton').addEventListener('click',()=>{const active=!identifyPointMode||annotatePointMode;if(annotatePointMode)cancelAnnotatePoint(false);if(active){if(comparisonActive())goBack();cancelMapInteraction('identify');}setIdentifyPointMode(active);});

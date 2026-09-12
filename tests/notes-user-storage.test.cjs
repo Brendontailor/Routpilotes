@@ -7,15 +7,14 @@ global.indexedDB=indexedDB;
 global.IDBKeyRange=IDBKeyRange;
 global.distanceKm=()=>0;
 
-let currentUser={id:'autor_1'};
-const authListeners=new Set(),remoteByUser=new Map();
-const remoteStore=()=>{if(!remoteByUser.has(currentUser.id))remoteByUser.set(currentUser.id,new Map());return remoteByUser.get(currentUser.id);};
+let currentUser={id:'autor_1',administrator:false};
+const authListeners=new Set(),remoteNotes=new Map();
 
-global.RoutePilotAuth={currentUser:()=>currentUser,isAuthenticated:()=>Boolean(currentUser),onChange:listener=>{authListeners.add(listener);return()=>authListeners.delete(listener);}};
+global.RoutePilotAuth={currentUser:()=>currentUser,isAuthenticated:()=>Boolean(currentUser),hasCapability:name=>name==='canReviewMapRequests'&&currentUser.administrator,onChange:listener=>{authListeners.add(listener);return()=>authListeners.delete(listener);}};
 global.RoutePilotCloudSync={
-  async list(){return [...remoteStore().values()].map(structuredClone);},
-  async upsert(_collection,record){remoteStore().set(record.id,structuredClone(record));return {saved:true,record};},
-  async remove(_collection,id){remoteStore().delete(id);return {deleted:true,id};}
+  async list(){return [...remoteNotes.values()].filter(note=>currentUser.administrator||note.userId===currentUser.id||note.status==='validated').map(structuredClone);},
+  async upsert(_collection,record){const existing=remoteNotes.get(record.id),saved=currentUser.administrator?{...record,userId:existing?.userId||currentUser.id}:{...record,userId:currentUser.id,status:'pending',validatedAt:null};remoteNotes.set(saved.id,structuredClone(saved));return {saved:true,record:saved};},
+  async remove(_collection,id){remoteNotes.delete(id);return {deleted:true,id};}
 };
 
 require('../js/notes-storage.js');
@@ -23,20 +22,26 @@ const notes=global.RoutePilotNotes;
 const waitForBackground=()=>new Promise(resolve=>setTimeout(resolve,100));
 
 /** Simula a troca de conta emitida pelo cliente de identidade. */
-function switchUser(id){currentUser={id};for(const listener of authListeners)listener(currentUser);}
+function switchUser(id,administrator=false){currentUser={id,administrator};for(const listener of authListeners)listener(currentUser);}
 
-test('anotacoes locais e remotas permanecem privadas por usuario',async()=>{
+test('anotacoes ficam pendentes, administrador revisa e aprovadas tornam-se compartilhadas',async()=>{
   const first=await notes.createNote({latitude:-31.7,longitude:-52.3,type:'access',text:'Acesso lateral'});
   await waitForBackground();
   assert.equal(first.userId,'autor_1');
-  assert.equal(remoteByUser.get('autor_1').size,1);
+  assert.equal(remoteNotes.size,1);
 
   switchUser('autor_2');
   assert.deepEqual(await notes.getAllNotes(),[]);
-  const second=await notes.createNote({latitude:-31.71,longitude:-52.31,type:'warning',text:'Via bloqueada'});
-  assert.equal(second.userId,'autor_2');
+  await assert.rejects(()=>notes.validateNote(first.id),/Somente o administrador/);
 
-  switchUser('autor_1');
+  switchUser('admin_1',true);
+  assert.deepEqual((await notes.getPendingNotes()).map(note=>note.id),[first.id]);
+  await notes.validateNote(first.id);
+  await waitForBackground();
+
+  switchUser('autor_2');
   const visible=await notes.getAllNotes();
   assert.deepEqual(visible.map(note=>note.id),[first.id]);
+  assert.equal(visible[0].status,'validated');
+  await assert.rejects(()=>notes.updateNote(first.id,{text:'Alterar nota alheia'}),/próprias anotações/);
 });

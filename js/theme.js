@@ -2,12 +2,12 @@
 const RoutePilotTheme=(()=>{
   const STORAGE_KEY='routepilot-theme';
 
-  /** Escolhe a preferencia salva ou acompanha o sistema operacional no primeiro uso. */
-  function initialTheme(){const saved=localStorage.getItem(STORAGE_KEY);return ['light','dark'].includes(saved)?saved:matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
+  /** Usa o tema claro por padrao e respeita somente uma escolha feita no RoutePilot. */
+  function initialTheme(){try{const saved=localStorage.getItem(STORAGE_KEY);return ['light','dark'].includes(saved)?saved:'light';}catch{return 'light';}}
 
   /** Aplica cores e atualiza o nome acessivel do controle. */
   function apply(theme,{persist=false}={}){
-    const value=theme==='dark'?'dark':'light';document.documentElement.dataset.theme=value;if(persist)localStorage.setItem(STORAGE_KEY,value);
+    const value=theme==='dark'?'dark':'light';document.documentElement.dataset.theme=value;if(persist)try{localStorage.setItem(STORAGE_KEY,value);}catch{}
     const button=document.getElementById('themeButton');if(button){const dark=value==='dark';button.setAttribute('aria-pressed',String(dark));button.setAttribute('aria-label',dark?'Usar modo claro':'Usar modo escuro');button.title=dark?'Usar modo claro':'Usar modo escuro';button.querySelector('span').textContent=dark?'Modo claro':'Modo escuro';}
   }
 

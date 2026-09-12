@@ -4,7 +4,7 @@ import {ensureSchema,getDatabase,json} from './_lib/database.mjs';
 
 const COLLECTION_POLICIES=Object.freeze({
   technicians:'shared-operation',workOrders:'shared-operation',agendas:'shared-operation',
-  settings:'user',notes:'user',addressCorrections:'user',
+  settings:'user',notes:'note-review',addressCorrections:'user',
   mapChangeRequests:'map-request',mapFeatures:'shared-map'
 });
 const NOTE_TYPES=new Set(['general','reference','access','warning']);
@@ -66,10 +66,13 @@ export function sanitizeAgenda(input={}){
 /** Sanitiza filtros e preferências que pertencem somente ao usuário atual. */
 export function sanitizeSetting(input={}){const id=recordId(input.id),type=safeText(input.type,40),allowedTypes=new Set(['agendaTechnicianFilter','routeTechnicianFilter','preference']);if(!allowedTypes.has(type))throw new Error('invalid_setting');const createdAt=safeDate(input.createdAt),updatedAt=safeDate(input.updatedAt,createdAt);return {id,type,name:safeText(input.name,100),technicianIds:(Array.isArray(input.technicianIds)?input.technicianIds:[]).slice(0,100).map(recordId),showUnassigned:input.showUnassigned!==false,isDefault:Boolean(input.isDefault),value:typeof input.value==='boolean'||typeof input.value==='number'||typeof input.value==='string'?input.value:null,createdAt,updatedAt};}
 
-/** Associa a anotação ao usuário derivado da sessão, nunca ao cliente. */
-export function sanitizeNote(input={},userId=''){
-  const id=recordId(input.id),text=safeText(input.text,500),type=safeText(input.type,24),status=safeText(input.status,24),coords=coordinates(input.latitude,input.longitude);if(!text)throw new Error('invalid_note');const createdAt=safeDate(input.createdAt),updatedAt=safeDate(input.updatedAt,createdAt);
-  return {id,userId:recordId(userId),latitude:coords[0],longitude:coords[1],type:NOTE_TYPES.has(type)?type:'general',text,status:NOTE_STATUSES.has(status)?status:'pending',createdAt,updatedAt,validatedAt:input.validatedAt?safeDate(input.validatedAt):null};
+/** Associa a anotação ao autor da sessão e reserva a moderação ao administrador. */
+export function sanitizeNote(input={},actor='',options={}){
+  const user=typeof actor==='string'?{id:actor}:actor,administrator=Boolean(options.administrator),existing=options.existing||null;
+  const source=administrator&&existing&&existing.userId!==user.id?{...existing,status:input.status,updatedAt:input.updatedAt}:input;
+  const id=recordId(source.id),text=safeText(source.text,500),type=safeText(source.type,24),requestedStatus=safeText(source.status,24),coords=coordinates(source.latitude,source.longitude);if(!text)throw new Error('invalid_note');
+  const createdAt=safeDate(source.createdAt),updatedAt=safeDate(source.updatedAt,createdAt),status=administrator&&NOTE_STATUSES.has(requestedStatus)?requestedStatus:'pending';
+  return {id,userId:recordId(existing?.userId||user.id),latitude:coords[0],longitude:coords[1],type:NOTE_TYPES.has(type)?type:'general',text,status,createdAt,updatedAt,validatedAt:status==='validated'?safeDate(source.validatedAt||updatedAt):null,reviewedBy:status==='pending'?null:user.id};
 }
 
 /** Conserva somente a correção geográfica compartilhada, sem dados de cliente. */
@@ -104,12 +107,12 @@ export function sanitizeMapFeature(input={},user){
 }
 
 /** Seleciona um sanitizador fixo; coleções e tabelas nunca vêm livres da requisição. */
-export function sanitizeRecord(collection,input,user={id:'unknown',email:''},permissions={}){
+export function sanitizeRecord(collection,input,user={id:'unknown',email:''},permissions={},existing=null){
   if(collection==='workOrders')return sanitizeWorkOrder(input);
   if(collection==='technicians')return sanitizeTechnician(input);
   if(collection==='agendas')return sanitizeAgenda(input);
   if(collection==='settings')return sanitizeSetting(input);
-  if(collection==='notes')return sanitizeNote(input,user.id);
+  if(collection==='notes')return sanitizeNote(input,user,{administrator:permissions.canReviewMapRequests,existing});
   if(collection==='addressCorrections')return sanitizeAddressCorrection(input);
   if(collection==='mapChangeRequests')return sanitizeMapChangeRequest(input,user,{administrator:permissions.canReviewMapRequests});
   if(collection==='mapFeatures')return sanitizeMapFeature(input,user);
@@ -122,10 +125,22 @@ export default async function handler(request){
     const user=await requireAuthenticatedUser(),permissions=permissionsForUser(user),url=new URL(request.url),collection=safeText(url.searchParams.get('collection'),32),policy=COLLECTION_POLICIES[collection];
     if(!policy)return json({error:'invalid_collection'},{status:400});
     if(policy==='shared-operation'&&!permissions.canUseSharedOperations)return json({error:'authorization_required'},{status:403});
-    const scope=policy==='user'?'user':policy==='map-request'?'review':'shared';
-    const ownerId=policy==='user'?user.id:policy==='map-request'?'map-review':policy==='shared-map'?'map':'shared',sql=getDatabase();await ensureSchema(sql);
+    const reviewPolicy=['map-request','note-review'].includes(policy),scope=policy==='user'?'user':reviewPolicy?'review':'shared';
+    const ownerId=policy==='user'?user.id:policy==='map-request'?'map-review':policy==='note-review'?'note-review':policy==='shared-map'?'map':'shared',sql=getDatabase();await ensureSchema(sql);
     if(request.method==='GET'){
-      const rows=policy==='map-request'&&!permissions.canReviewMapRequests
+      /* Migra anotações privadas legadas para a fila compartilhada do próprio autor. */
+      if(policy==='note-review'){
+        const legacy=await sql`SELECT payload FROM routepilot_records WHERE scope='user' AND owner_id=${user.id} AND collection='notes' AND is_deleted=FALSE`;
+        for(const row of legacy){
+          const migrated=sanitizeNote({...row.payload,status:'pending',validatedAt:null,updatedAt:new Date().toISOString()},user);
+          await sql`INSERT INTO routepilot_records (scope,owner_id,collection,record_id,payload,is_deleted,created_by,updated_by,created_at,updated_at)
+            VALUES ('review','note-review','notes',${migrated.id},${JSON.stringify(migrated)}::jsonb,FALSE,${user.id},${user.id},${migrated.createdAt},${migrated.updatedAt})
+            ON CONFLICT (scope,owner_id,collection,record_id) DO NOTHING`;
+        }
+      }
+      const rows=policy==='note-review'&&!permissions.canReviewMapRequests
+        ?await sql`SELECT payload,is_deleted,updated_at FROM routepilot_records WHERE scope=${scope} AND owner_id=${ownerId} AND collection=${collection} AND (payload->>'userId'=${user.id} OR payload->>'status'='validated') ORDER BY updated_at DESC LIMIT 5000`
+        :policy==='map-request'&&!permissions.canReviewMapRequests
         ?await sql`SELECT payload,is_deleted,updated_at FROM routepilot_records WHERE scope=${scope} AND owner_id=${ownerId} AND collection=${collection} AND payload->>'requestedBy'=${user.id} ORDER BY updated_at DESC LIMIT 5000`
         :await sql`SELECT payload,is_deleted,updated_at FROM routepilot_records WHERE scope=${scope} AND owner_id=${ownerId} AND collection=${collection} ORDER BY updated_at DESC LIMIT 5000`;
       return json({collection,scope,records:rows.map(row=>row.is_deleted?{id:row.payload.id,_deleted:true,updatedAt:row.updated_at}:row.payload)});
@@ -135,10 +150,14 @@ export default async function handler(request){
     const raw=await request.text();if(raw.length>MAX_BODY_BYTES)return json({error:'payload_too_large'},{status:413});
     let body;try{body=JSON.parse(raw||'{}');}catch(error){return json({error:'invalid_json'},{status:400});}
     const requestedId=recordId(request.method==='DELETE'?body.id:body.record?.id);
+    let existing=null;
+    if(['map-request','note-review'].includes(policy)){
+      existing=(await sql`SELECT payload,is_deleted FROM routepilot_records WHERE scope=${scope} AND owner_id=${ownerId} AND collection=${collection} AND record_id=${requestedId} LIMIT 1`)[0];
+    }
     if(policy==='map-request'){
-      const existing=(await sql`SELECT payload,is_deleted FROM routepilot_records WHERE scope=${scope} AND owner_id=${ownerId} AND collection=${collection} AND record_id=${requestedId} LIMIT 1`)[0];
       if(existing&&!permissions.canReviewMapRequests&&(existing.payload?.requestedBy!==user.id||existing.payload?.status!=='pending'))return json({error:'map_request_owner_required'},{status:403});
     }
+    if(policy==='note-review'&&existing&&!permissions.canReviewMapRequests&&existing.payload?.userId!==user.id)return json({error:'note_owner_required'},{status:403});
     if(request.method==='DELETE'){
       const id=requestedId,updatedAt=safeDate(body.updatedAt),tombstone=JSON.stringify({id,updatedAt});
       await sql`INSERT INTO routepilot_records (scope,owner_id,collection,record_id,payload,is_deleted,created_by,updated_by,created_at,updated_at)
@@ -147,7 +166,7 @@ export default async function handler(request){
         WHERE routepilot_records.updated_at<=EXCLUDED.updated_at`;
       return json({deleted:true,id,updatedAt});
     }
-    const record=sanitizeRecord(collection,body.record,user,permissions),updatedAt=record.updatedAt||new Date().toISOString();
+    const record=sanitizeRecord(collection,body.record,user,permissions,existing?.payload||null),updatedAt=record.updatedAt||new Date().toISOString();
     let approvedFeature=null;
     if(collection==='mapChangeRequests'&&record.status==='approved'){
       approvedFeature=sanitizeMapFeature({...record,id:record.targetId||`map_feature_${record.id}`,createdAt:record.reviewedAt||updatedAt,updatedAt},user);

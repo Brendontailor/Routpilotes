@@ -1,5 +1,5 @@
 /* Recurso RoutePilot: instalação e cache offline da PWA. */
-const CACHE_NAME='routepilot-shell-v43';
+const CACHE_NAME='routepilot-shell-v45';
 const CACHE_PREFIX='routepilot-shell-';
 const APP_SHELL=[
   './',
@@ -15,6 +15,7 @@ const APP_SHELL=[
   './data/locations.js',
   './data/routes.js',
   './data/boundaries.js',
+  './data/pelotas-localities.js',
   './data/map-details.js',
   './data/v2-metadata.js',
   './data/priority-areas.js',
@@ -71,6 +72,7 @@ const APP_SHELL=[
   './js/ui-shell.js',
   './js/events.js',
   './routepilot-logo.svg',
+  './routepilot-logo-dark.svg',
   './routepilot-icon.svg',
   './routepilot-icon-180.png',
   './routepilot-icon-192.png',

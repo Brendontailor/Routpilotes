@@ -5,7 +5,7 @@ const byPoint = Object.fromEntries(points.map(p => [p.id, p]));
 const $ = id => document.getElementById(id);
 const cityNames = {Pelotas:'Pelotas', 'Capao do Leao':'Capão do Leão', 'Morro Redondo':'Morro Redondo', Cangucu:'Canguçu', Cerrito:'Cerrito'};
 const cityStyles={Pelotas:{initials:'PE',color:'#0089b0'},'Capao do Leao':{initials:'CL',color:'#228660'},'Morro Redondo':{initials:'MR',color:'#bf6252'},Cangucu:{initials:'CG',color:'#6579a5'},Cerrito:{initials:'CE',color:'#a63d78'}};
-const state = {city:null, region:null, point:null, boundary:null, road:null, query:'', searchOpen:false, overview:false, compare:null,compareMode:'places',compareStops:[null,null],compareReady:false};
+const state = {city:null, region:null, point:null, boundary:null, road:null, query:'', searchOpen:false, overview:false,overviewEmbedded:false,compare:null,compareMode:'places',compareStops:[null,null],compareReady:false};
 const history = [];
 let pendingCityChoice=null;
 let searchTimer;
